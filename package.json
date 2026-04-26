@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node --experimental-strip-types src/index.ts",
-    "check": "node --check src/index.ts"
+    "mvp": "node --experimental-strip-types src/index.ts --file examples/transcripts/project-seed.txt",
+    "check": "for file in src/*.ts test/*.ts; do node --check \"$file\"; done",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
   },
   "engines": {
     "node": ">=22"
@@ -20,4 +22,3 @@
   ],
   "license": "MIT"
 }
-

@@ -80,8 +80,11 @@ After that, the phone adapter can be wired to Twilio Media Streams or SIP/RTP.
 ```bash
 npm install
 npm run check
+npm test
+npm run mvp
 npm run start
 ```
 
-The current code is intentionally minimal and dependency-free.
-
+The current code is intentionally minimal and dependency-free. `npm run mvp`
+runs the local transcript-to-callback loop and writes inspectable JSON under
+`.agentline/runs/`.

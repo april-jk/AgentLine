@@ -18,6 +18,20 @@ Acceptance:
 - One command runs the whole local loop.
 - The output clearly shows whether the system should call back, continue background work, or mark the task complete.
 
+Implementation status: complete in the local developer loop.
+
+Verification:
+
+```bash
+npm run check
+npm test
+npm run mvp
+```
+
+The MVP command writes full run records to `.agentline/runs/` and prints a
+short summary containing the run ID, task ID, execution status, callback
+decision, and JSON output path.
+
 ## Phase 1: Text Control Surface
 
 - Add a CLI or HTTP endpoint for submitting transcripts.
@@ -48,4 +62,3 @@ Acceptance:
 Acceptance:
 
 - A phone-created task can dispatch to a local coding agent and return a human-readable progress update.
-
