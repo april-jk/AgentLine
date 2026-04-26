@@ -5656,6 +5656,19 @@ a.sidebar-nav-item {
   color: var(--text-primary);
 }
 
+.voice-worker-block {
+  margin-bottom: var(--space-3);
+}
+
+.voice-worker-block:last-child {
+  margin-bottom: 0;
+}
+
+.voice-grid-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: var(--space-2);
+}
+
 .voice-instruction-list {
   display: flex;
   flex-direction: column;
@@ -5717,6 +5730,23 @@ a.sidebar-nav-item {
 
 .voice-transcript p {
   display: inline;
+}
+
+.voice-transcript-details {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-color);
+}
+
+.voice-transcript-details summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.voice-transcript-details .voice-transcript {
+  margin-top: var(--space-2);
 }
 
 .voice-muted {

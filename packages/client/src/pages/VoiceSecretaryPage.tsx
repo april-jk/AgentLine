@@ -47,16 +47,20 @@ function VoiceSecretaryResultView({
 }: { result: VoiceSecretaryResult }) {
   const basePath = useRemoteBasePath();
   const sessionLink = result.executorReport.links?.[0]?.href;
+  const task = result.plannerResult.executionTask;
 
   return (
     <div className="voice-results">
       <div className="voice-result-summary">
         <div>
-          <span className="voice-kicker">Call</span>
+          <span className="voice-kicker">Talker</span>
           <strong>{result.callSession.id}</strong>
         </div>
+        <div>
+          <span className="voice-kicker">Worker</span>
+          <strong>{result.plannerResult.recommendedAction}</strong>
+        </div>
         <StatusBadge status={result.callSession.status} />
-        <StatusBadge status={result.executorReport.status} />
       </div>
 
       <ResultSection title="Talker">
@@ -66,26 +70,51 @@ function VoiceSecretaryResultView({
         </div>
       </ResultSection>
 
-      <ResultSection title="Planner">
-        <p>{result.plannerResult.projectSummary}</p>
+      <ResultSection title="Worker">
+        <div className="voice-worker-block">
+          <span className="voice-kicker">Project context</span>
+          <p>{result.plannerResult.projectSummary}</p>
+        </div>
+
         <div className="voice-grid">
           <div>
-            <span className="voice-kicker">Action</span>
-            <strong>{result.plannerResult.recommendedAction}</strong>
-          </div>
-          <div>
-            <span className="voice-kicker">Task mode</span>
-            <strong>
-              {result.plannerResult.executionTask?.mode ?? "none"}
-            </strong>
+            <span className="voice-kicker">Task</span>
+            <strong>{task?.mode ?? "none"}</strong>
           </div>
           <div>
             <span className="voice-kicker">Provider</span>
-            <strong>
-              {result.plannerResult.executionTask?.provider ?? "none"}
-            </strong>
+            <strong>{task?.provider ?? "none"}</strong>
+          </div>
+          <div>
+            <span className="voice-kicker">Codex session</span>
+            <StatusBadge status={result.executorReport.status} />
           </div>
         </div>
+
+        <div className="voice-worker-block">
+          <span className="voice-kicker">Handoff result</span>
+          <p>{result.executorReport.summary}</p>
+          <div className="voice-grid voice-grid-compact">
+            <div>
+              <span className="voice-kicker">Session</span>
+              <strong>{result.executorReport.providerSessionId}</strong>
+            </div>
+            <div>
+              <span className="voice-kicker">Changed files</span>
+              <strong>{result.executorReport.changedFiles?.length ?? 0}</strong>
+            </div>
+          </div>
+          {sessionLink && (
+            <Link
+              className="voice-session-link"
+              to={`${basePath}${sessionLink}`}
+            >
+              Open Codex session
+            </Link>
+          )}
+          <TextList items={result.executorReport.verification} />
+        </div>
+
         <div className="voice-instruction-list">
           {result.plannerResult.relevantInstructions.map((instruction) => (
             <details key={instruction.path}>
@@ -94,37 +123,18 @@ function VoiceSecretaryResultView({
             </details>
           ))}
         </div>
-      </ResultSection>
 
-      <ResultSection title="Executor">
-        <p>{result.executorReport.summary}</p>
-        <div className="voice-grid">
-          <div>
-            <span className="voice-kicker">Session</span>
-            <strong>{result.executorReport.providerSessionId}</strong>
-          </div>
-          <div>
-            <span className="voice-kicker">Changed files</span>
-            <strong>{result.executorReport.changedFiles?.length ?? 0}</strong>
-          </div>
-        </div>
-        {sessionLink && (
-          <Link className="voice-session-link" to={`${basePath}${sessionLink}`}>
-            Open executor session
-          </Link>
-        )}
-        <TextList items={result.executorReport.verification} />
-      </ResultSection>
-
-      <ResultSection title="Transcript">
-        <ol className="voice-transcript">
-          {result.callSession.transcript.map((turn) => (
-            <li key={turn.id}>
-              <span>{turn.speaker}</span>
-              <p>{turn.text}</p>
-            </li>
-          ))}
-        </ol>
+        <details className="voice-transcript-details">
+          <summary>Call transcript</summary>
+          <ol className="voice-transcript">
+            {result.callSession.transcript.map((turn) => (
+              <li key={turn.id}>
+                <span>{turn.speaker}</span>
+                <p>{turn.text}</p>
+              </li>
+            ))}
+          </ol>
+        </details>
       </ResultSection>
     </div>
   );
@@ -221,15 +231,15 @@ export function VoiceSecretaryPage() {
                   </select>
                 </label>
                 <label>
-                  <span>Executor</span>
+                  <span>Worker mode</span>
                   <select
                     value={executorMode}
                     onChange={(event) =>
                       setExecutorMode(event.target.value as ExecutorMode)
                     }
                   >
-                    <option value="fake">Fake executor</option>
-                    <option value="agentline">AgentLine Codex session</option>
+                    <option value="fake">Simulation only</option>
+                    <option value="agentline">Create Codex session</option>
                   </select>
                 </label>
               </div>
@@ -254,8 +264,8 @@ export function VoiceSecretaryPage() {
                 </button>
                 {executorMode === "agentline" && (
                   <span>
-                    Creates a real provider session in plan mode. The planner
-                    still does not edit files.
+                    Worker creates a real Codex session in plan mode. Talker
+                    stays focused on the caller.
                   </span>
                 )}
               </div>
@@ -269,8 +279,8 @@ export function VoiceSecretaryPage() {
               <div className="voice-empty">
                 <h2>Ready</h2>
                 <p>
-                  Run the simulated call to see the Talker response, the
-                  ProjectPlanner task packet, and the executor handoff result.
+                  Run the simulated call to see what Talker says and what Worker
+                  does with the project context.
                 </p>
               </div>
             )}
