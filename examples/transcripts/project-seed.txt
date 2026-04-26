@@ -1,1 +1,0 @@
-I want AgentLine to finish the first MVP. Take a simulated phone transcript, turn it into a structured task packet, route it to a stub executor, and decide whether the system should call me back or continue the work in the background. Keep the voice loop low latency and keep Codex and Claude Code behind adapters.

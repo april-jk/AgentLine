@@ -1,90 +1,127 @@
-# AgentLine
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="site/public/branding/lockup-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="site/public/branding/lockup-light.svg">
+    <img src="site/public/branding/lockup-light.svg" alt="Yep Anywhere" height="60">
+  </picture>
+</p>
 
-Give AI agents a phone line.
+<p align="center">
+  <em>Mobile-first. End-to-end encrypted. Open source.</em>
+</p>
 
-AgentLine is an early-stage open-source project for turning phone calls into an operator-grade control surface for AI agents.
+<p align="center">
+  <a href="https://yepanywhere.com">yepanywhere.com</a>
+</p>
 
-The core idea is simple: a low-latency voice secretary handles the live call, captures intent, asks short clarifying questions, and hands structured work to stronger back-office agents such as Codex, Claude Code, or domain-specific LLM workers. When more human input is needed, AgentLine can call back instead of forcing the user to sit in a chat thread.
+A better remote interface for Claude Code and Codex. Self-hosted, no cloud accounts. Supervise your agents from your phone while they run on your dev machines.
 
-## Why This Exists
+## Features
 
-Text chat is not the final interface for daily human-AI collaboration. A better interface is closer to calling a competent assistant:
+- **Interop** — View and resume sessions started in CLI, VS Code, or other tools. No new database — piggybacks on CLI persistence
+- **File uploads** — Share screenshots, photos, PDFs, and code files directly from your phone's camera roll
+- **Push notifications** — Get alerted when approval is needed, respond from your lock screen
+- **E2E encrypted remote access** — Connect from anywhere via our free relay. We can't see your data (SRP-6a + TweetNaCl)
+- **Fork/clone conversations** — Branch from any message point to explore alternatives
+- **Tiered inbox** — Needs Attention → Active → Recent → Unread. Stop cycling through terminal tabs
+- **Global activity stream** — See what all your agents are doing across sessions
+- **Remote device control** — Stream Android emulators and devices to your phone over WebRTC. Touch input, nav buttons, adaptive quality
+- **Server-owned processes** — Client disconnects don't interrupt work
+- **Voice input** — Talk to your agents via browser speech API
+- **Fast on mobile** — Syntax highlighting and markdown rendering happen server-side
 
-1. You say what you need.
-2. The assistant confirms enough detail to avoid obvious mistakes.
-3. Slower reasoning and execution happen in the background.
-4. The assistant calls back only when confirmation, missing context, or final delivery matters.
+No database, no cloud, no accounts. 100% open source (MIT).
 
-Most current voice-agent projects focus on customer support or appointment booking. Most coding-agent bridge projects focus on Telegram, Discord, web dashboards, or terminal control. AgentLine sits between those two worlds: telephony-native conversation at the front, agent-native execution at the back.
+## Supported Providers
 
-## Initial Scope
+| Provider | Diffs | Approvals | Streaming | Notes |
+|----------|-------|-----------|-----------|-------|
+| Claude Code | Full | Yes | Yes | Primary provider, full feature support |
+| Codex | Full | Yes | Yes | Full support including diffs and approvals |
 
-AgentLine starts as a small, explicit core rather than a giant platform.
+## Screenshots
 
-- Phone bridge: inbound and outbound call primitives through SIP/Twilio-compatible adapters.
-- Talker: low-latency voice secretary responsible for live conversation quality.
-- Task broker: turns spoken intent into a structured task packet.
-- Agent adapters: dispatches structured work to Codex, Claude Code, or other executors.
-- Callback loop: calls the human back when a task needs clarification or approval.
+<p align="center">
+  <img src="site/public/screenshots/session-view.png" width="250" alt="Session view">
+  <img src="site/public/screenshots/conversation.png" width="250" alt="Conversation">
+  <img src="site/public/screenshots/approval.png" width="250" alt="Approval flow">
+</p>
+<p align="center">
+  <img src="site/public/screenshots/navigation.png" width="250" alt="Navigation">
+  <img src="site/public/screenshots/new-session.png" width="250" alt="New session">
+  <img src="site/public/screenshots/mobile-diff.png" width="250" alt="Mobile diff view">
+  <img src="site/public/screenshots/device-stream.png" width="250" alt="Remote device control">
+</p>
 
-## Non-Goals For The First Version
+**Works great on desktop too!**
 
-- A generic call-center SaaS.
-- A replacement for Codex or Claude Code.
-- A fake terminal over the phone.
-- Multi-tenant enterprise controls before the single-operator flow works.
+<p align="center">
+  <img src="site/public/screenshots/desktop.png" width="400" alt="Desktop view">
+  <img src="site/public/screenshots/desktop-diff.png" width="400" alt="Desktop diff view">
+</p>
 
-## Architecture Sketch
+## Getting Started
 
-```text
-Human
-  |
-  | phone call
-  v
-Phone Adapter
-  |
-  | audio/events
-  v
-Talker
-  |
-  | structured intent
-  v
-Task Broker
-  |
-  +--> Codex Adapter
-  +--> Claude Code Adapter
-  +--> Custom Agent Adapter
-  |
-  | missing info / approval / result
-  v
-Callback Coordinator
-  |
-  | outbound call / IM / email
-  v
-Human
+If you can install Claude Code or Codex, you can install this. Minimal dependencies.
+
+```
+npm i -g yepanywhere
+yepanywhere
 ```
 
-## Repository Status
+Or, from source:
+```bash
+git clone https://github.com/kzahel/yepanywhere.git
+cd yepanywhere
+pnpm install
+pnpm build
+pnpm start
+```
 
-This repository is the seed for the project. The first implementation milestone is a local developer loop that can:
+Open http://localhost:3400 in your browser. The app auto-detects installed CLI agents.
 
-1. accept a simulated call transcript,
-2. produce a structured task packet,
-3. route it to a stub executor,
-4. return a callback decision.
+## Remote Access
 
-After that, the phone adapter can be wired to Twilio Media Streams or SIP/RTP.
+**Easiest:** Use our free public relay — configure it in Settings, or via CLI for headless setups:
+
+```bash
+yepanywhere --setup-remote-access --username myserver --password "secretpass123"
+```
+
+Then connect from anywhere at [yepanywhere.com/remote](https://yepanywhere.com/remote).
+
+All traffic is end-to-end encrypted and we can't see your data. No accounts required.
+
+**Self-hosted:** Prefer to run your own infrastructure? Use Tailscale, Caddy, or any reverse proxy with SSL termination. See the [remote access docs](docs/project/remote-access.md) for details.
+
+## Why not just use the terminal?
+
+You *can* use the terminal on your phone — but monospace text is painful on a small screen, there's no file upload, no push notifications, and no way to see all your sessions at once. This gives you a proper UI while keeping everything self-hosted and running your code locally.
+
+## Comparison to Other Tools
+
+There are a lot of projects in this space. We track them all: **[docs/competitive/all-projects.md](docs/competitive/all-projects.md)**
 
 ## Development
 
-```bash
-npm install
-npm run check
-npm test
-npm run mvp
-npm run start
-```
+See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, configuration options, and more.
 
-The current code is intentionally minimal and dependency-free. `npm run mvp`
-runs the local transcript-to-callback loop and writes inspectable JSON under
-`.agentline/runs/`.
+## TOS Compliance
+
+Yep Anywhere uses the official [`@anthropic-ai/claude-agent-sdk`](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) published by Anthropic. We don't handle authentication, spoof headers, or manipulate OAuth tokens. You authenticate via your own Claude CLI — we're just a remote interface to your sessions.
+
+Read more: [How we use the SDK](https://yepanywhere.com/tos-compliance.html) | [Feb 2026 auth clarification](https://yepanywhere.com/sdk-auth-clarification.html)
+
+## Star History
+
+<a href="https://www.star-history.com/#kzahel/yepanywhere&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=kzahel/yepanywhere&type=date&legend=top-left&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=kzahel/yepanywhere&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kzahel/yepanywhere&type=date&legend=top-left" />
+  </picture>
+</a>
+
+## License
+
+MIT
