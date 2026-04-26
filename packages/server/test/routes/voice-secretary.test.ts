@@ -33,6 +33,7 @@ describe("Voice Secretary routes", () => {
     expect(response.status).toBe(200);
     const json = await response.json();
     expect(json.result.callSession.status).toBe("completed");
+    expect(json.result.callSession.transcript).toHaveLength(2);
     expect(json.result.plannerResult.executionTask.mode).toBe("read_only");
     expect(json.result.executorReport.changedFiles).toEqual([]);
   });

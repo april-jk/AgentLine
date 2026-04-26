@@ -328,9 +328,6 @@ export class SimulatedCallLoop {
       executorReport,
     );
 
-    callSession.transcript.push(
-      createTranscriptTurn("talker", finalBrief.spokenSummary, "tts"),
-    );
     if (plannerResult.callbackDecision.required) {
       callSession.callbackRequests.push({
         id: randomUUID(),

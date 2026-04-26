@@ -60,6 +60,10 @@ describe("SimulatedCallLoop", () => {
       speaker: "talker",
       source: "tts",
     });
+    expect(result.callSession.transcript).toHaveLength(2);
+    expect(
+      result.callSession.transcript.filter((turn) => turn.speaker === "talker"),
+    ).toHaveLength(1);
     expect(result.plannerRequest.projectPath).toBe(projectPath);
     expect(result.plannerResult.recommendedAction).toBe(
       "create_executor_session",
