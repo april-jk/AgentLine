@@ -52,6 +52,18 @@ Acceptance:
 - The fake executor returns a report.
 - Talker produces a final caller-facing summary.
 
+Runnable fixture:
+
+```bash
+curl -X POST http://localhost:3400/api/voice-secretary/simulate \
+  -H 'content-type: application/json' \
+  -H 'x-agentline-request: true' \
+  -d '{"projectPath":"/Users/watson/codingProj/AgentLine","utterance":"Help me understand what this project should do next."}'
+```
+
+The fixture is intentionally text-only. It proves the internal state machine
+before Volcengine ASR/TTS or real ExecutorAgentSession creation is added.
+
 ## Milestone 3: Web Voice Demo
 
 Deliverables:

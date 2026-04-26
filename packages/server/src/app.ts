@@ -58,6 +58,7 @@ import { createServerInfoRoutes } from "./routes/server-info.js";
 import { createSessionsRoutes } from "./routes/sessions.js";
 import { createSettingsRoutes } from "./routes/settings.js";
 import { createSharingRoutes } from "./routes/sharing.js";
+import { createVoiceSecretaryRoutes } from "./routes/voice-secretary.js";
 import { ClaudeOllamaProvider } from "./sdk/providers/claude-ollama.js";
 
 import { createLocalImageRoutes } from "./routes/local-image.js";
@@ -666,6 +667,9 @@ export function createApp(options: AppOptions): AppResult {
       enabledProviders: options.enabledProviders,
     }),
   );
+
+  // Voice Secretary simulated call loop
+  app.route("/api/voice-secretary", createVoiceSecretaryRoutes());
 
   // Server settings routes
   if (options.serverSettingsService) {
