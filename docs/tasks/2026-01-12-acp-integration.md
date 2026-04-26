@@ -264,7 +264,7 @@ export class ACPClient {
 **File**: `packages/server/src/sdk/providers/gemini-acp.ts`
 
 ```typescript
-import type { ModelInfo } from '@yep-anywhere/shared';
+import type { ModelInfo } from '@agentline/shared';
 import { getLogger } from '../../logging/logger.js';
 import { MessageQueue } from '../messageQueue.js';
 import type { SDKMessage } from '../types.js';
@@ -642,7 +642,7 @@ Expected: See `[init]`, `[session]`, and `[response]` logs with actual content f
 
 ### Phase 1 Testing
 
-1. Start yepanywhere: `pnpm dev`
+1. Start agentline: `pnpm dev`
 2. Create new session with "Gemini (ACP)" provider
 3. Send a simple message like "Hello, what's your name?"
 4. Verify response appears in UI

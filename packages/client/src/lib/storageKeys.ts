@@ -5,7 +5,7 @@
  * - UI_KEYS: Visual preferences that are global to the browser
  * - SERVER_SCOPED_KEYS: Settings that need to be scoped by server installId
  *
- * When accessing via yepanywhere.com/remote, users may connect to different
+ * When accessing via agentline.com/remote, users may connect to different
  * servers. Server-scoped settings ensure each server has independent config.
  */
 import { generateUUID } from "./uuid";
@@ -42,20 +42,20 @@ export function getCurrentInstallId(): string | undefined {
 // ============================================================================
 
 export const UI_KEYS = {
-  locale: "yep-anywhere-locale",
-  theme: "yep-anywhere-theme",
-  fontSize: "yep-anywhere-font-size",
-  tabSize: "yep-anywhere-tab-size",
-  sidebarWidth: "yep-anywhere-sidebar-width",
-  sidebarExpanded: "yep-anywhere-sidebar-expanded",
-  funPhrases: "yep-anywhere-fun-phrases-enabled",
-  streamingEnabled: "yep-anywhere-streaming-enabled",
-  developerMode: "yep-anywhere-developer-mode",
-  schemaValidation: "yep-anywhere-schema-validation",
-  emulatorMaxFps: "yep-anywhere-emulator-max-fps",
-  emulatorMaxWidth: "yep-anywhere-emulator-max-width",
-  emulatorQuality: "yep-anywhere-emulator-quality",
-  emulatorAdaptiveFps: "yep-anywhere-emulator-adaptive-fps",
+  locale: "agentline-locale",
+  theme: "agentline-theme",
+  fontSize: "agentline-font-size",
+  tabSize: "agentline-tab-size",
+  sidebarWidth: "agentline-sidebar-width",
+  sidebarExpanded: "agentline-sidebar-expanded",
+  funPhrases: "agentline-fun-phrases-enabled",
+  streamingEnabled: "agentline-streaming-enabled",
+  developerMode: "agentline-developer-mode",
+  schemaValidation: "agentline-schema-validation",
+  emulatorMaxFps: "agentline-emulator-max-fps",
+  emulatorMaxWidth: "agentline-emulator-max-width",
+  emulatorQuality: "agentline-emulator-quality",
+  emulatorAdaptiveFps: "agentline-emulator-adaptive-fps",
 } as const;
 
 // ============================================================================
@@ -79,7 +79,7 @@ export function serverKey(
   installId: string,
   key: (typeof SERVER_SCOPED_KEYS)[keyof typeof SERVER_SCOPED_KEYS],
 ): string {
-  return `yep-anywhere-${installId}-${key}`;
+  return `agentline-${installId}-${key}`;
 }
 
 /**
@@ -167,17 +167,17 @@ export function getOrCreateBrowserProfileId(): string {
 export const KEY_BUILDERS = {
   /** Draft message for an existing session */
   draftMessage: (installId: string, sessionId: string) =>
-    `yep-anywhere-${installId}-draft-${sessionId}`,
+    `agentline-${installId}-draft-${sessionId}`,
 
   /** Draft for a new session in a project */
   newSessionDraft: (installId: string, projectId: string) =>
-    `yep-anywhere-${installId}-new-session-draft-${projectId}`,
+    `agentline-${installId}-new-session-draft-${projectId}`,
 
   /** FAB draft content */
-  fabDraft: (installId: string) => `yep-anywhere-${installId}-fab-draft`,
+  fabDraft: (installId: string) => `agentline-${installId}-fab-draft`,
 
   /** FAB prefill content */
-  fabPrefill: (installId: string) => `yep-anywhere-${installId}-fab-prefill`,
+  fabPrefill: (installId: string) => `agentline-${installId}-fab-prefill`,
 } as const;
 
 // ============================================================================
@@ -185,10 +185,10 @@ export const KEY_BUILDERS = {
 // ============================================================================
 
 /** Remote connection credentials - stored per wsUrl internally */
-export const REMOTE_CREDENTIALS_KEY = "yep-anywhere-remote-credentials";
+export const REMOTE_CREDENTIALS_KEY = "agentline-remote-credentials";
 
 /** Saved hosts for multi-host remote access */
-export const SAVED_HOSTS_KEY = "yep-anywhere-saved-hosts";
+export const SAVED_HOSTS_KEY = "agentline-saved-hosts";
 
 // ============================================================================
 // Legacy Key Mappings (for migration from old unscoped keys)
@@ -196,14 +196,14 @@ export const SAVED_HOSTS_KEY = "yep-anywhere-saved-hosts";
 
 /** Old unscoped keys that need migration to server-scoped versions */
 export const LEGACY_KEYS = {
-  model: "yep-anywhere-model",
-  thinkingLevel: "yep-anywhere-thinking-level",
-  thinkingEnabled: "yep-anywhere-thinking-enabled",
-  thinkingMode: "yep-anywhere-thinking-mode",
-  voiceInputEnabled: "yep-anywhere-voice-input-enabled",
-  browserProfileId: "yep-anywhere-device-id",
-  notifyInApp: "yep-anywhere-notify-in-app",
-  recentProject: "yep-anywhere-recent-project",
+  model: "agentline-model",
+  thinkingLevel: "agentline-thinking-level",
+  thinkingEnabled: "agentline-thinking-enabled",
+  thinkingMode: "agentline-thinking-mode",
+  voiceInputEnabled: "agentline-voice-input-enabled",
+  browserProfileId: "agentline-device-id",
+  notifyInApp: "agentline-notify-in-app",
+  recentProject: "agentline-recent-project",
   // Draft keys had different prefixes
   draftMessagePrefix: "draft-message-",
   newSessionDraftPrefix: "draft-new-session-",

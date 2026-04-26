@@ -9,7 +9,7 @@ import {
   getModelContextWindow,
   isUrlProjectId,
   thinkingOptionToConfig,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { Hono } from "hono";
 import { augmentTextBlocks } from "../augments/markdown-augments.js";
 import type { SessionMetadataService } from "../metadata/index.js";

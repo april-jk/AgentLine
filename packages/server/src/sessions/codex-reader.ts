@@ -28,7 +28,7 @@ import {
   type UrlProjectId,
   getModelContextWindow,
   parseCodexSessionEntry,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { canonicalizeProjectPath } from "../projects/paths.js";
 import type {
   ContentBlock,

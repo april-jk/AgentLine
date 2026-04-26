@@ -1,6 +1,6 @@
 # Roadmap
 
-Planned features for yepanywhere, prioritized by user value and competitive gaps.
+Planned features for agentline, prioritized by user value and competitive gaps.
 
 ## Priority Features
 

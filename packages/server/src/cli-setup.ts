@@ -10,14 +10,14 @@ import {
   type RelayServerRejected,
   isRelayServerRegistered,
   isRelayServerRejected,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { WebSocket } from "ws";
 import { AuthService } from "./auth/AuthService.js";
 import { getDataDir } from "./config.js";
 import { RemoteAccessService } from "./remote-access/RemoteAccessService.js";
 import { InstallService } from "./services/InstallService.js";
 
-const DEFAULT_RELAY_URL = "wss://relay.yepanywhere.com/ws";
+const DEFAULT_RELAY_URL = "wss://relay.agentline.com/ws";
 
 /** Timeout for relay registration check (ms) */
 const RELAY_TIMEOUT_MS = 10_000;

@@ -2,7 +2,7 @@ import type {
   EnrichedRecentEntry,
   ProviderName,
   UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { Hono } from "hono";
 import type { ISessionIndexService } from "../indexes/types.js";
 import type { CodexSessionScanner } from "../projects/codex-scanner.js";

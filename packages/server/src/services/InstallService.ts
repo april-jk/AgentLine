@@ -1,5 +1,5 @@
 /**
- * InstallService manages a unique installation identifier for this yepanywhere instance.
+ * InstallService manages a unique installation identifier for this agentline instance.
  * The install ID is used by the relay server to verify username ownership - if an
  * installation disconnects and reconnects, it can reclaim its username using the same ID.
  *
@@ -22,7 +22,7 @@ export interface InstallState {
 const CURRENT_VERSION = 1;
 
 export interface InstallServiceOptions {
-  /** Directory to store install state (defaults to ~/.yep-anywhere) */
+  /** Directory to store install state (defaults to ~/.agentline) */
   dataDir?: string;
 }
 
@@ -36,7 +36,7 @@ export class InstallService {
       options.dataDir ??
       path.join(
         process.env.HOME ?? process.env.USERPROFILE ?? ".",
-        ".yep-anywhere",
+        ".agentline",
       );
     this.filePath = path.join(this.dataDir, "install.json");
   }

@@ -1,4 +1,4 @@
-import type { DeviceType } from "@yep-anywhere/shared";
+import type { DeviceType } from "@agentline/shared";
 import { useCallback, useEffect, useRef } from "react";
 import {
   ADAPTIVE_CHECK_INTERVAL_MS,

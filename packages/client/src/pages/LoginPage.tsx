@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { YepAnywhereLogo } from "../components/YepAnywhereLogo";
+import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../i18n";
 
@@ -93,7 +93,7 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-container">
         <div className="login-logo">
-          <YepAnywhereLogo />
+          <AgentLineLogo />
         </div>
         <p className="login-subtitle">
           {isSetupMode ? t("loginSetupSubtitle") : t("loginSubtitle")}

@@ -1,9 +1,9 @@
-import type { RemoteClientMessage } from "@yep-anywhere/shared";
+import type { RemoteClientMessage } from "@agentline/shared";
 import {
   MIN_BINARY_ENVELOPE_LENGTH,
   isEncryptedEnvelope,
   isSequencedEncryptedPayload,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { decrypt } from "../crypto/index.js";
 import type { ConnectionState, WSAdapter } from "./ws-relay-handlers.js";
 import { hasEstablishedSrpTransport } from "./ws-transport-auth.js";

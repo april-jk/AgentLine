@@ -10,7 +10,7 @@ import type {
   SrpSessionResumeChallenge,
   SrpSessionResumeInit,
   SrpSessionResumed,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   SrpServerSession,
   deriveSecretboxKey,

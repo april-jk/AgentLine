@@ -2,7 +2,7 @@ import type {
   ContextUsage,
   ProviderName,
   SessionSandboxPolicy,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useActivityBusState } from "../hooks/useActivityBusState";

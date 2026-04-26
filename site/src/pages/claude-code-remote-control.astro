@@ -3,17 +3,17 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 ---
 
 <ArticleLayout
-  title="Claude Code Remote Control vs Yep Anywhere"
-  description="Anthropic just shipped Remote Control for Claude Code. Here's how it compares to Yep Anywhere and what we add on top."
+  title="Claude Code Remote Control vs AgentLine"
+  description="Anthropic just shipped Remote Control for Claude Code. Here's how it compares to AgentLine and what we add on top."
   date="February 24, 2026"
   publishedTime="2026-02-24"
 >
   <p>Anthropic just <a href="https://x.com/noahzweben/status/2026371260805271615">announced Remote Control</a> &mdash; a new Claude Code feature that lets you continue terminal sessions from your phone. We're thrilled. This is exactly the workflow we've been building for, and having Anthropic validate it with a first-party feature is a good sign for the category.</p>
 
-  <p>If you like what Remote Control offers and want to take it further, <a href="https://yepanywhere.com">try Yep Anywhere</a>.</p>
+  <p>If you like what Remote Control offers and want to take it further, <a href="https://agentline.com">try AgentLine</a>.</p>
 
   <div class="tldr">
-    <p><strong>Yep Anywhere</strong> is a "remote desktop" into all your AI agent sessions &mdash; resume, create, and control everything.</p>
+    <p><strong>AgentLine</strong> is a "remote desktop" into all your AI agent sessions &mdash; resume, create, and control everything.</p>
     <p><strong>Claude Remote Control</strong> is "interact with any currently running Claude CLI session." No ability to create new ones or review past sessions.</p>
   </div>
 
@@ -76,20 +76,20 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <p>It's simple and well-designed. The session runs locally, your files stay on your machine, and the mobile interface lets you send messages and see responses.</p>
 
-  <h3>What Yep Anywhere adds</h3>
-  <p>Remote Control is a remote chat window into a single CLI session. Yep Anywhere is a supervisor that manages multiple agent processes:</p>
+  <h3>What AgentLine adds</h3>
+  <p>Remote Control is a remote chat window into a single CLI session. AgentLine is a supervisor that manages multiple agent processes:</p>
 
-  <p><strong>Multi-session dashboard.</strong> Remote Control supports one remote session per CLI instance. To monitor three projects, you need three terminals. Yep Anywhere shows all your sessions &mdash; across projects and providers &mdash; in a single dashboard. Star the ones you care about, archive the rest.</p>
+  <p><strong>Multi-session dashboard.</strong> Remote Control supports one remote session per CLI instance. To monitor three projects, you need three terminals. AgentLine shows all your sessions &mdash; across projects and providers &mdash; in a single dashboard. Star the ones you care about, archive the rest.</p>
 
-  <p><strong>Start new sessions from your phone.</strong> Remote Control connects to sessions already running in a terminal. Yep Anywhere lets you create and launch new sessions on your dev machine from your phone.</p>
+  <p><strong>Start new sessions from your phone.</strong> Remote Control connects to sessions already running in a terminal. AgentLine lets you create and launch new sessions on your dev machine from your phone.</p>
 
-  <p><strong>Server-owned processes.</strong> Yep Anywhere's server manages agent processes &mdash; close your browser, close your laptop, the agents keep running. Reconnect whenever.</p>
+  <p><strong>Server-owned processes.</strong> AgentLine's server manages agent processes &mdash; close your browser, close your laptop, the agents keep running. Reconnect whenever.</p>
 
-  <p><strong>Multiple providers.</strong> Remote Control is Claude Code only. Yep Anywhere also supports Codex CLI in the same interface.</p>
+  <p><strong>Multiple providers.</strong> Remote Control is Claude Code only. AgentLine also supports Codex CLI in the same interface.</p>
 
-  <p><strong>Self-hosted and encrypted.</strong> Remote Control routes through Anthropic's API servers. Yep Anywhere runs your own server with an optional relay &mdash; all messages are end-to-end encrypted with NaCl, so even the relay sees only ciphertext. Or skip the relay entirely and connect over Tailscale or LAN.</p>
+  <p><strong>Self-hosted and encrypted.</strong> Remote Control routes through Anthropic's API servers. AgentLine runs your own server with an optional relay &mdash; all messages are end-to-end encrypted with NaCl, so even the relay sees only ciphertext. Or skip the relay entirely and connect over Tailscale or LAN.</p>
 
-  <p><strong>Works with API keys too.</strong> Remote Control requires a Pro or Max plan. Yep Anywhere works with Pro, Max, or API keys.</p>
+  <p><strong>Works with API keys too.</strong> Remote Control requires a Pro or Max plan. AgentLine works with Pro, Max, or API keys.</p>
 
   <h3>Where Remote Control wins</h3>
   <p><strong>Zero setup.</strong> If you already use Claude Code and have the Claude mobile app, it's one command. No server to install.</p>
@@ -99,11 +99,11 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   <p><strong>Anthropic-backed.</strong> It'll keep improving and it'll always be compatible with the latest Claude Code features.</p>
 
   <h3>Our take</h3>
-  <p>We genuinely welcome this. The hardest part of building Yep Anywhere has been explaining why you'd want to supervise coding agents from your phone. Anthropic's own PM is now <a href="https://x.com/noahzweben/status/2026371260805271615">making that case</a> &mdash; "take a walk, see the sun, walk your dog without losing your flow." That's our pitch, word for word.</p>
+  <p>We genuinely welcome this. The hardest part of building AgentLine has been explaining why you'd want to supervise coding agents from your phone. Anthropic's own PM is now <a href="https://x.com/noahzweben/status/2026371260805271615">making that case</a> &mdash; "take a walk, see the sun, walk your dog without losing your flow." That's our pitch, word for word.</p>
 
   <p>Remote Control is a great starting point. If you try it and find yourself wanting multi-session oversight, push notifications, or always-on agent processes &mdash; that's what we built.</p>
 
-  <p><a href="https://yepanywhere.com" class="cta-link">Get started with Yep Anywhere</a></p>
+  <p><a href="https://agentline.com" class="cta-link">Get started with AgentLine</a></p>
 </ArticleLayout>
 
 <style>

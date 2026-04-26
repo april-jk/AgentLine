@@ -13,7 +13,7 @@ import type {
   SlashCommand,
   ThinkingOption,
   UploadedFile,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { authEvents } from "../lib/authEvents";
 import { getGlobalConnection, isRemoteClient } from "../lib/connection";
 import type {
@@ -124,7 +124,7 @@ export interface SessionOptions {
   executor?: string;
 }
 
-export type { UploadedFile } from "@yep-anywhere/shared";
+export type { UploadedFile } from "@agentline/shared";
 
 const API_BASE = "/api";
 

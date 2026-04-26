@@ -3,7 +3,7 @@ import type {
   CodexSessionEntry,
   UnifiedSession,
   UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { describe, expect, it } from "vitest";
 import {
   mergeJSONLMessages,
@@ -540,7 +540,7 @@ const CLAUDE_SESSION_2E582BFB_FIXTURE: ClaudeSessionEntry[] = [
           type: "tool_use",
           id: "toolu_01F85BCXN9KXiBR8uZJzVKCe",
           name: "Read",
-          input: { file_path: "/Users/kgraehl/code/yepanywhere/CLAUDE.md" },
+          input: { file_path: "/Users/kgraehl/code/agentline/CLAUDE.md" },
           caller: { type: "direct" },
         },
       ],
@@ -557,16 +557,16 @@ const CLAUDE_SESSION_2E582BFB_FIXTURE: ClaudeSessionEntry[] = [
           type: "tool_result",
           tool_use_id: "toolu_01F85BCXN9KXiBR8uZJzVKCe",
           content:
-            "     1→# Yep Anywhere\n     2→...\n   328→- **Type discrimination**: Use `type` field (user/assistant/system/summary)\n",
+            "     1→# AgentLine\n     2→...\n   328→- **Type discrimination**: Use `type` field (user/assistant/system/summary)\n",
         },
       ],
     },
     toolUseResult: {
       type: "text",
       file: {
-        filePath: "/Users/kgraehl/code/yepanywhere/CLAUDE.md",
+        filePath: "/Users/kgraehl/code/agentline/CLAUDE.md",
         content:
-          "# Yep Anywhere\n...\n- **Type discrimination**: Use `type` field (user/assistant/system/summary)\n",
+          "# AgentLine\n...\n- **Type discrimination**: Use `type` field (user/assistant/system/summary)\n",
         numLines: 328,
         startLine: 1,
         totalLines: 328,
@@ -582,7 +582,7 @@ const CLAUDE_SESSION_2E582BFB_FIXTURE: ClaudeSessionEntry[] = [
       content: [
         {
           type: "text",
-          text: "There it is — the full `CLAUDE.md` for Yep Anywhere (328 lines). It covers:\n\n- **Project overview** — mobile-first Claude Code supervisor\n- **Architecture** — Hono server + React client + WebSocket",
+          text: "There it is — the full `CLAUDE.md` for AgentLine (328 lines). It covers:\n\n- **Project overview** — mobile-first Claude Code supervisor\n- **Architecture** — Hono server + React client + WebSocket",
         },
       ],
     },
@@ -861,7 +861,7 @@ describe("Render Parity Harness", () => {
         structured: {
           type: "text",
           file: {
-            filePath: "/Users/kgraehl/code/yepanywhere/CLAUDE.md",
+            filePath: "/Users/kgraehl/code/agentline/CLAUDE.md",
             numLines: 328,
           },
         },
@@ -869,7 +869,7 @@ describe("Render Parity Harness", () => {
     });
     expect(comparable[4]).toMatchObject({
       type: "text",
-      text: "There it is — the full `CLAUDE.md` for Yep Anywhere (328 lines). It covers:\n\n- **Project overview** — mobile-first Claude Code supervisor\n- **Architecture** — Hono server + React client + WebSocket",
+      text: "There it is — the full `CLAUDE.md` for AgentLine (328 lines). It covers:\n\n- **Project overview** — mobile-first Claude Code supervisor\n- **Architecture** — Hono server + React client + WebSocket",
     });
   });
 

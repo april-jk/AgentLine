@@ -18,7 +18,7 @@ export const LOG_LEVELS = [
 export type LogLevel = (typeof LOG_LEVELS)[number];
 
 export interface LogConfig {
-  /** Directory for log files. Default: ~/.yep-anywhere/logs */
+  /** Directory for log files. Default: ~/.agentline/logs */
   logDir: string;
   /** Log filename. Default: server.log */
   logFile: string;
@@ -35,7 +35,7 @@ export interface LogConfig {
 function getDefaultConfig(): LogConfig {
   return {
     logDir:
-      process.env.LOG_DIR ?? path.join(os.homedir(), ".yep-anywhere", "logs"),
+      process.env.LOG_DIR ?? path.join(os.homedir(), ".agentline", "logs"),
     logFile: process.env.LOG_FILE ?? "server.log",
     consoleLevel: (process.env.LOG_LEVEL as LogLevel) || "info",
     fileLevel:

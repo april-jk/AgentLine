@@ -1,4 +1,4 @@
-import type { ProviderName, UrlProjectId } from "@yep-anywhere/shared";
+import type { ProviderName, UrlProjectId } from "@agentline/shared";
 import type { ISessionIndexService } from "../indexes/types.js";
 import { canonicalizeProjectPath } from "../projects/paths.js";
 import type { Project, SessionSummary } from "../supervisor/types.js";

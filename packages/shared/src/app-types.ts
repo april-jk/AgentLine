@@ -357,7 +357,7 @@ export interface AppSessionSummary {
   contextUsage?: ContextUsage;
   /** SSH host alias for remote execution (undefined = local) */
   executor?: string;
-  /** Launcher identifier from session metadata (e.g. "Codex Desktop", "yep-anywhere") */
+  /** Launcher identifier from session metadata (e.g. "Codex Desktop", "agentline") */
   originator?: string;
   /** CLI version from session metadata (e.g. "0.101.0") */
   cliVersion?: string;

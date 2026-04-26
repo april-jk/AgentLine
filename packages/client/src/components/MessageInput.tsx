@@ -1,4 +1,4 @@
-import type { UploadedFile } from "@yep-anywhere/shared";
+import type { UploadedFile } from "@agentline/shared";
 import {
   type ClipboardEvent,
   type KeyboardEvent,

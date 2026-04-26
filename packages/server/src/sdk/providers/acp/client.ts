@@ -188,7 +188,7 @@ export class ACPClient {
     const result = await this.connection.initialize({
       protocolVersion: 1,
       clientInfo: {
-        name: "yepanywhere",
+        name: "agentline",
         version: "1.0.0",
       },
       clientCapabilities: capabilities,

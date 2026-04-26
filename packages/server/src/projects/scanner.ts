@@ -5,7 +5,7 @@ import {
   DEFAULT_PROVIDER,
   type ProviderName,
   type UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { ProjectMetadataService } from "../metadata/index.js";
 import type { Project } from "../supervisor/types.js";
 import type { EventBus, FileChangeEvent } from "../watcher/index.js";

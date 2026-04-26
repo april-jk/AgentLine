@@ -225,7 +225,7 @@ export interface RelayUploadError {
 // Union Types
 // ============================================================================
 
-/** All messages from phone/browser -> yepanywhere server */
+/** All messages from phone/browser -> agentline server */
 export type RemoteClientMessage =
   | RelayRequest
   | RelaySubscribe
@@ -241,7 +241,7 @@ export type RemoteClientMessage =
   | DeviceWebRTCAnswer
   | DeviceICECandidate;
 
-/** All messages from yepanywhere server -> phone/browser */
+/** All messages from agentline server -> phone/browser */
 export type YepMessage =
   | RelayResponse
   | RelayEvent

@@ -254,7 +254,7 @@ test.describe("Session Resumption", () => {
 
     // Verify credentials are stored (for debugging)
     const storedCreds = await page.evaluate(() => {
-      return localStorage.getItem("yep-anywhere-remote-credentials");
+      return localStorage.getItem("agentline-remote-credentials");
     });
     expect(storedCreds).not.toBeNull();
     // biome-ignore lint/style/noNonNullAssertion: We just asserted it's not null

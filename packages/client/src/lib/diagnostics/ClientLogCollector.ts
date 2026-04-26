@@ -17,14 +17,14 @@ export interface LogEntry {
   message: string;
 }
 
-const DB_NAME = "yep-anywhere-client-logs";
+const DB_NAME = "agentline-client-logs";
 const DB_VERSION = 1;
 const STORE_NAME = "entries";
 const MAX_ENTRIES = 2000;
 const FLUSH_BATCH_SIZE = 500;
 
 const PREFIX_REGEX = /^\[([A-Za-z]+)\]/;
-const DEVICE_ID_KEY = "yep-anywhere-device-id";
+const DEVICE_ID_KEY = "agentline-device-id";
 
 function getDeviceId(): string | undefined {
   try {

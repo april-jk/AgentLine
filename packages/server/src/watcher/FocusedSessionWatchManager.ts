@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import type { UrlProjectId } from "@yep-anywhere/shared";
+import type { UrlProjectId } from "@agentline/shared";
 import type { Project } from "../supervisor/types.js";
 
 type WatchProvider = "claude" | "codex" | "gemini";

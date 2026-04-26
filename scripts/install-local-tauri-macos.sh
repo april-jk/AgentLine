@@ -18,7 +18,7 @@ echo "Building Tauri app in release mode (unsigned)..."
 cd "$DESKTOP_DIR"
 pnpm tauri build --no-sign --bundles app
 
-APP_NAME="YepAnywhere.app"
+APP_NAME="AgentLine.app"
 BUILD_APP="$DESKTOP_DIR/src-tauri/target/release/bundle/macos/$APP_NAME"
 
 if [ ! -d "$BUILD_APP" ]; then

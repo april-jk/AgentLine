@@ -110,7 +110,7 @@ A minimal APK (`yep-device-server.apk`) with no UI, no manifest permissions, no 
 ```bash
 adb -s <serial> push yep-device-server.apk /data/local/tmp/
 adb -s <serial> shell CLASSPATH=/data/local/tmp/yep-device-server.apk \
-    app_process /system/bin com.yepanywhere.DeviceServer
+    app_process /system/bin com.agentline.DeviceServer
 adb -s <serial> forward tcp:27183 tcp:27183   # video
 adb -s <serial> forward tcp:27184 tcp:27184   # control
 ```
@@ -152,7 +152,7 @@ Implements `Device`. Connects to `localhost:27183/27184` (after sidecar does `ad
 
 **APK distribution**
 
-CI builds and attaches `yep-device-server.apk` to GitHub releases alongside the sidecar binary. Yep server auto-downloads it to `~/.yep-anywhere/bin/yep-device-server.apk` on first use, same mechanism as the sidecar binary.
+CI builds and attaches `yep-device-server.apk` to GitHub releases alongside the sidecar binary. Yep server auto-downloads it to `~/.agentline/bin/yep-device-server.apk` on first use, same mechanism as the sidecar binary.
 
 ---
 

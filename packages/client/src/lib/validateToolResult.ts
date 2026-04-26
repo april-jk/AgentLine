@@ -13,7 +13,7 @@ import {
   WebFetchResultSchema,
   WebSearchResultSchema,
   WriteResultSchema,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { ZodError, ZodType } from "zod";
 
 export interface ValidationResult {

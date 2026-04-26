@@ -1,4 +1,4 @@
-import type { BrowserProfileInfo } from "@yep-anywhere/shared";
+import type { BrowserProfileInfo } from "@agentline/shared";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 

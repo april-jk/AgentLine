@@ -15,7 +15,7 @@ import { basename, join } from "node:path";
 import {
   type GeminiSessionFile,
   parseGeminiSessionFile,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { Project } from "../supervisor/types.js";
 import {
   GEMINI_DIR,

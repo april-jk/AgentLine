@@ -1,4 +1,4 @@
-import type { ClaudeSessionEntry } from "@yep-anywhere/shared";
+import type { ClaudeSessionEntry } from "@agentline/shared";
 import {
   buildDag,
   collectAllToolResultIds,

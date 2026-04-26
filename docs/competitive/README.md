@@ -27,7 +27,7 @@ See also [Community Projects](community-projects.md) for smaller tools shared on
 
 ## The "Claw" Ecosystem (Adjacent Category)
 
-"Claw" is now a recognized category term (Karpathy coined it, Willison validated it, Feb 2026) for AI agents that run on personal hardware, communicate via messaging, and schedule autonomous tasks. These are **runtimes that wrap LLM APIs**, not agent supervisors like yepanywhere. But they overlap enough to track.
+"Claw" is now a recognized category term (Karpathy coined it, Willison validated it, Feb 2026) for AI agents that run on personal hardware, communicate via messaging, and schedule autonomous tasks. These are **runtimes that wrap LLM APIs**, not agent supervisors like agentline. But they overlap enough to track.
 
 | Project | Stars | Language | Key Differentiator |
 |---------|-------|----------|-------------------|
@@ -49,7 +49,7 @@ Most tools in this space provide:
 - Permission approval UI
 - Session persistence
 
-## yepanywhere Differentiators
+## agentline Differentiators
 
 Features we have that competitors lack:
 - **Tiered inbox** (Needs Attention → Active → Recent → Unread)

@@ -16,12 +16,12 @@ import type {
   OpenCodeSessionEntry,
   OpenCodeStoredPart,
   UnifiedSession,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   getGeminiUserMessageText,
   getMessageContent,
   isConversationEntry,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   isCodexCorrelationDebugEnabled,
   logCodexCorrelationDebug,

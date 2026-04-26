@@ -17,7 +17,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { promisify } from "node:util";
-import type { ModelInfo } from "@yep-anywhere/shared";
+import type { ModelInfo } from "@agentline/shared";
 import {
   type CodexToolCallContext,
   normalizeCodexCommandExecutionOutput,

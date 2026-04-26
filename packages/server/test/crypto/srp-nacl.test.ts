@@ -5,7 +5,7 @@ import {
   MIN_BINARY_ENVELOPE_LENGTH,
   NONCE_LENGTH as SHARED_NONCE_LENGTH,
   parseBinaryEnvelope,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { describe, expect, it } from "vitest";
 import {
   KEY_LENGTH,

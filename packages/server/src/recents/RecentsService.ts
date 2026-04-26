@@ -28,7 +28,7 @@ const CURRENT_VERSION = 1;
 const MAX_ENTRIES = 100;
 
 export interface RecentsServiceOptions {
-  /** Directory to store recents state (defaults to ~/.yep-anywhere) */
+  /** Directory to store recents state (defaults to ~/.agentline) */
   dataDir?: string;
   /** Maximum number of entries to keep (defaults to 100) */
   maxEntries?: number;
@@ -47,7 +47,7 @@ export class RecentsService {
       options.dataDir ??
       path.join(
         process.env.HOME ?? process.env.USERPROFILE ?? ".",
-        ".yep-anywhere",
+        ".agentline",
       );
     this.filePath = path.join(this.dataDir, "recents.json");
     this.maxEntries = options.maxEntries ?? MAX_ENTRIES;

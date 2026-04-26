@@ -41,7 +41,7 @@ GPT-5-Codex — optimized for agentic coding. Available in:
 - IDE extension
 - Cloud agent
 
-## Comparison to yepanywhere
+## Comparison to agentline
 
 ### Codex App has that we don't
 - Cloud execution (survives computer shutdown)

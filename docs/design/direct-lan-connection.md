@@ -25,18 +25,18 @@ WebRTC is the obvious "direct P2P from a web page" technology, but:
 
 ### DNS
 
-Wildcard DNS for `*.direct.yepanywhere.com` that embeds the target IP in the subdomain, similar to sslip.io:
+Wildcard DNS for `*.direct.agentline.com` that embeds the target IP in the subdomain, similar to sslip.io:
 
 ```
-192-168-1-5.direct.yepanywhere.com  →  192.168.1.5
-10-0-0-42.direct.yepanywhere.com    →  10.0.0.42
+192-168-1-5.direct.agentline.com  →  192.168.1.5
+10-0-0-42.direct.agentline.com    →  10.0.0.42
 ```
 
 Public DNS records pointing to private IPs is valid and widely used (Plex does this with `*.plex.direct`).
 
 ### TLS Certificate
 
-A wildcard TLS cert for `*.direct.yepanywhere.com` solves the mixed content problem. The cert exists purely to satisfy the browser's HTTPS requirement — actual security comes from SRP auth + NaCl encryption (same as relay connections).
+A wildcard TLS cert for `*.direct.agentline.com` solves the mixed content problem. The cert exists purely to satisfy the browser's HTTPS requirement — actual security comes from SRP auth + NaCl encryption (same as relay connections).
 
 **Distribution**: The cert cannot be committed to the repo (grounds for revocation). Instead, distribute via the relay's authenticated channel:
 
@@ -46,7 +46,7 @@ A wildcard TLS cert for `*.direct.yepanywhere.com` solves the mixed content prob
 4. Server caches it locally, uses it for the HTTPS listener
 5. Relay rotates the cert periodically; servers pick up the new one on reconnect
 
-**Security tradeoff**: Any authenticated server gets the wildcard private key, so a malicious user could theoretically impersonate any `*.direct.yepanywhere.com` host on the same LAN. This is acceptable because:
+**Security tradeoff**: Any authenticated server gets the wildcard private key, so a malicious user could theoretically impersonate any `*.direct.agentline.com` host on the same LAN. This is acceptable because:
 - The TLS layer is browser ceremony, not the trust boundary
 - The real auth is SRP — a fake server fails the SRP handshake
 - The real encryption is NaCl — even if TLS were compromised, messages are E2E encrypted
@@ -59,7 +59,7 @@ A wildcard TLS cert for `*.direct.yepanywhere.com` solves the mixed content prob
 3. Relay tells client: "server is also available at 192.168.1.5:3400"
 4. Client races two connections in parallel:
    a. Relay path (already connected)
-   b. Direct path: wss://192-168-1-5.direct.yepanywhere.com:3400
+   b. Direct path: wss://192-168-1-5.direct.agentline.com:3400
       - Full SRP handshake over the direct WebSocket
       - NaCl encryption established (same as relay)
 5. If direct connection succeeds → use it as primary, keep relay as fallback
@@ -99,4 +99,4 @@ A wildcard TLS cert for `*.direct.yepanywhere.com` solves the mixed content prob
 - **Port**: Should the HTTPS/direct listener use the same port as the main server, or a separate port? Same port means the server needs to detect TLS vs plain connections, or always use TLS locally too.
 - **Multiple IPs**: Server may have multiple local IPs (WiFi + Ethernet, Docker bridge, etc.). Advertise all and let client try each?
 - **Cert TTL**: How often to rotate the wildcard cert? Short TTL limits exposure but increases relay traffic. 30-90 days (matching LE cert lifetime) seems reasonable.
-- **IPv6**: Should `*.direct.yepanywhere.com` also support IPv6 link-local addresses?
+- **IPv6**: Should `*.direct.agentline.com` also support IPv6 link-local addresses?

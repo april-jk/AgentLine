@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { YepAnywhereLogo } from "../components/YepAnywhereLogo";
+import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
 import { type SavedHost, loadSavedHosts, removeHost } from "../lib/hostStorage";
@@ -200,7 +200,7 @@ export function HostPickerPage() {
       <div className="login-page">
         <div className="login-container">
           <div className="login-logo">
-            <YepAnywhereLogo />
+            <AgentLineLogo />
           </div>
           <p className="login-subtitle">{t("reconnecting")}</p>
           <div className="login-loading" data-testid="auto-resume-loading">
@@ -215,7 +215,7 @@ export function HostPickerPage() {
     <div className="login-page">
       <div className="login-container">
         <div className="login-logo">
-          <YepAnywhereLogo />
+          <AgentLineLogo />
         </div>
 
         {hosts.length > 0 && (

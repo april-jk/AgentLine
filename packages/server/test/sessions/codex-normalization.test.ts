@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { CodexSessionEntry } from "@yep-anywhere/shared";
+import type { CodexSessionEntry } from "@agentline/shared";
 import { describe, expect, it } from "vitest";
 import { preprocessMessages } from "../../../client/src/lib/preprocessMessages.ts";
 import { normalizeSession } from "../../src/sessions/normalization.js";
@@ -440,7 +440,7 @@ describe("Codex Normalization", () => {
           type: "function_call_output",
           call_id: "call-cat",
           output:
-            'Chunk ID: 333333\nWall time: 0.5000 seconds\nProcess exited with code 0\nOriginal token count: 300\nOutput:\n\n{"name":"@yep-anywhere/server","private":true}\n',
+            'Chunk ID: 333333\nWall time: 0.5000 seconds\nProcess exited with code 0\nOriginal token count: 300\nOutput:\n\n{"name":"@agentline/server","private":true}\n',
         },
       },
     ];

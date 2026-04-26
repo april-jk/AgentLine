@@ -6389,7 +6389,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "yep-anywhere-desktop"
+name = "agentline-desktop"
 version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",

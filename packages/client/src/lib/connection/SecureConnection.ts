@@ -20,7 +20,7 @@ import type {
   SrpSessionResumeInit,
   UploadedFile,
   YepMessage,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   BinaryFormat,
   encodeUploadChunkPayload,
@@ -36,7 +36,7 @@ import {
   isSrpSessionInvalid,
   isSrpSessionResumeChallenge,
   isSrpSessionResumed,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { getRelayDebugEnabled } from "../../hooks/useDeveloperMode";
 import { getOrCreateBrowserProfileId } from "../storageKeys";
 import { RelayProtocol } from "./RelayProtocol";
@@ -93,7 +93,7 @@ function uint8ToBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Secure connection to yepanywhere server using SRP + NaCl encryption.
+ * Secure connection to agentline server using SRP + NaCl encryption.
  *
  * All traffic is authenticated and encrypted. The connection is established
  * in three phases:

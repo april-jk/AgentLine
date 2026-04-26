@@ -1,4 +1,4 @@
-import type { DeviceType } from "@yep-anywhere/shared";
+import type { DeviceType } from "@agentline/shared";
 
 interface EmulatorNavButtonsProps {
   /** WebRTC DataChannel for sending key events */

@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import type { ProviderName, UrlProjectId } from "@yep-anywhere/shared";
+import type { ProviderName, UrlProjectId } from "@agentline/shared";
 import type { ServerSettingsService } from "../services/ServerSettingsService.js";
 import type { Supervisor } from "../supervisor/Supervisor.js";
 import { decodeProjectId } from "../supervisor/types.js";

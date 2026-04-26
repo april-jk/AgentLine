@@ -44,10 +44,10 @@ pub async fn install_yep_server(app: AppHandle) -> Result<(), String> {
     let data_dir = config::data_dir();
     fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
 
-    emit_progress(&app, "yep", "installing", "Installing Yep Anywhere server...");
+    emit_progress(&app, "yep", "installing", "Installing AgentLine server...");
 
     let output = Command::new(&bun)
-        .args(["install", "yepanywhere"])
+        .args(["install", "agentline"])
         .current_dir(&data_dir)
         .output()
         .await
@@ -59,7 +59,7 @@ pub async fn install_yep_server(app: AppHandle) -> Result<(), String> {
         return Err(format!("bun install failed: {stderr}"));
     }
 
-    emit_progress(&app, "yep", "done", "Yep Anywhere server installed");
+    emit_progress(&app, "yep", "done", "AgentLine server installed");
     Ok(())
 }
 
@@ -103,7 +103,7 @@ pub async fn install_codex(app: AppHandle) -> Result<(), String> {
     let client = reqwest::Client::new();
     let resp = client
         .get("https://api.github.com/repos/openai/codex/releases/latest")
-        .header("User-Agent", "yep-anywhere-desktop")
+        .header("User-Agent", "agentline-desktop")
         .send()
         .await
         .map_err(|e| format!("Failed to fetch release info: {e}"))?;
@@ -225,7 +225,7 @@ pub async fn check_agent_installed(agent: String) -> Result<bool, String> {
             }
             let path = config::data_dir()
                 .join("node_modules")
-                .join("yepanywhere")
+                .join("agentline")
                 .join("dist")
                 .join("index.js");
             Ok(path.exists())

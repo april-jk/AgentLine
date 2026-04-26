@@ -19,7 +19,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   <p>From least to most structured:</p>
 
   <pre><code>Raw Terminal &lt;----------------------------------------&gt; Full API Wrapper
-   emdash        Yep Anywhere     OpenCode      pi-mono       Vercel AI
+   emdash        AgentLine     OpenCode      pi-mono       Vercel AI
    (PTY)         (SDK process)  (legit OAuth)  (reverse-eng)  (API keys)</code></pre>
 
   <h3>Approach 1: Raw terminal passthrough</h3>
@@ -38,7 +38,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <h3>Approach 2: Official SDK wrapper</h3>
 
-  <p><strong>Project:</strong> <a href="https://github.com/kzahel/yepanywhere">Yep Anywhere</a> (disclosure: this is our project)</p>
+  <p><strong>Project:</strong> <a href="https://github.com/kzahel/agentline">AgentLine</a> (disclosure: this is our project)</p>
 
   <p>Uses the official provider SDKs to spawn and manage agent processes:</p>
 
@@ -120,7 +120,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
       <tr>
         <th>Dimension</th>
         <th>emdash</th>
-        <th>Yep Anywhere</th>
+        <th>AgentLine</th>
         <th>OpenCode</th>
         <th>pi-mono</th>
         <th>Vercel AI</th>
@@ -191,7 +191,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   <p>No project provides a stable, documented, multi-provider API for subscription-plan access. The four strategies are:</p>
 
   <ol>
-    <li><strong>Spawn the official CLI</strong> (emdash, Yep Anywhere) &mdash; stable but per-provider, limited to what each CLI exposes</li>
+    <li><strong>Spawn the official CLI</strong> (emdash, AgentLine) &mdash; stable but per-provider, limited to what each CLI exposes</li>
     <li><strong>Legitimate OAuth where available</strong> (OpenCode for Codex/Copilot) &mdash; stable but only works for providers that expose public OAuth clients</li>
     <li><strong>Reverse-engineer OAuth</strong> (pi-mono) &mdash; broad but fragile, with real-world account bans</li>
     <li><strong>API keys only</strong> (Vercel AI, OpenCode for other providers) &mdash; stable but expensive</li>
@@ -212,12 +212,12 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   <h3>Projects referenced</h3>
   <ul>
     <li><a href="https://github.com/generalaction/emdash">emdash</a> &mdash; YC W26, desktop terminal multiplexer for 21 CLI agents</li>
-    <li><a href="https://github.com/kzahel/yepanywhere">Yep Anywhere</a> &mdash; mobile-first structured supervisor using official SDKs</li>
+    <li><a href="https://github.com/kzahel/agentline">AgentLine</a> &mdash; mobile-first structured supervisor using official SDKs</li>
     <li><a href="https://github.com/sst/opencode">OpenCode</a> &mdash; open-source agentic coding CLI/server with legitimate Codex/Copilot OAuth</li>
     <li><a href="https://github.com/badlogic/pi-mono">pi-mono</a> &mdash; multi-provider coding agent with independent OAuth implementation</li>
     <li><a href="https://github.com/vercel/ai">Vercel AI SDK</a> &mdash; provider-agnostic TypeScript SDK (API keys only)</li>
   </ul>
 
-  <p><em>This post is based on source-code analysis of all five projects, not just documentation. The research doc with more architectural detail is in our <a href="https://github.com/kzahel/yepanywhere/blob/main/docs/research/subscription-access-approaches.md">GitHub repo</a>.</em></p>
+  <p><em>This post is based on source-code analysis of all five projects, not just documentation. The research doc with more architectural detail is in our <a href="https://github.com/kzahel/agentline/blob/main/docs/research/subscription-access-approaches.md">GitHub repo</a>.</em></p>
 
 </ArticleLayout>

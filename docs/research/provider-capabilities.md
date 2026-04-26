@@ -154,7 +154,7 @@ Gemini CLI (`gemini -o stream-json`) provides:
 
 ### Recommendation
 
-For Yep Anywhere's value proposition (mobile supervision):
+For AgentLine's value proposition (mobile supervision):
 
 1. **Claude** = Full featured, primary experience
 2. **Gemini** = Research/analysis assistant

@@ -1,11 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
-  <defs>
-    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#22c55e" />
-      <stop offset="100%" stop-color="#16a34a" />
-    </linearGradient>
-  </defs>
-  <rect x="0" y="0" width="120" height="120" rx="26" fill="url(#iconGrad)" />
-  <path d="M 28 35 L 50 62 L 92 20" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M 50 62 L 50 95" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" />
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AgentLine icon"><defs><linearGradient id="g" x1="80" y1="64" x2="440" y2="448" gradientUnits="userSpaceOnUse"><stop stop-color="#14b8a6"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="#081225"/><rect x="44" y="44" width="424" height="424" rx="96" fill="url(#g)"/><path d="M118 318c44-104 88-104 132 0 38 88 86 88 144 0" fill="none" stroke="#fff" stroke-width="42" stroke-linecap="round"/><path d="M112 365l92-218 92 218" fill="none" stroke="#fff" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/></svg>

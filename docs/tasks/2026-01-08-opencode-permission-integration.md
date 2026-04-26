@@ -1,12 +1,12 @@
-# Integrate OpenCode Permission Model with YepAnywhere Mode Selector
+# Integrate OpenCode Permission Model with AgentLine Mode Selector
 
 ## Overview
 
-This task describes the integration of OpenCode's granular permission system with YepAnywhere's existing mode selector UI, providing users with fine-grained control over tool permissions while maintaining the familiar mode interface.
+This task describes the integration of OpenCode's granular permission system with AgentLine's existing mode selector UI, providing users with fine-grained control over tool permissions while maintaining the familiar mode interface.
 
 ## Current State Analysis
 
-### YepAnywhere Mode System
+### AgentLine Mode System
 - **4 permission modes** in `packages/client/src/components/ModeSelector.tsx`:
   - `default`: Ask before edits - Auto-approves read-only tools, asks for mutating tools
   - `acceptEdits`: Edit automatically - Auto-approves file editing tools, asks for others  
@@ -26,7 +26,7 @@ This task describes the integration of OpenCode's granular permission system wit
 
 **File:** `packages/server/src/sdk/providers/opencode.ts`
 
-Add method to translate YepAnywhere modes to OpenCode permissions:
+Add method to translate AgentLine modes to OpenCode permissions:
 
 ```typescript
 private translatePermissionMode(mode: PermissionMode): Record<string, string> {
@@ -221,7 +221,7 @@ Features:
 
 ## Benefits
 
-1. **Preserves Existing UX** - Users continue using familiar YepAnywhere modes
+1. **Preserves Existing UX** - Users continue using familiar AgentLine modes
 2. **Leverages OpenCode Granularity** - More precise tool-level control
 3. **Provider-Agnostic** - Other providers can implement their own permission logic
 4. **Runtime Flexibility** - Modes can be changed during active sessions
@@ -243,7 +243,7 @@ Features:
 
 ## Success Criteria
 
-- [ ] All 4 YepAnywhere modes map correctly to OpenCode permissions
+- [ ] All 4 AgentLine modes map correctly to OpenCode permissions
 - [ ] Runtime mode switching works for active sessions
 - [ ] UI correctly reflects current permission state
 - [ ] Permission enforcement matches expected behavior
@@ -252,7 +252,7 @@ Features:
 
 ## Notes
 
-- OpenCode's permission model is more granular than YepAnywhere's modes - this integration leverages that power while maintaining UI simplicity
+- OpenCode's permission model is more granular than AgentLine's modes - this integration leverages that power while maintaining UI simplicity
 - Consider adding permission "profiles" in the future for even more granular control
 - Permission state should be synchronized across multiple clients via SSE events
 - This integration serves as a template for other providers with permission systems

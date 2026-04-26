@@ -1,4 +1,4 @@
-# Yep Anywhere: Project Overview & Status
+# AgentLine: Project Overview & Status
 
 A polished web interface for managing Claude and Codex agents. Works great on mobile and desktop.
 
@@ -112,7 +112,7 @@ packages/
 |------|---------------|---------|--------|-------------------|-------------------|
 | Claude Code CLI | No | Yes | No | No | Yes |
 | VS Code Extension | No | Yes | Partial* | No | Yes |
-| **yep-anywhere** | Yes | Yes | Yes | Yes | Yes |
+| **agentline** | Yes | Yes | Yes | Yes | Yes |
 
 *VS Code Remote works but webview state is fragile.
 

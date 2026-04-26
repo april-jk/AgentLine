@@ -1,4 +1,4 @@
-import { MIN_BINARY_ENVELOPE_LENGTH } from "@yep-anywhere/shared";
+import { MIN_BINARY_ENVELOPE_LENGTH } from "@agentline/shared";
 import { describe, expect, it, vi } from "vitest";
 import { deriveTransportKey, encrypt } from "../../src/crypto/index.js";
 import { createConnectionState } from "../../src/routes/ws-relay-handlers.js";

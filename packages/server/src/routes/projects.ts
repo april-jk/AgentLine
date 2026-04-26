@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { isUrlProjectId, toUrlProjectId } from "@yep-anywhere/shared";
+import { isUrlProjectId, toUrlProjectId } from "@agentline/shared";
 import { Hono } from "hono";
 import type { SessionIndexService } from "../indexes/index.js";
 import type {

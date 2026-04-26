@@ -23,7 +23,7 @@ import {
   getGeminiUserMessageText,
   getModelContextWindow,
   parseGeminiSessionFile,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type {
   ContentBlock,
   ContextUsage,

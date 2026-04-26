@@ -231,7 +231,7 @@ Test: Run against emulator, verify snapshot output, tap-by-ref workflow.
 
 | Component | Path |
 |-----------|------|
-| APK source | `packages/android-device-server/app/src/main/java/com/yepanywhere/DeviceServer.java` |
+| APK source | `packages/android-device-server/app/src/main/java/com/agentline/DeviceServer.java` |
 | Binary framing | `packages/device-bridge/internal/conn/framing.go` |
 | CLI | `bin/android-agent` (new) |
 | Skill definition | `skills/android-agent.md` (new) |

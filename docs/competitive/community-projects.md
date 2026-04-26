@@ -147,7 +147,7 @@ Read-only desktop app that visualizes Claude Code sessions from raw JSONL logs:
 
 Tech: Electron, React, Zustand, Fastify, Tailwind, TypeScript, pnpm
 
-**Note:** Complementary to supervisor tools like yepanywhere — this is post-hoc analysis ("what happened in this session") vs real-time control ("drive and approve sessions"). Reads the same `~/.claude/` files. Strong context attribution UI worth studying. See [detailed architecture analysis](../research/claude-devtools.md).
+**Note:** Complementary to supervisor tools like agentline — this is post-hoc analysis ("what happened in this session") vs real-time control ("drive and approve sessions"). Reads the same `~/.claude/` files. Strong context attribution UI worth studying. See [detailed architecture analysis](../research/claude-devtools.md).
 
 ---
 
@@ -244,7 +244,7 @@ React Native mobile app + Node.js daemon for remote Claude Code supervision:
 - Dual-mode: clean chat UI **and** full xterm.js terminal (PTY/tmux mode)
 - Cloudflare Quick Tunnels (zero-config, no account) or Named Tunnels (stable URL)
 - LAN discovery via mDNS/Bonjour
-- E2E encryption (NaCl X25519 + XSalsa20-Poly1305 — same scheme as yepanywhere)
+- E2E encryption (NaCl X25519 + XSalsa20-Poly1305 — same scheme as agentline)
 - Voice input via `expo-speech-recognition`
 - QR code connection setup
 - Plan mode approval UI (inline card in chat view)
@@ -257,7 +257,7 @@ React Native mobile app + Node.js daemon for remote Claude Code supervision:
 
 Tech: Plain JavaScript server (no TypeScript, no build step), React Native (Expo SDK 54, TypeScript), Zustand, node-pty, Cloudflare tunnels
 
-**Note:** Closest direct competitor to yepanywhere — same problem space, same E2E encryption approach. Key differences: native mobile app (no web client), Cloudflare tunnels (vs self-hosted relay), plain JS server (no type safety). High velocity but no CI/CD, no app tests (700+ server tests only), tokens stored in plaintext. The no-TypeScript server is a ceiling — 11k LOC with no compiler catching refactoring breakages. Expo app requires custom dev builds (not on app stores). Cloudflare Quick Tunnels have no SLA.
+**Note:** Closest direct competitor to agentline — same problem space, same E2E encryption approach. Key differences: native mobile app (no web client), Cloudflare tunnels (vs self-hosted relay), plain JS server (no type safety). High velocity but no CI/CD, no app tests (700+ server tests only), tokens stored in plaintext. The no-TypeScript server is a ceiling — 11k LOC with no compiler catching refactoring breakages. Expo app requires custom dev builds (not on app stores). Cloudflare Quick Tunnels have no SLA.
 
 ---
 

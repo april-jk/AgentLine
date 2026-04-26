@@ -48,7 +48,7 @@ async function getCurrentVersion(): Promise<string> {
   }
 }
 
-const UPDATE_SERVER_URL = "https://updates.yepanywhere.com/version";
+const UPDATE_SERVER_URL = "https://updates.agentline.com/version";
 
 // Cache for update server check (24 hour TTL for routine app traffic)
 let cachedLatestVersion: { version: string; timestamp: number } | null = null;

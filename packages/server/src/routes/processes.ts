@@ -1,7 +1,4 @@
-import {
-  type UrlProjectId,
-  getSessionDisplayTitle,
-} from "@yep-anywhere/shared";
+import { type UrlProjectId, getSessionDisplayTitle } from "@agentline/shared";
 import { Hono } from "hono";
 import type { SessionIndexService } from "../indexes/index.js";
 import type { SessionMetadataService } from "../metadata/SessionMetadataService.js";

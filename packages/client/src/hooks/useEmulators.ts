@@ -1,4 +1,4 @@
-import type { DeviceAction, DeviceInfo } from "@yep-anywhere/shared";
+import type { DeviceAction, DeviceInfo } from "@agentline/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 

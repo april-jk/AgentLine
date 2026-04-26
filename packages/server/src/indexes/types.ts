@@ -5,7 +5,7 @@
  * but all index services implement this interface to provide consistent caching.
  */
 
-import type { UrlProjectId } from "@yep-anywhere/shared";
+import type { UrlProjectId } from "@agentline/shared";
 import type { ISessionReader } from "../sessions/types.js";
 import type { SessionSummary } from "../supervisor/types.js";
 

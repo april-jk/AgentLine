@@ -2,7 +2,7 @@
 
 ## Overview
 
-A relay server that enables phone clients to connect to yepanywhere servers behind NAT. The relay is a "dumb pipe" that matches clients to servers and forwards encrypted messages without inspection.
+A relay server that enables phone clients to connect to agentline servers behind NAT. The relay is a "dumb pipe" that matches clients to servers and forwards encrypted messages without inspection.
 
 ## Architecture
 
@@ -24,9 +24,9 @@ Yepanywhere Server                     Relay                          Phone
 ```
 
 - Each phone gets a dedicated server connection (no multiplexing)
-- When a waiting connection is claimed, yepanywhere immediately opens a new one
+- When a waiting connection is claimed, agentline immediately opens a new one
 - Relay maintains exactly one waiting connection per username
-- Relay is a dumb pipe - E2E encryption happens between phone and yepanywhere
+- Relay is a dumb pipe - E2E encryption happens between phone and agentline
 
 ## Protocol
 
@@ -118,7 +118,7 @@ export function isValidUsername(username: string): boolean {
 
 ```
 packages/relay/
-├── package.json          # depends on hono, better-sqlite3, @yep-anywhere/shared
+├── package.json          # depends on hono, better-sqlite3, @agentline/shared
 ├── tsconfig.json
 ├── src/
 │   ├── index.ts          # Hono server entry
@@ -364,7 +364,7 @@ The key insight: the WebSocket is already connected (upgrade happened at relay),
 
 **File: `packages/client/src/pages/SettingsPage.tsx`**
 - Add relay section when remote access is enabled
-- Input for relay URL (default placeholder: `wss://relay.yepanywhere.com/ws`)
+- Input for relay URL (default placeholder: `wss://relay.agentline.com/ws`)
 - Input for relay username
 - Status indicator (connected/disconnected/error)
 
@@ -380,7 +380,7 @@ The key insight: the WebSocket is already connected (upgrade happened at relay),
 
 **E2E tests:** `packages/relay/test/e2e/relay.e2e.test.ts`
 
-Spin up relay + yepanywhere + simulated phone client:
+Spin up relay + agentline + simulated phone client:
 
 1. **Server registration flow**
    - Server connects, registers username
@@ -426,7 +426,7 @@ Spin up relay + yepanywhere + simulated phone client:
 
 ### Phase 7: Server Wiring ✅
 
-Wire up RelayClientService to actually run on the yepanywhere server.
+Wire up RelayClientService to actually run on the agentline server.
 
 **Status: Complete**
 
@@ -547,7 +547,7 @@ Implementation notes:
 
 2. **Relay mode** (new): Enter relay username + SRP credentials
    - For NAT traversal, public internet access
-   - Default relay: `wss://remote.yepanywhere.com/ws`
+   - Default relay: `wss://remote.agentline.com/ws`
 
 **File: `packages/client/src/remote-main.tsx`**
 
@@ -582,11 +582,11 @@ Relay connection flow:
 - Relay username input (e.g., "crostini")
 - SRP username input
 - SRP password input
-- Optional: relay URL override (default: `wss://remote.yepanywhere.com/ws`)
+- Optional: relay URL override (default: `wss://remote.agentline.com/ws`)
 
 ```typescript
 async function connectViaRelay(relayUsername: string, srpUsername: string, srpPassword: string) {
-  const relayUrl = customRelayUrl || "wss://remote.yepanywhere.com/ws";
+  const relayUrl = customRelayUrl || "wss://remote.agentline.com/ws";
 
   // 1. Connect to relay
   const ws = new WebSocket(relayUrl);
@@ -610,7 +610,7 @@ async function connectViaRelay(relayUsername: string, srpUsername: string, srpPa
   });
 
   // 3. Hand off to SecureConnection for SRP auth
-  // WebSocket is now a direct pipe to yepanywhere server
+  // WebSocket is now a direct pipe to agentline server
   await secureConnection.connectWithExistingSocket(ws, srpUsername, srpPassword);
 }
 ```
@@ -682,13 +682,13 @@ async connectWithExistingSocket(ws: WebSocket, username: string, password: strin
 
 - **SQLite for registry** - better-sqlite3 for atomic operations and easy querying
 - **Self-hosted relay** in monorepo as `packages/relay`
-- **Consistent stack** - Hono + Node.js (same as yepanywhere)
+- **Consistent stack** - Hono + Node.js (same as agentline)
 - **No complex auth** - installId is weak secret for username claiming
 - **First-come-first-served** usernames with 90-day reclamation
 - **Username format** - `^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$` (3-32 chars)
 - **Offline detection** - Relay returns `server_offline` immediately if no waiting connection
 - **Custom relay URL** - Users can point to their own relay in settings
-- **Dumb pipe** - Relay never inspects message content; E2E encryption is phone↔yepanywhere
+- **Dumb pipe** - Relay never inspects message content; E2E encryption is phone↔agentline
 - **Implicit claim detection** - Server knows it's claimed when first message arrives
 - **Exponential backoff** - Prevents thundering herd on relay/server restart (max 60s)
 - **Keepalives** - Relay pings waiting connections every 60s, drops after 30s no pong
@@ -707,8 +707,8 @@ This can be added later without changing the core relay protocol.
 ### Local Testing (with local relay)
 
 1. Start relay: `cd packages/relay && pnpm dev` (runs on port 3500)
-2. Start yepanywhere: `pnpm dev` (runs on port 3400)
-3. Configure relay in yepanywhere: Settings > Remote Access > Relay URL = `ws://localhost:3500/ws`
+2. Start agentline: `pnpm dev` (runs on port 3400)
+3. Configure relay in agentline: Settings > Remote Access > Relay URL = `ws://localhost:3500/ws`
 4. Set relay username (e.g., "testuser")
 5. Enable remote access with SRP username/password
 6. Verify Settings shows relay status as "Connected" (green)
@@ -716,20 +716,20 @@ This can be added later without changing the core relay protocol.
 8. Navigate to relay login, enter relay username + SRP credentials
 9. Verify SRP auth completes and app works through relay
 
-### Production Testing (with remote.yepanywhere.com)
+### Production Testing (with remote.agentline.com)
 
-1. Start yepanywhere: `pnpm start`
-2. Configure relay: Settings > Remote Access > Relay URL = `wss://remote.yepanywhere.com/ws`
+1. Start agentline: `pnpm start`
+2. Configure relay: Settings > Remote Access > Relay URL = `wss://remote.agentline.com/ws`
 3. Set relay username
 4. Enable remote access with SRP username/password
 5. Verify relay status shows "Connected"
-6. Open `https://remote.yepanywhere.com` on phone
+6. Open `https://remote.agentline.com` on phone
 7. Use relay login with same relay username + SRP credentials
 8. Verify connection works through public relay
 
 ### Run tests:
 ```bash
-pnpm --filter @yep-anywhere/relay test
-pnpm --filter @yep-anywhere/server test
+pnpm --filter @agentline/relay test
+pnpm --filter @agentline/server test
 pnpm test:e2e
 ```

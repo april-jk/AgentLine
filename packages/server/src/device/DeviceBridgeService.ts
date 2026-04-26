@@ -15,7 +15,7 @@ import type {
   DeviceWebRTCAnswer,
   DeviceWebRTCOffer,
   RTCIceCandidateInit,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { WebSocket } from "ws";
 import { isNewerSemver } from "../utils/semver.js";
 
@@ -23,10 +23,10 @@ import { isNewerSemver } from "../utils/semver.js";
 const BRIDGE_VERSION_FALLBACK = "0.0.1";
 
 /** Update server endpoint for bridge version. */
-const BRIDGE_VERSION_URL = "https://updates.yepanywhere.com/bridge/version";
+const BRIDGE_VERSION_URL = "https://updates.agentline.com/bridge/version";
 
 /** GitHub repo for downloading bridge binaries. */
-const BRIDGE_REPO = "kzahel/yepanywhere";
+const BRIDGE_REPO = "kzahel/agentline";
 
 /** Cached bridge version from update server (5 minute TTL). */
 let cachedBridgeVersion: { version: string; timestamp: number } | null = null;
@@ -73,7 +73,7 @@ async function getBridgeVersion(options?: {
 }
 const ANDROID_SERVER_APK_NAME = "yep-device-server.apk";
 const ANDROID_SERVER_APK_ENV_VAR = "ANDROID_DEVICE_SERVER_APK";
-const DATA_DIR_ENV_VAR = "YEP_ANYWHERE_DATA_DIR";
+const DATA_DIR_ENV_VAR = "AGENTLINE_DATA_DIR";
 const USE_APK_FOR_EMULATORS_ENV_VAR = "DEVICE_BRIDGE_USE_APK_FOR_EMULATOR";
 
 /** Sidecar stdout handshake message */
@@ -265,7 +265,7 @@ export class DeviceBridgeService {
         process.cwd(),
         "app/build/outputs/apk/release/yep-device-server.apk",
       ),
-      path.join(os.homedir(), ".yep-anywhere", "bin", ANDROID_SERVER_APK_NAME),
+      path.join(os.homedir(), ".agentline", "bin", ANDROID_SERVER_APK_NAME),
     ];
 
     for (const candidate of candidates) {

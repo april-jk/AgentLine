@@ -1,11 +1,11 @@
-import type { RemoteClientMessage } from "@yep-anywhere/shared";
+import type { RemoteClientMessage } from "@agentline/shared";
 import {
   BinaryEnvelopeError,
   BinaryFormat,
   BinaryFrameError,
   isBinaryData,
   isClientCapabilities,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { decompressGzip, decryptBinaryEnvelopeRaw } from "../crypto/index.js";
 import type { UploadManager } from "../uploads/manager.js";
 import type {

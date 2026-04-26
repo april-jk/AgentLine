@@ -7,7 +7,7 @@ import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { AuthService } from "./AuthService.js";
 
-export const SESSION_COOKIE_NAME = "yep-anywhere-session";
+export const SESSION_COOKIE_NAME = "agentline-session";
 
 export interface AuthRoutesDeps {
   authService: AuthService;

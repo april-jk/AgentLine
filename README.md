@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="site/public/branding/lockup-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="site/public/branding/lockup-light.svg">
-    <img src="site/public/branding/lockup-light.svg" alt="Yep Anywhere" height="60">
+    <img src="site/public/branding/lockup-light.svg" alt="AgentLine" height="60">
   </picture>
 </p>
 
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://yepanywhere.com">yepanywhere.com</a>
+  <a href="https://agentline.com">agentline.com</a>
 </p>
 
 A better remote interface for Claude Code and Codex. Self-hosted, no cloud accounts. Supervise your agents from your phone while they run on your dev machines.
@@ -65,14 +65,14 @@ No database, no cloud, no accounts. 100% open source (MIT).
 If you can install Claude Code or Codex, you can install this. Minimal dependencies.
 
 ```
-npm i -g yepanywhere
-yepanywhere
+npm i -g agentline
+agentline
 ```
 
 Or, from source:
 ```bash
-git clone https://github.com/kzahel/yepanywhere.git
-cd yepanywhere
+git clone https://github.com/kzahel/agentline.git
+cd agentline
 pnpm install
 pnpm build
 pnpm start
@@ -85,10 +85,10 @@ Open http://localhost:3400 in your browser. The app auto-detects installed CLI a
 **Easiest:** Use our free public relay — configure it in Settings, or via CLI for headless setups:
 
 ```bash
-yepanywhere --setup-remote-access --username myserver --password "secretpass123"
+agentline --setup-remote-access --username myserver --password "secretpass123"
 ```
 
-Then connect from anywhere at [yepanywhere.com/remote](https://yepanywhere.com/remote).
+Then connect from anywhere at [agentline.com/remote](https://agentline.com/remote).
 
 All traffic is end-to-end encrypted and we can't see your data. No accounts required.
 
@@ -108,17 +108,17 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, configuration optio
 
 ## TOS Compliance
 
-Yep Anywhere uses the official [`@anthropic-ai/claude-agent-sdk`](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) published by Anthropic. We don't handle authentication, spoof headers, or manipulate OAuth tokens. You authenticate via your own Claude CLI — we're just a remote interface to your sessions.
+AgentLine uses the official [`@anthropic-ai/claude-agent-sdk`](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) published by Anthropic. We don't handle authentication, spoof headers, or manipulate OAuth tokens. You authenticate via your own Claude CLI — we're just a remote interface to your sessions.
 
-Read more: [How we use the SDK](https://yepanywhere.com/tos-compliance.html) | [Feb 2026 auth clarification](https://yepanywhere.com/sdk-auth-clarification.html)
+Read more: [How we use the SDK](https://agentline.com/tos-compliance.html) | [Feb 2026 auth clarification](https://agentline.com/sdk-auth-clarification.html)
 
 ## Star History
 
-<a href="https://www.star-history.com/#kzahel/yepanywhere&type=date&legend=top-left">
+<a href="https://www.star-history.com/#kzahel/agentline&type=date&legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=kzahel/yepanywhere&type=date&legend=top-left&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=kzahel/yepanywhere&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kzahel/yepanywhere&type=date&legend=top-left" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=kzahel/agentline&type=date&legend=top-left&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=kzahel/agentline&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kzahel/agentline&type=date&legend=top-left" />
   </picture>
 </a>
 

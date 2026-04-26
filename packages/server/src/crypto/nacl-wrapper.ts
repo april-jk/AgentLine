@@ -15,7 +15,7 @@ import {
   extractFormatAndPayload,
   parseBinaryEnvelope,
   prependFormatByte,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import nacl from "tweetnacl";
 
 /** Nonce length for secretbox (24 bytes) */
@@ -113,8 +113,8 @@ export function deriveTransportKey(
     );
   }
 
-  // Domain-separated hash: H("yep-transport-v1" || baseKey || nonce)[0..31]
-  const label = Buffer.from("yep-transport-v1", "utf8");
+  // Domain-separated hash: H("agentline-transport-v1" || baseKey || nonce)[0..31]
+  const label = Buffer.from("agentline-transport-v1", "utf8");
   const material = Buffer.concat([label, Buffer.from(baseKey), nonce]);
   return nacl.hash(material).slice(0, KEY_LENGTH);
 }

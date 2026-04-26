@@ -167,7 +167,7 @@ export function AboutSettings() {
             <p>{t("aboutReportBugDescription")}</p>
           </div>
           <a
-            href="https://github.com/kzahel/yepanywhere/issues"
+            href="https://github.com/kzahel/agentline/issues"
             target="_blank"
             rel="noopener noreferrer"
             className="settings-button"

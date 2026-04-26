@@ -1,6 +1,6 @@
 # Multi-Provider Integration
 
-Yep Anywhere supports multiple AI agent providers. This document covers the architecture, current implementations, and future directions.
+AgentLine supports multiple AI agent providers. This document covers the architecture, current implementations, and future directions.
 
 ## Provider Architecture
 

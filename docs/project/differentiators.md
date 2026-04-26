@@ -1,8 +1,8 @@
-# Yep Anywhere vs Anthropic Remote Control — Differentiator Tracker
+# AgentLine vs Anthropic Remote Control — Differentiator Tracker
 
 Last updated: 2026-02-25
 
-Anthropic's "Remote Control" (research preview, Max only) lets you continue a local Claude Code CLI session from the Claude mobile app or claude.ai/code. This doc tracks where Yep Anywhere is ahead, at parity, and behind.
+Anthropic's "Remote Control" (research preview, Max only) lets you continue a local Claude Code CLI session from the Claude mobile app or claude.ai/code. This doc tracks where AgentLine is ahead, at parity, and behind.
 
 Basically Yepanywhere is a "remote desktop" into all your AI agent sessions, lets you resume/create/control everything.
 

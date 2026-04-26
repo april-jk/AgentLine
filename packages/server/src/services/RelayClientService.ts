@@ -1,7 +1,7 @@
 /**
- * RelayClientService manages the connection from a yepanywhere server to a relay server.
+ * RelayClientService manages the connection from a agentline server to a relay server.
  *
- * The relay enables phone clients to connect to yepanywhere servers behind NAT.
+ * The relay enables phone clients to connect to agentline servers behind NAT.
  * This service:
  * - Maintains a persistent "waiting" connection to the relay
  * - Handles registration with the relay using username and installId
@@ -15,11 +15,11 @@ import {
   type RelayServerRejected,
   isRelayServerRegistered,
   isRelayServerRejected,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { WebSocket } from "ws";
 
 export interface RelayClientConfig {
-  /** WebSocket URL of the relay server (e.g., wss://relay.yepanywhere.com/ws) */
+  /** WebSocket URL of the relay server (e.g., wss://relay.agentline.com/ws) */
   relayUrl: string;
   /** Username to register with the relay */
   username: string;

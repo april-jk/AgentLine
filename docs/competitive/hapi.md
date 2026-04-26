@@ -1,12 +1,12 @@
 # HAPI Architecture Research
 
-Research notes on HAPI (https://github.com/anthropics/hapi), a local-first platform for running AI coding agents with remote control. Very similar to yepanywhere in purpose.
+Research notes on HAPI (https://github.com/anthropics/hapi), a local-first platform for running AI coding agents with remote control. Very similar to agentline in purpose.
 
 ## Overview
 
 HAPI is a decentralized alternative to centralized agent platforms. Each user runs their own "hub" (server). Data stays on the user's machine.
 
-**Key similarities to yepanywhere:**
+**Key similarities to agentline:**
 - Mobile-first supervision for AI coding agents
 - Multi-provider support (Claude, Codex, Gemini)
 - Real-time streaming to web UI

@@ -1,4 +1,4 @@
-import type { ProviderName, UploadedFile } from "@yep-anywhere/shared";
+import type { ProviderName, UploadedFile } from "@agentline/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";

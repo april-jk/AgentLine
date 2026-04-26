@@ -1,7 +1,7 @@
 /**
  * E2E tests for the relay server (Phase 6).
  *
- * These tests spin up a relay server and simulate both yepanywhere servers
+ * These tests spin up a relay server and simulate both agentline servers
  * and phone clients connecting through it.
  *
  * Test scenarios:
@@ -23,7 +23,7 @@ import {
   isRelayClientError,
   isRelayServerRegistered,
   isRelayServerRejected,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import { type RelayServer, createRelayServer } from "../../src/server.js";

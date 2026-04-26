@@ -1,4 +1,4 @@
-import type { UploadedFile } from "@yep-anywhere/shared";
+import type { UploadedFile } from "@agentline/shared";
 import type { RefObject } from "react";
 import { useModelSettings } from "../hooks/useModelSettings";
 import { useI18n } from "../i18n";

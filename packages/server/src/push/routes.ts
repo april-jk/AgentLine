@@ -160,7 +160,7 @@ export function createPushRoutes(deps: PushRoutesDeps): Hono {
 
     const result = await pushService.sendTest(
       body.browserProfileId,
-      body.message ?? "Test notification from Yep Anywhere",
+      body.message ?? "Test notification from AgentLine",
       body.urgency,
     );
 

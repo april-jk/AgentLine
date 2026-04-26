@@ -8,7 +8,7 @@ import {
   type NewSessionDefaults,
   type PermissionMode,
   type ProviderName,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { Hono } from "hono";
 import { testSSHConnection } from "../sdk/remote-spawn.js";
 import type {

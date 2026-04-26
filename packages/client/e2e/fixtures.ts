@@ -101,7 +101,7 @@ export interface RemoteAccessConfig {
   username: string;
   /** Password for SRP authentication */
   password: string;
-  /** Optional relay URL (defaults to wss://relay.yepanywhere.com/ws) */
+  /** Optional relay URL (defaults to wss://relay.agentline.com/ws) */
   relayUrl?: string;
 }
 
@@ -117,7 +117,7 @@ export async function configureRemoteAccess(
       "X-Yep-Anywhere": "true",
     },
     body: JSON.stringify({
-      url: config.relayUrl ?? "wss://relay.yepanywhere.com/ws",
+      url: config.relayUrl ?? "wss://relay.agentline.com/ws",
       username: config.username,
     }),
   });

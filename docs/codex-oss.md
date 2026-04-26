@@ -51,7 +51,7 @@ EOF
 ollama create your-model:tag-32k -f /tmp/Modelfile-32k
 ```
 
-After creating, select the `-32k` variant in the Yep Anywhere UI.
+After creating, select the `-32k` variant in the AgentLine UI.
 
 ## Codex Configuration
 

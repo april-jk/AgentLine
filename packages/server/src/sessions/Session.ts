@@ -16,7 +16,7 @@ import {
   type AppSessionSummary,
   SessionView,
   type UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { ISessionIndexService } from "../indexes/types.js";
 import type { SessionMetadataService } from "../metadata/SessionMetadataService.js";
 import type { ISessionReader } from "./types.js";

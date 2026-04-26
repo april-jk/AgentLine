@@ -2,7 +2,7 @@ import {
   type ModelInfo,
   type ProviderName,
   resolveModel,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   type ChangeEvent,
   type ClipboardEvent,

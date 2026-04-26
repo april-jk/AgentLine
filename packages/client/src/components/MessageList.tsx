@@ -1,4 +1,4 @@
-import type { MarkdownAugment } from "@yep-anywhere/shared";
+import type { MarkdownAugment } from "@agentline/shared";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type ActiveToolApproval,

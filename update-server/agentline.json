@@ -1,0 +1,19 @@
+[
+  {
+    "id": "agentline",
+    "displayName": "AgentLine",
+    "hostnames": ["updates.agentline.com"],
+    "githubRepo": "kzahel/agentline",
+    "tagPrefix": "v",
+    "tauriUpdates": false
+  },
+  {
+    "id": "yep-bridge",
+    "displayName": "Yep Bridge",
+    "hostnames": ["updates.agentline.com"],
+    "githubRepo": "kzahel/agentline",
+    "tagPrefix": "bridge-v",
+    "tauriUpdates": false,
+    "pathPrefix": "/bridge"
+  }
+]

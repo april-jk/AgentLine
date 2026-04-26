@@ -4,7 +4,7 @@ import {
   type DirProjectId,
   type UrlProjectId,
   asDirProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { encodeProjectId } from "../projects/paths.js";
 import type { ProjectScanner } from "../projects/scanner.js";
 import { readFirstLine } from "../utils/jsonl.js";

@@ -4,7 +4,7 @@ Investigation date: 2026-03-09
 
 ## Summary
 
-Yep Anywhere should **not** blindly mirror upstream Codex Desktop resume behavior.
+AgentLine should **not** blindly mirror upstream Codex Desktop resume behavior.
 
 Our product goal is different:
 
@@ -24,11 +24,11 @@ The hard part is that **Codex live stream messages and persisted JSONL messages 
 This document records:
 
 - the contrast between the upstream Codex model and our model
-- the current behavior in Yep Anywhere
+- the current behavior in AgentLine
 - Codex API/integration limitations relevant to merging
 - the intended direction for future work
 
-## Contrast: Upstream Codex vs Yep Anywhere
+## Contrast: Upstream Codex vs AgentLine
 
 ### Upstream Codex model
 
@@ -55,18 +55,18 @@ In other words, upstream Codex tries to give the client a single ordered view:
 
 This minimizes client-side merge ambiguity.
 
-### Yep Anywhere model
+### AgentLine model
 
-Yep Anywhere intentionally does **not** wait for a single server-authoritative resume payload before showing data.
+AgentLine intentionally does **not** wait for a single server-authoritative resume payload before showing data.
 
 Current sources:
 
 - REST session load from JSONL:
-  - [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/hooks/useSessionMessages.ts)
+  - [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSessionMessages.ts)
 - WebSocket session subscription with connected event + replay:
-  - [packages/server/src/subscriptions.ts](/Users/kgraehl/code/yepanywhere/packages/server/src/subscriptions.ts)
+  - [packages/server/src/subscriptions.ts](/Users/kgraehl/code/agentline/packages/server/src/subscriptions.ts)
 - client reconnect catch-up logic:
-  - [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/hooks/useSession.ts)
+  - [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSession.ts)
 
 Current behavior:
 
@@ -87,7 +87,7 @@ Claude is easier because stream and persisted messages share stable message UUID
 
 Reference:
 
-- [docs/research/claude-sdk-message-ids.md](/Users/kgraehl/code/yepanywhere/docs/research/claude-sdk-message-ids.md)
+- [docs/research/claude-sdk-message-ids.md](/Users/kgraehl/code/agentline/docs/research/claude-sdk-message-ids.md)
 
 Codex is harder because the shapes differ:
 
@@ -100,11 +100,11 @@ Codex is harder because the shapes differ:
 Relevant local code:
 
 - Codex live normalization:
-  - [packages/server/src/sdk/providers/codex.ts](/Users/kgraehl/code/yepanywhere/packages/server/src/sdk/providers/codex.ts)
+  - [packages/server/src/sdk/providers/codex.ts](/Users/kgraehl/code/agentline/packages/server/src/sdk/providers/codex.ts)
 - persisted Codex normalization:
-  - [packages/server/src/sessions/normalization.ts](/Users/kgraehl/code/yepanywhere/packages/server/src/sessions/normalization.ts)
+  - [packages/server/src/sessions/normalization.ts](/Users/kgraehl/code/agentline/packages/server/src/sessions/normalization.ts)
 - Codex session schema:
-  - [packages/shared/src/codex-schema/session.ts](/Users/kgraehl/code/yepanywhere/packages/shared/src/codex-schema/session.ts)
+  - [packages/shared/src/codex-schema/session.ts](/Users/kgraehl/code/agentline/packages/shared/src/codex-schema/session.ts)
 
 Important consequence:
 
@@ -112,7 +112,7 @@ Important consequence:
 - but they do not necessarily have the same ID
 - so naive ID-based merge is insufficient
 
-## Current Yep Anywhere state
+## Current AgentLine state
 
 ### Server-side subscription behavior
 
@@ -120,7 +120,7 @@ Current subscription behavior is correct for the in-memory process stream, but n
 
 Reference:
 
-- [packages/server/src/subscriptions.ts](/Users/kgraehl/code/yepanywhere/packages/server/src/subscriptions.ts)
+- [packages/server/src/subscriptions.ts](/Users/kgraehl/code/agentline/packages/server/src/subscriptions.ts)
 
 Important details:
 
@@ -137,8 +137,8 @@ It is **not** atomic with respect to persisted JSONL loading.
 
 Reference:
 
-- [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/hooks/useSessionMessages.ts)
-- [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/hooks/useSession.ts)
+- [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSessionMessages.ts)
+- [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSession.ts)
 
 Important details:
 
@@ -151,8 +151,8 @@ Important details:
 
 Reference:
 
-- [packages/client/src/lib/codexLinearMessages.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/lib/codexLinearMessages.ts)
-- [packages/client/src/lib/__tests__/codexLinearMessages.test.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/lib/__tests__/codexLinearMessages.test.ts)
+- [packages/client/src/lib/codexLinearMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/lib/codexLinearMessages.ts)
+- [packages/client/src/lib/__tests__/codexLinearMessages.test.ts](/Users/kgraehl/code/agentline/packages/client/src/lib/__tests__/codexLinearMessages.test.ts)
 
 Current Codex-only strategy:
 
@@ -215,7 +215,7 @@ This is normal for our product model and should be designed for directly.
 
 Local evidence exists in:
 
-- `~/.yep-anywhere/logs/sdk-raw.jsonl`
+- `~/.agentline/logs/sdk-raw.jsonl`
 - `~/.codex/sessions/.../*.jsonl`
 
 Observed pattern:
@@ -377,7 +377,7 @@ information to reason about what it is seeing.
 ### Why this is better than pure server serialization
 
 A fully serialized server resume step would reduce ambiguity, but it would also push
-Yep Anywhere back toward the desktop assumption that one synchronized catch-up path is
+AgentLine back toward the desktop assumption that one synchronized catch-up path is
 the right UX boundary.
 
 That tradeoff is wrong for this product because the phone may:
@@ -487,16 +487,16 @@ The right target is:
 
 ## References
 
-### Yep Anywhere
+### AgentLine
 
-- [packages/server/src/subscriptions.ts](/Users/kgraehl/code/yepanywhere/packages/server/src/subscriptions.ts)
-- [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/hooks/useSession.ts)
-- [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/hooks/useSessionMessages.ts)
-- [packages/client/src/lib/codexLinearMessages.ts](/Users/kgraehl/code/yepanywhere/packages/client/src/lib/codexLinearMessages.ts)
-- [packages/server/src/sdk/providers/codex.ts](/Users/kgraehl/code/yepanywhere/packages/server/src/sdk/providers/codex.ts)
-- [packages/server/src/sessions/normalization.ts](/Users/kgraehl/code/yepanywhere/packages/server/src/sessions/normalization.ts)
-- [packages/shared/src/codex-schema/session.ts](/Users/kgraehl/code/yepanywhere/packages/shared/src/codex-schema/session.ts)
-- [docs/research/claude-sdk-message-ids.md](/Users/kgraehl/code/yepanywhere/docs/research/claude-sdk-message-ids.md)
+- [packages/server/src/subscriptions.ts](/Users/kgraehl/code/agentline/packages/server/src/subscriptions.ts)
+- [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSession.ts)
+- [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSessionMessages.ts)
+- [packages/client/src/lib/codexLinearMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/lib/codexLinearMessages.ts)
+- [packages/server/src/sdk/providers/codex.ts](/Users/kgraehl/code/agentline/packages/server/src/sdk/providers/codex.ts)
+- [packages/server/src/sessions/normalization.ts](/Users/kgraehl/code/agentline/packages/server/src/sessions/normalization.ts)
+- [packages/shared/src/codex-schema/session.ts](/Users/kgraehl/code/agentline/packages/shared/src/codex-schema/session.ts)
+- [docs/research/claude-sdk-message-ids.md](/Users/kgraehl/code/agentline/docs/research/claude-sdk-message-ids.md)
 
 ### Reference Codex repo
 

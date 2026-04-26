@@ -1,7 +1,7 @@
 [package]
-name = "yep-anywhere-mobile"
+name = "agentline-mobile"
 version = "0.1.0"
-description = "Yep Anywhere Mobile"
+description = "AgentLine Mobile"
 edition = "2021"
 
 [lib]

@@ -1,4 +1,4 @@
-package com.yepanywhere.mobile
+package com.agentline.mobile
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge

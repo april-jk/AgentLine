@@ -4804,7 +4804,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "yep-anywhere-mobile"
+name = "agentline-mobile"
 version = "0.1.0"
 dependencies = [
  "log",

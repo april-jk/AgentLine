@@ -1,4 +1,4 @@
-import type { UrlProjectId } from "@yep-anywhere/shared";
+import type { UrlProjectId } from "@agentline/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionIndexService } from "../../src/indexes/index.js";
 import type { NotificationService } from "../../src/notifications/index.js";

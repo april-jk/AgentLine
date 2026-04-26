@@ -1,7 +1,7 @@
 /**
  * E2E tests for Full Relay Integration.
  *
- * Tests the complete flow: yepanywhere server -> relay server -> remote client.
+ * Tests the complete flow: agentline server -> relay server -> remote client.
  * This verifies that all components work together end-to-end.
  *
  * Test scenarios:
@@ -136,7 +136,7 @@ test.describe("Full Relay Integration", () => {
 
     // Verify credentials are stored
     const storedCreds = await page.evaluate(() => {
-      return localStorage.getItem("yep-anywhere-remote-credentials");
+      return localStorage.getItem("agentline-remote-credentials");
     });
     expect(storedCreds).not.toBeNull();
 

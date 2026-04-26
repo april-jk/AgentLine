@@ -1,10 +1,10 @@
-# OpenCode vs pi-mono for a Yep Anywhere Agnostic Provider Backend
+# OpenCode vs pi-mono for a AgentLine Agnostic Provider Backend
 
 Date: 2026-02-18
 
 ## Executive Summary
 
-For Yep Anywhere's goal of a strong **agnostic provider backend** (with good persistence, model/provider switching, and flexible tool execution), **pi-mono is the better primary backend candidate** than OpenCode.
+For AgentLine's goal of a strong **agnostic provider backend** (with good persistence, model/provider switching, and flexible tool execution), **pi-mono is the better primary backend candidate** than OpenCode.
 
 OpenCode is more mature as a standalone multi-client server, but your current Yep integration only uses a small subset of its capabilities and has already stalled. pi-mono is architecturally closer to the abstraction you want to build now: single-session runtime, strong typed event flow, direct embedding options, and explicit cross-provider normalization.
 
@@ -13,7 +13,7 @@ Recommended direction:
 2. Keep OpenCode as a secondary/fallback provider while migrating.
 3. Build a thin normalization layer in Yep that can map both backends into one internal event/session model.
 
-## Context and Current State in Yep Anywhere
+## Context and Current State in AgentLine
 
 Yep currently defines provider-level abstractions around one session runtime (`AgentProvider`/`AgentSession`) and registers providers in-process:
 - `packages/server/src/sdk/providers/types.ts`
@@ -238,7 +238,7 @@ If the goal is "minimum immediate change," continue OpenCode incrementally, but 
 
 ## Source Files Reviewed
 
-Yep Anywhere:
+AgentLine:
 - `packages/server/src/sdk/providers/types.ts`
 - `packages/server/src/sdk/providers/index.ts`
 - `packages/server/src/sdk/providers/opencode.ts`

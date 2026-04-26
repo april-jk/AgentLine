@@ -2,7 +2,7 @@
 
 ## Problem
 
-Browser extensions are the primary realistic attack surface for Yep Anywhere relay connections. Extensions can:
+Browser extensions are the primary realistic attack surface for AgentLine relay connections. Extensions can:
 
 - Read localStorage (where SRP session keys are stored)
 - Intercept fetch/XHR and WebSocket traffic
@@ -60,7 +60,7 @@ All WebAuthn ceremony traffic flows through the existing SRP-encrypted relay con
 
 ### WebAuthn Relying Party
 
-For relay connections, the RP origin is `yepanywhere.com` (the relay). This is correct because:
+For relay connections, the RP origin is `agentline.com` (the relay). This is correct because:
 
 - `navigator.credentials.create/get()` runs in the browser against the page origin
 - The server receives and verifies the signed assertion, but doesn't need to be the RP
@@ -90,7 +90,7 @@ type SrpWebAuthnChallenge = {
   type: "webauthn_challenge";
   challenge: string;          // base64, 32 random bytes
   credentialId: string;       // base64, which credential to use
-  rpId: string;               // "yepanywhere.com"
+  rpId: string;               // "agentline.com"
   timeout: number;            // ms, suggested timeout for ceremony
 };
 
@@ -117,7 +117,7 @@ type SrpWebAuthnResult = {
 1. User checks "Enable biometric verification" on login screen
 2. Client calls navigator.credentials.create({
      publicKey: {
-       rp: { id: "yepanywhere.com", name: "Yep Anywhere" },
+       rp: { id: "agentline.com", name: "AgentLine" },
        user: { id: <hostId>, name: <username>, displayName: <hostDisplayName> },
        challenge: <from server>,
        pubKeyCredParams: [
@@ -145,7 +145,7 @@ type SrpWebAuthnResult = {
 5. Client calls navigator.credentials.get({
      publicKey: {
        challenge: <from server>,
-       rpId: "yepanywhere.com",
+       rpId: "agentline.com",
        allowCredentials: [{ id: <credentialId>, type: "public-key" }],
        userVerification: "required"
      }
@@ -280,7 +280,7 @@ An encrypted connection that receives no data and can send no commands. The serv
 ## Scope & Non-Goals
 
 **In scope:**
-- Relay connections (`yepanywhere.com`) on desktop browsers
+- Relay connections (`agentline.com`) on desktop browsers
 - Opt-in per-host enrollment
 - Periodic time-based re-verification
 - Platform authenticators (Touch ID, Windows Hello) and roaming authenticators (YubiKey)

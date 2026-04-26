@@ -4,19 +4,19 @@ Date: 2026-02-17
 
 ## Summary
 
-Codex permission-elevation prompts are available, but yepanywhere's current `codex` provider cannot surface them because it uses the high-level `@openai/codex-sdk` `Thread.runStreamed()` API, which does not expose approval-request callbacks/events.
+Codex permission-elevation prompts are available, but agentline's current `codex` provider cannot surface them because it uses the high-level `@openai/codex-sdk` `Thread.runStreamed()` API, which does not expose approval-request callbacks/events.
 
-The Codex app-server JSON-RPC protocol does expose explicit approval requests and response hooks. Integrating Codex permission prompts in yepanywhere should be done by moving the runtime path from `@openai/codex-sdk` stream events to `codex app-server` JSON-RPC.
+The Codex app-server JSON-RPC protocol does expose explicit approval requests and response hooks. Integrating Codex permission prompts in agentline should be done by moving the runtime path from `@openai/codex-sdk` stream events to `codex app-server` JSON-RPC.
 
 ## Evidence Collected
 
 1. Current provider limitation in code:
-- `/Users/kgraehl/code/yepanywhere/packages/server/src/sdk/providers/codex.ts`
+- `/Users/kgraehl/code/agentline/packages/server/src/sdk/providers/codex.ts`
 - `supportsPermissionMode = false`
 - session loop uses `thread.runStreamed()` and only receives `thread/turn/item/error` events.
 
 2. Codex SDK type surface lacks approval-request events:
-- `/Users/kgraehl/code/yepanywhere/node_modules/.pnpm/@openai+codex-sdk@0.77.0/node_modules/@openai/codex-sdk/dist/index.d.ts`
+- `/Users/kgraehl/code/agentline/node_modules/.pnpm/@openai+codex-sdk@0.77.0/node_modules/@openai/codex-sdk/dist/index.d.ts`
 - `ThreadEvent` union includes no permission-request event.
 
 3. Real Codex persisted sessions show elevated tool calls include:
@@ -66,11 +66,11 @@ Decision models include:
 This is sufficient for one-shot allow/deny, but codex app-server supports richer decisions (`acceptForSession`, exec policy amendment) that are not represented in current `ToolApprovalResult` and session input response API.
 
 Relevant files:
-- `/Users/kgraehl/code/yepanywhere/packages/server/src/supervisor/Process.ts`
-- `/Users/kgraehl/code/yepanywhere/packages/server/src/sdk/types.ts`
-- `/Users/kgraehl/code/yepanywhere/packages/server/src/routes/sessions.ts`
-- `/Users/kgraehl/code/yepanywhere/packages/client/src/components/ToolApprovalPanel.tsx`
-- `/Users/kgraehl/code/yepanywhere/packages/client/src/api/client.ts`
+- `/Users/kgraehl/code/agentline/packages/server/src/supervisor/Process.ts`
+- `/Users/kgraehl/code/agentline/packages/server/src/sdk/types.ts`
+- `/Users/kgraehl/code/agentline/packages/server/src/routes/sessions.ts`
+- `/Users/kgraehl/code/agentline/packages/client/src/components/ToolApprovalPanel.tsx`
+- `/Users/kgraehl/code/agentline/packages/client/src/api/client.ts`
 
 Codex item-shape mismatch to account for:
 - current `@openai/codex-sdk` `ThreadItem` uses snake_case item types (`command_execution`, `file_change`)
@@ -101,7 +101,7 @@ Suggested module split:
   - wire `onToolApproval`
   - preserve existing provider public interface
 
-### 2. Map app-server approval requests into yepanywhere approval flow
+### 2. Map app-server approval requests into agentline approval flow
 
 When app-server sends:
 - `item/commandExecution/requestApproval`: map to tool approval (`Bash`)
@@ -139,8 +139,8 @@ After phase 1 transport integration:
 - remove client metadata claim "No out-of-band tool approval"
 
 Files:
-- `/Users/kgraehl/code/yepanywhere/packages/server/src/sdk/providers/codex.ts`
-- `/Users/kgraehl/code/yepanywhere/packages/client/src/providers/implementations/CodexProvider.ts`
+- `/Users/kgraehl/code/agentline/packages/server/src/sdk/providers/codex.ts`
+- `/Users/kgraehl/code/agentline/packages/client/src/providers/implementations/CodexProvider.ts`
 
 ## Permission Mode Mapping (Codex)
 
@@ -244,4 +244,4 @@ Client UI:
 
 ## Bottom Line
 
-To support Codex permission-elevation prompts in yepanywhere, the key change is not UI-first; it is transport-level: adopt Codex app-server JSON-RPC for live sessions and handle server-initiated approval requests. The current `@openai/codex-sdk` stream API does not provide enough hooks for this feature.
+To support Codex permission-elevation prompts in agentline, the key change is not UI-first; it is transport-level: adopt Codex app-server JSON-RPC for live sessions and handle server-initiated approval requests. The current `@openai/codex-sdk` stream API does not provide enough hooks for this feature.

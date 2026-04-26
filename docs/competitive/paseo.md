@@ -12,7 +12,7 @@
 
 ## Overview
 
-Mobile-first supervisor for AI coding agents. Same problem space as yepanywhere — one interface for monitoring and controlling local AI agents from phone, desktop, web, or CLI. Self-hosted, no external dependencies.
+Mobile-first supervisor for AI coding agents. Same problem space as agentline — one interface for monitoring and controlling local AI agents from phone, desktop, web, or CLI. Self-hosted, no external dependencies.
 
 Based on a cursory evaluation of the cloned repo (not hands-on usage), here's what we found.
 
@@ -72,7 +72,7 @@ packages/
 - **pino** — structured logging
 - **node-pty** — pseudo-terminal, **xterm** — terminal emulation
 
-## Comparison to yepanywhere
+## Comparison to agentline
 
 ### Paseo has that we don't (or don't yet)
 - OpenCode provider support (3 providers)
@@ -115,7 +115,7 @@ Verified by reading their code (`packages/relay/src/crypto.ts`):
 - Handshake: client sends plaintext `e2ee_hello` with its public key, daemon replies `e2ee_ready`, then all messages encrypted
 - Relay sees only IP addresses, timing, message sizes
 
-Nearly identical crypto to yepanywhere — both use NaCl/tweetnacl with Curve25519 + XSalsa20-Poly1305. Main difference: we use SRP for password-based auth (relay never sees password), they use QR code pairing only.
+Nearly identical crypto to agentline — both use NaCl/tweetnacl with Curve25519 + XSalsa20-Poly1305. Main difference: we use SRP for password-based auth (relay never sees password), they use QR code pairing only.
 
 ## Development Practices
 

@@ -1,4 +1,4 @@
-import type { MarkdownAugment } from "@yep-anywhere/shared";
+import type { MarkdownAugment } from "@agentline/shared";
 import type { ContentBlock, Message } from "../types";
 import type {
   RenderItem,

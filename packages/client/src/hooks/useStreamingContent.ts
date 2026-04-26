@@ -1,4 +1,4 @@
-import { getModelContextWindow } from "@yep-anywhere/shared";
+import { getModelContextWindow } from "@agentline/shared";
 import { useCallback, useRef } from "react";
 import { getMessageId } from "../lib/mergeMessages";
 import type { ContentBlock, Message } from "../types";

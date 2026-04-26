@@ -13,7 +13,7 @@ interface RemoteImageResult {
 /**
  * Hook for loading images that may need to be fetched via relay in remote mode.
  *
- * In remote mode (when connected through a relay like staging.yepanywhere.com),
+ * In remote mode (when connected through a relay like staging.agentline.com),
  * direct HTTP requests to /api/... will 404 because the static site doesn't have
  * API endpoints. This hook fetches the image via the WebSocket relay and creates
  * a blob URL for display.

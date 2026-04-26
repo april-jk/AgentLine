@@ -84,7 +84,7 @@ export default async function globalSetup() {
   E2E_CLAUDE_SESSIONS_DIR = join(E2E_TEST_DIR, "claude", "projects");
   E2E_CODEX_SESSIONS_DIR = join(E2E_TEST_DIR, "codex", "sessions");
   E2E_GEMINI_SESSIONS_DIR = join(E2E_TEST_DIR, "gemini", "tmp");
-  E2E_DATA_DIR = join(E2E_TEST_DIR, "yep-anywhere");
+  E2E_DATA_DIR = join(E2E_TEST_DIR, "agentline");
 
   // Create isolated test directories
   console.log(`[E2E] Creating isolated test directories at ${E2E_TEST_DIR}`);
@@ -142,13 +142,13 @@ export default async function globalSetup() {
 
   // Build shared first (client depends on it), then client
   console.log("[E2E] Building shared package...");
-  execSync("pnpm --filter @yep-anywhere/shared build", {
+  execSync("pnpm --filter @agentline/shared build", {
     cwd: repoRoot,
     stdio: "inherit",
   });
 
   console.log("[E2E] Building client...");
-  execSync("pnpm --filter @yep-anywhere/client build", {
+  execSync("pnpm --filter @agentline/client build", {
     cwd: repoRoot,
     stdio: "inherit",
   });
@@ -226,7 +226,7 @@ export default async function globalSetup() {
         CLAUDE_SESSIONS_DIR: E2E_CLAUDE_SESSIONS_DIR,
         CODEX_SESSIONS_DIR: E2E_CODEX_SESSIONS_DIR,
         GEMINI_SESSIONS_DIR: E2E_GEMINI_SESSIONS_DIR,
-        YEP_ANYWHERE_DATA_DIR: E2E_DATA_DIR,
+        AGENTLINE_DATA_DIR: E2E_DATA_DIR,
       },
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,

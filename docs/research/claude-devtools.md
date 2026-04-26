@@ -195,14 +195,14 @@ Token usage from SDK's `UsageMetadata` (input_tokens, output_tokens, cache_read/
 - **Cursor-based pagination:** `{ timestamp, sessionId }` cursors for session lists, with light (filesystem-only) vs deep (parsed) metadata levels
 - **File watching:** Debounced (100ms) monitoring of `~/.claude/projects/` triggers real-time sidebar updates and error detection
 
-## Relevance to Yep Anywhere
+## Relevance to AgentLine
 
 ### Complementary, Not Competitive
 
-claude-devtools is a **read-only post-hoc analysis tool** — it visualizes sessions that already happened. Yep Anywhere is a **real-time supervisor** — it drives Claude Code sessions and handles permissions, notifications, and input.
+claude-devtools is a **read-only post-hoc analysis tool** — it visualizes sessions that already happened. AgentLine is a **real-time supervisor** — it drives Claude Code sessions and handles permissions, notifications, and input.
 
 The tools serve different use cases:
-- **yepanywhere:** "I need to start/monitor/approve Claude sessions from my phone"
+- **agentline:** "I need to start/monitor/approve Claude sessions from my phone"
 - **claude-devtools:** "A session finished (or failed); I want to understand what happened"
 
 ### Feature Ideas Worth Considering
@@ -215,7 +215,7 @@ The tools serve different use cases:
 
 ### Potential Integration
 
-Since claude-devtools reads from `~/.claude/` (same files we use), there's no conflict in running both. A user could supervise sessions with yepanywhere and analyze completed sessions with claude-devtools.
+Since claude-devtools reads from `~/.claude/` (same files we use), there's no conflict in running both. A user could supervise sessions with agentline and analyze completed sessions with claude-devtools.
 
 ## Last Updated
 

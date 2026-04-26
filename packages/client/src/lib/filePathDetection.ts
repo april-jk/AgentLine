@@ -2,7 +2,7 @@
  * File path detection utility.
  *
  * Re-exports from shared package for backward compatibility.
- * The actual implementation lives in @yep-anywhere/shared.
+ * The actual implementation lives in @agentline/shared.
  */
 
 // Re-export everything from shared
@@ -14,4 +14,4 @@ export {
   detectFilePaths,
   splitTextWithFilePaths,
   transformFilePathsToHtml,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";

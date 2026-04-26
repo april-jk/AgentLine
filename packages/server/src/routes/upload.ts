@@ -8,7 +8,7 @@ import {
   type UploadProgressMessage,
   type UploadServerMessage,
   isUrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { stream } from "hono/streaming";

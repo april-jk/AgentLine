@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 /**
- * CLI entry point for yepanywhere
+ * CLI entry point for agentline
  *
  * Usage:
- *   yepanywhere                    # Start server with defaults
- *   yepanywhere --help            # Show help
- *   yepanywhere --version         # Show version
+ *   agentline                    # Start server with defaults
+ *   agentline --help            # Show help
+ *   agentline --version         # Show version
  *
  * Environment variables:
  *   PORT                          # Server port (default: 3400)
- *   YEP_ANYWHERE_DATA_DIR         # Data directory override
- *   YEP_ANYWHERE_PROFILE          # Profile name (creates ~/.yep-anywhere-{profile}/)
+ *   AGENTLINE_DATA_DIR         # Data directory override
+ *   AGENTLINE_PROFILE          # Profile name (creates ~/.agentline-{profile}/)
  *   AUTH_ENABLED                  # Enable cookie auth (default: false)
  *   LOG_LEVEL                     # Log level: fatal, error, warn, info, debug, trace
  *   ... (see CLAUDE.md for full list)
@@ -72,10 +72,10 @@ function checkClaudeCli(): void {
 
 function showHelp(): void {
   console.log(`
-yepanywhere - A mobile-first supervisor for Claude Code agents
+agentline - A mobile-first supervisor for Claude Code agents
 
 USAGE:
-  yepanywhere [OPTIONS]
+  agentline [OPTIONS]
 
 OPTIONS:
   --help, -h            Show this help message
@@ -100,13 +100,13 @@ SETUP OPTIONS (for headless installation):
                         Exits with error if username is taken.
                         --username: Relay username (3-32 chars, lowercase alphanumeric + hyphens)
                         --password: SRP password (min 8 characters)
-                        --relay: Relay URL (default: wss://relay.yepanywhere.com/ws)
+                        --relay: Relay URL (default: wss://relay.agentline.com/ws)
 
 ENVIRONMENT VARIABLES:
   PORT                          Server port (default: 3400)
   HOST                          Host/interface to bind (default: localhost)
-  YEP_ANYWHERE_DATA_DIR         Data directory override
-  YEP_ANYWHERE_PROFILE          Profile name (creates ~/.yep-anywhere-{profile}/)
+  AGENTLINE_DATA_DIR         Data directory override
+  AGENTLINE_PROFILE          Profile name (creates ~/.agentline-{profile}/)
   AUTH_DISABLED                 Disable auth (bypass even if enabled in settings)
   HTTPS_SELF_SIGNED             Enable HTTPS with a self-signed certificate
   LOG_LEVEL                     Log level: fatal, error, warn, info, debug, trace
@@ -125,40 +125,40 @@ ENVIRONMENT VARIABLES:
 
 EXAMPLES:
   # Start with defaults (port 3400, localhost only)
-  yepanywhere
+  agentline
 
   # Start on custom port
-  yepanywhere --port 8000
+  agentline --port 8000
 
   # Bind to all interfaces (accessible from network)
-  yepanywhere --host 0.0.0.0
+  agentline --host 0.0.0.0
 
   # HTTPS on localhost/LAN with auto-generated self-signed cert
-  yepanywhere --host 0.0.0.0 --https-self-signed
+  agentline --host 0.0.0.0 --https-self-signed
 
   # Custom port and host
-  yepanywhere --port 8000 --host 0.0.0.0
+  agentline --port 8000 --host 0.0.0.0
 
   # Use development profile (separate data directory)
-  YEP_ANYWHERE_PROFILE=dev yepanywhere
+  AGENTLINE_PROFILE=dev agentline
 
   # Reset local auth password (headless recovery)
-  yepanywhere --setup-auth "mypassword123"
+  agentline --setup-auth "mypassword123"
 
   # Emergency auth bypass (temporary)
-  yepanywhere --auth-disable
+  agentline --auth-disable
 
   # Headless setup: configure remote access
-  yepanywhere --setup-remote-access --username myserver --password "secretpass123"
+  agentline --setup-remote-access --username myserver --password "secretpass123"
 
   # Headless setup: remote access with custom relay
-  yepanywhere --setup-remote-access --username myserver --password "secretpass123" --relay wss://my-relay.example.com/ws
+  agentline --setup-remote-access --username myserver --password "secretpass123" --relay wss://my-relay.example.com/ws
 
 DOCUMENTATION:
-  For full documentation, see: https://github.com/kzahel/yepanywhere
+  For full documentation, see: https://github.com/kzahel/agentline
 
 DATA DIRECTORY:
-  Default: ~/.yep-anywhere/
+  Default: ~/.agentline/
   Contains: logs/, indexes/, uploads/, session metadata, push subscriptions
 
 REQUIREMENTS:
@@ -179,7 +179,7 @@ function getVersion(): string {
 }
 
 function showVersion(): void {
-  console.log(`yepanywhere v${getVersion()}`);
+  console.log(`agentline v${getVersion()}`);
 }
 
 // Parse command line arguments
@@ -326,7 +326,7 @@ if (setupRemoteIndex !== -1) {
 if (args.length > 0) {
   console.error(`Error: Unknown arguments: ${args.join(" ")}`);
   console.error("");
-  console.error("Run 'yepanywhere --help' for usage information.");
+  console.error("Run 'agentline --help' for usage information.");
   process.exit(1);
 }
 

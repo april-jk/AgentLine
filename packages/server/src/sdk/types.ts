@@ -1,8 +1,8 @@
 // Core types for Claude SDK abstraction
 
 // Re-export PermissionMode from shared
-export type { PermissionMode } from "@yep-anywhere/shared";
-import type { PermissionMode, UploadedFile } from "@yep-anywhere/shared";
+export type { PermissionMode } from "@agentline/shared";
+import type { PermissionMode, UploadedFile } from "@agentline/shared";
 
 export interface ContentBlock {
   type: "text" | "tool_use" | "tool_result" | "image" | "thinking";
@@ -128,9 +128,9 @@ export interface StartSessionOptions {
   /** Model to use (e.g., "sonnet", "opus", "haiku"). undefined = use CLI default */
   model?: string;
   /** Thinking configuration (undefined = thinking disabled) */
-  thinking?: import("@yep-anywhere/shared").ThinkingConfig;
+  thinking?: import("@agentline/shared").ThinkingConfig;
   /** Effort level for response quality (undefined = SDK default) */
-  effort?: import("@yep-anywhere/shared").EffortLevel;
+  effort?: import("@agentline/shared").EffortLevel;
   onToolApproval?: CanUseTool;
   /** SSH host for remote execution (undefined = local) */
   executor?: string;

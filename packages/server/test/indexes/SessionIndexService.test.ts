@@ -10,7 +10,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { toUrlProjectId } from "@yep-anywhere/shared";
+import { toUrlProjectId } from "@agentline/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { SessionIndexService } from "../../src/indexes/SessionIndexService.js";
 import { SessionReader } from "../../src/sessions/reader.js";

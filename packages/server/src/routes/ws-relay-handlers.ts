@@ -9,7 +9,6 @@
  * allowing both entry points to share the same implementation.
  */
 
-import type { HttpBindings } from "@hono/node-server";
 import type {
   BinaryFormatValue,
   EncryptedEnvelope,
@@ -23,7 +22,7 @@ import type {
   RemoteClientMessage,
   UrlProjectId,
   YepMessage,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   BinaryFormat,
   UploadChunkError,
@@ -33,7 +32,8 @@ import {
   isSrpClientProof,
   isSrpSessionResume,
   isSrpSessionResumeInit,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
+import type { HttpBindings } from "@hono/node-server";
 import type { Hono } from "hono";
 import {
   encrypt,

@@ -3,7 +3,7 @@ import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ClaudeSessionEntry, UrlProjectId } from "@yep-anywhere/shared";
+import type { ClaudeSessionEntry, UrlProjectId } from "@agentline/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { preprocessMessages } from "../../../client/src/lib/preprocessMessages.ts";
 import { normalizeSession } from "../../src/sessions/normalization.js";

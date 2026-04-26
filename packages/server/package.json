@@ -1,5 +1,5 @@
 {
-  "name": "@yep-anywhere/server",
+  "name": "@agentline/server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -19,7 +19,7 @@
     "@hono/node-server": "^1.19.9",
     "@hono/node-ws": "^1.2.0",
     "@openai/codex-sdk": "^0.77.0",
-    "@yep-anywhere/shared": "workspace:*",
+    "@agentline/shared": "workspace:*",
     "bcrypt": "^6.0.0",
     "diff": "^8.0.3",
     "hono": "^4.12.1",

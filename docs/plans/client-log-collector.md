@@ -13,7 +13,7 @@ Thin promisified IndexedDB helpers (~60 lines):
 - `countEntries(db, store)` → `Promise<number>`
 
 ### 2. `packages/client/src/lib/diagnostics/ClientLogCollector.ts`
-Core class. DB: `"yep-anywhere-client-logs"`, store: `"entries"`, auto-increment key.
+Core class. DB: `"agentline-client-logs"`, store: `"entries"`, auto-increment key.
 
 ```
 LogEntry: { id?, timestamp, level, prefix, message }
@@ -70,4 +70,4 @@ Mount: `app.route("/api/client-logs", createClientLogsRoutes({ dataDir }))` — 
 3. `pnpm test` — existing tests pass
 4. Unit test for `idb.ts` helpers (vitest jsdom environment has fake-indexeddb)
 5. Unit test for `ClientLogCollector` — mock console, verify capture/filter/flush
-6. Manual: enable toggle → see `[ConnectionManager]` logs captured → disconnect/reconnect → verify logs appear in `~/.yep-anywhere/logs/client-logs/`
+6. Manual: enable toggle → see `[ConnectionManager]` logs captured → disconnect/reconnect → verify logs appear in `~/.agentline/logs/client-logs/`

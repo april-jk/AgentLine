@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/kzahel/yepanywhere/device-bridge/internal/conn"
+	"github.com/kzahel/agentline/device-bridge/internal/conn"
 )
 
 const (

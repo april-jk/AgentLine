@@ -1,4 +1,4 @@
-# Sandboxed yep-anywhere environment
+# Sandboxed agentline environment
 #
 # Profiles:
 #   sandboxed (default) - Full network, restricted filesystem/privileges
@@ -40,7 +40,7 @@ services:
       - ~/.claude:/home/sandbox/.claude
 
       # Yep-anywhere data
-      - ~/.yep-anywhere:/home/sandbox/.yep-anywhere
+      - ~/.agentline:/home/sandbox/.agentline
 
       # Git config (read-only)
       - ~/.gitconfig:/home/sandbox/.gitconfig:ro
@@ -56,13 +56,13 @@ services:
       - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
     # Working directory
-    working_dir: /home/sandbox/code/yepanywhere
+    working_dir: /home/sandbox/code/agentline
 
     # Interactive terminal
     stdin_open: true
     tty: true
 
-    # Start yep-anywhere by default
+    # Start agentline by default
     command: pnpm dev
 
   # Isolated variant - localhost only, no outbound internet

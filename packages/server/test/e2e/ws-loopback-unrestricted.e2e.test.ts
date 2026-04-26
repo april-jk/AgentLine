@@ -2,14 +2,14 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { serve } from "@hono/node-server";
-import { createNodeWebSocket } from "@hono/node-ws";
 import type {
   RelayRequest,
   RelayResponse,
   YepMessage,
-} from "@yep-anywhere/shared";
-import { decodeJsonFrame } from "@yep-anywhere/shared";
+} from "@agentline/shared";
+import { decodeJsonFrame } from "@agentline/shared";
+import { serve } from "@hono/node-server";
+import { createNodeWebSocket } from "@hono/node-ws";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import { createApp } from "../../src/app.js";

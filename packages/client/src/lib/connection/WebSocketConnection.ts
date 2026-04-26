@@ -3,14 +3,14 @@ import type {
   RemoteClientMessage,
   UploadedFile,
   YepMessage,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   BinaryFrameError,
   decodeJsonFrame,
   encodeJsonFrame,
   encodeUploadChunkFrame,
   isBinaryData,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { getDesktopAuthToken } from "../../api/client";
 import { RelayProtocol } from "./RelayProtocol";
 import type {
@@ -22,7 +22,7 @@ import type {
 import { WebSocketCloseError } from "./types";
 
 /**
- * Connection to yepanywhere server using WebSocket transport.
+ * Connection to agentline server using WebSocket transport.
  *
  * Implements the relay protocol for HTTP-like request/response
  * over a single WebSocket connection. Protocol logic (request correlation,
@@ -160,7 +160,7 @@ export class WebSocketConnection implements Connection {
     this.protocol.routeMessage(msg);
   }
 
-  private send(msg: import("@yep-anywhere/shared").RemoteClientMessage): void {
+  private send(msg: import("@agentline/shared").RemoteClientMessage): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error("WebSocket not connected");
     }

@@ -284,7 +284,7 @@ async function handlePush(data) {
       requireInteraction: urgency === "persistent",
       silent: urgency === "silent",
     };
-    return self.registration.showNotification("Yep Anywhere", options);
+    return self.registration.showNotification("AgentLine", options);
   }
 
   // Determine if we should suppress notification
@@ -325,7 +325,7 @@ async function handlePush(data) {
 }
 
 async function showPendingInputNotification(data) {
-  const title = data.projectName || "Yep Anywhere";
+  const title = data.projectName || "AgentLine";
   const options = {
     body: data.summary || "Waiting for input",
     tag: `session-${data.sessionId}`,
@@ -347,7 +347,7 @@ async function showPendingInputNotification(data) {
 }
 
 function showSessionHaltedNotification(data) {
-  const title = data.projectName || "Yep Anywhere";
+  const title = data.projectName || "AgentLine";
   const reasonText = {
     completed: "Task completed",
     error: "Task encountered an error",

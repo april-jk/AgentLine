@@ -6,30 +6,30 @@ import { getDefaultCodexSessionsDir } from "./projects/codex-scanner.js";
 import type { PermissionMode } from "./sdk/types.js";
 
 /**
- * Get the data directory for yep-anywhere state files.
+ * Get the data directory for agentline state files.
  * Supports profiles for running multiple instances (like Chrome profiles).
  *
  * Priority:
- * 1. YEP_ANYWHERE_DATA_DIR - Full path override
- * 2. YEP_ANYWHERE_PROFILE - Appends suffix: ~/.yep-anywhere-{profile}
- * 3. Default: ~/.yep-anywhere
+ * 1. AGENTLINE_DATA_DIR - Full path override
+ * 2. AGENTLINE_PROFILE - Appends suffix: ~/.agentline-{profile}
+ * 3. Default: ~/.agentline
  */
 export function getDataDir(): string {
-  if (process.env.YEP_ANYWHERE_DATA_DIR) {
-    return process.env.YEP_ANYWHERE_DATA_DIR;
+  if (process.env.AGENTLINE_DATA_DIR) {
+    return process.env.AGENTLINE_DATA_DIR;
   }
-  const profile = process.env.YEP_ANYWHERE_PROFILE;
+  const profile = process.env.AGENTLINE_PROFILE;
   if (profile) {
-    return path.join(os.homedir(), `.yep-anywhere-${profile}`);
+    return path.join(os.homedir(), `.agentline-${profile}`);
   }
-  return path.join(os.homedir(), ".yep-anywhere");
+  return path.join(os.homedir(), ".agentline");
 }
 
 /**
  * Server configuration loaded from environment variables.
  */
 export interface Config {
-  /** Data directory for yep-anywhere state files (indexes, metadata, uploads, etc.) */
+  /** Data directory for agentline state files (indexes, metadata, uploads, etc.) */
   dataDir: string;
   /** Directory where Claude projects are stored */
   claudeProjectsDir: string;
@@ -87,7 +87,7 @@ export interface Config {
   maxUploadSizeBytes: number;
   /** Maximum queue size for pending requests. 0 = unlimited (default: 100) */
   maxQueueSize: number;
-  /** Directory for log files. Default: ~/.yep-anywhere/logs */
+  /** Directory for log files. Default: ~/.agentline/logs */
   logDir: string;
   /** Log filename. Default: server.log */
   logFile: string;

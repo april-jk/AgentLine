@@ -7,7 +7,7 @@ import type {
   ContextUsage,
   PendingInputType,
   UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { SessionOwnership, SessionSummary } from "../supervisor/types.js";
 
 export type FileChangeType = "create" | "modify" | "delete";

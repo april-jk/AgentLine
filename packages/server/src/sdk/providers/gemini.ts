@@ -21,7 +21,7 @@ import type {
   GeminiToolResultEvent,
   GeminiToolUseEvent,
   ModelInfo,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { whichCommand } from "../cli-detection.js";
 const execAsync = promisify(exec);
 
@@ -38,7 +38,7 @@ const GEMINI_MODELS: ModelInfo[] = [
 
 /** Preview models (require previewFeatures enabled in ~/.gemini/settings.json) */
 const GEMINI_PREVIEW_MODELS: ModelInfo[] = [];
-import { parseGeminiEvent } from "@yep-anywhere/shared";
+import { parseGeminiEvent } from "@agentline/shared";
 import { MessageQueue } from "../messageQueue.js";
 import type { SDKMessage } from "../types.js";
 import type {

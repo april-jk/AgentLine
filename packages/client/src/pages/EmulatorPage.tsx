@@ -1,4 +1,4 @@
-import type { DeviceInfo } from "@yep-anywhere/shared";
+import type { DeviceInfo } from "@agentline/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import { EmulatorNavButtons } from "../components/EmulatorNavButtons";

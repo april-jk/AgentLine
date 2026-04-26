@@ -3,7 +3,7 @@
  *
  * When spawning Claude as a subprocess, we don't want to leak:
  * - npm_* variables (from pnpm/npm lifecycle)
- * - Yep Anywhere internal variables
+ * - AgentLine internal variables
  * - Other irrelevant development/build-time variables
  *
  * We keep essential system variables that Claude might need.
@@ -12,7 +12,7 @@
 /** Prefixes to exclude from child process environment */
 const EXCLUDED_PREFIXES = [
   "npm_", // npm/pnpm lifecycle variables
-  "YEP_ANYWHERE_", // Our internal variables
+  "AGENTLINE_", // Our internal variables
   "VITE_", // Vite dev server variables
   "VITEST", // Vitest test runner
   "LOG_", // Our logging configuration
@@ -27,14 +27,14 @@ const EXCLUDED_VARS = new Set([
   "INIT_CWD",
   "COLOR",
   "FORCE_COLOR",
-  // Auth/maintenance ports (internal to yep-anywhere)
+  // Auth/maintenance ports (internal to agentline)
   "MAINTENANCE_PORT",
   "AUTH_DISABLED",
   // Proxy debug (internal)
   "PROXY_DEBUG",
   // Prevent nested session detection when server runs inside Claude Code
   "CLAUDECODE",
-  // NODE_ENV is set to "production" by yepanywhere's CLI but should not
+  // NODE_ENV is set to "production" by agentline's CLI but should not
   // leak into Claude Code child processes where it breaks project tooling
   // (e.g. React 19 + Vitest). See GitHub issue #41.
   "NODE_ENV",

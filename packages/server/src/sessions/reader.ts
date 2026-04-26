@@ -8,7 +8,7 @@ import {
   getModelContextWindow,
   isIdeMetadata,
   stripIdeMetadata,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type {
   ContentBlock,
   ContextUsage,
@@ -29,7 +29,7 @@ import {
   getMessageContent,
   isCompactBoundary,
   isConversationEntry,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { collectVisibleClaudeEntries } from "./claude-messages.js";
 import { buildDag } from "./dag.js";
 
@@ -48,7 +48,7 @@ export interface ClaudeSessionReaderOptions {
 export type SessionReaderOptions = ClaudeSessionReaderOptions;
 
 // Re-export AgentStatus for backwards compatibility
-export type { AgentStatus } from "@yep-anywhere/shared";
+export type { AgentStatus } from "@agentline/shared";
 
 /**
  * Agent session content returned by getAgentSession.

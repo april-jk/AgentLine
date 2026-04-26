@@ -425,7 +425,7 @@ export {
   compressJsonIfBeneficial,
 } from "./compression.js";
 
-// Relay server routing protocol (for relay server <-> yepanywhere/phone)
+// Relay server routing protocol (for relay server <-> agentline/phone)
 export type {
   RelayServerCompatibilityMetadata,
   RelayServerRegister,

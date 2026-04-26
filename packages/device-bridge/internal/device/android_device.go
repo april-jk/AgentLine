@@ -16,16 +16,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kzahel/yepanywhere/device-bridge/internal/conn"
+	"github.com/kzahel/agentline/device-bridge/internal/conn"
 )
 
 const (
 	defaultAndroidBridgePort      = 27183
 	defaultADBPath                = "adb"
 	defaultAndroidServerRemoteAPK = "/data/local/tmp/yep-device-server.apk"
-	defaultAndroidServerMainClass = "com.yepanywhere.DeviceServer"
+	defaultAndroidServerMainClass = "com.agentline.DeviceServer"
 	androidServerAPKEnvVar        = "ANDROID_DEVICE_SERVER_APK"
-	bridgeDataDirEnvVar           = "YEP_ANYWHERE_DATA_DIR"
+	bridgeDataDirEnvVar           = "AGENTLINE_DATA_DIR"
 	androidConnectTimeout         = 12 * time.Second
 	androidDialAttemptTimeout     = 1500 * time.Millisecond
 	androidHandshakeTimeout       = 2 * time.Second
@@ -248,7 +248,7 @@ func resolveAndroidServerAPKPath() (string, error) {
 	}
 
 	if home, err := os.UserHomeDir(); err == nil {
-		candidates = append(candidates, filepath.Join(home, ".yep-anywhere", "bin", "yep-device-server.apk"))
+		candidates = append(candidates, filepath.Join(home, ".agentline", "bin", "yep-device-server.apk"))
 	}
 
 	for _, p := range candidates {

@@ -34,7 +34,7 @@ Sandboxed agent for non-coders:
 - Same SDK as Claude Code, more approachable UX
 - Available to Pro and Max subscribers
 
-## Comparison to yepanywhere
+## Comparison to agentline
 
 ### Claude Code Desktop has that we don't
 - Remote execution (cloud, survives shutdown)
@@ -63,7 +63,7 @@ Claude users wanting GUI over CLI. Non-technical users via Cowork.
 
 ## Notes
 
-Some criticism of Electron implementation being "clunky" with "non-standard UI." yepanywhere's web-based approach avoids native app UX issues while working everywhere.
+Some criticism of Electron implementation being "clunky" with "non-standard UI." agentline's web-based approach avoids native app UX issues while working everywhere.
 
 ## Sources
 

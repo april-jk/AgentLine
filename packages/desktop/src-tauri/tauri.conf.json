@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "YepAnywhere",
+  "productName": "AgentLine",
   "version": "0.1.0",
-  "identifier": "com.yepanywhere.desktop",
+  "identifier": "com.agentline.desktop",
   "build": {
     "beforeDevCommand": "pnpm prepare-sidecar && pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Yep Anywhere",
+        "title": "AgentLine",
         "width": 1100,
         "height": 750,
         "visible": false
@@ -48,7 +48,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://updates.yepanywhere.com/tauri/{{target}}/{{arch}}/{{current_version}}"
+        "https://updates.agentline.com/tauri/{{target}}/{{arch}}/{{current_version}}"
       ],
       "pubkey": "RWTMbSc7oMFk712l6aKLo0y9iO3kwoYE95lYs38lSkkhch3/QnkLg7zf"
     }

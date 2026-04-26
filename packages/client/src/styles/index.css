@@ -3,13 +3,14 @@
 @import "./emulator.css";
 
 /* ==========================================================================
-   CSS Design Tokens - Claude Anywhere Multi-Theme Support
+   CSS Design Tokens - AgentLine Multi-Theme Support
    ========================================================================== */
 
 :root {
   /* Brand Colors (theme-agnostic) */
-  --app-yep-green: #059669;
-  --app-yep-green-dark: #047857;
+  --app-agent-teal: #059669;
+  --app-agent-teal-dark: #047857;
+  --app-agent-blue: #2563eb;
   --app-claude-ivory: #faf9f5;
   --app-claude-slate: #141413;
   --app-claude-orange: #d97706;
@@ -754,7 +755,7 @@ h2 {
 
 .new-session-form-textarea:focus {
   outline: none;
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
   box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.15);
 }
 
@@ -960,35 +961,35 @@ h2 {
   color: var(--text-color);
 }
 
-/* YepAnywhere Logo */
-.yep-anywhere-logo {
+/* AgentLine Logo */
+.agentline-logo {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
-.yep-anywhere-logo-icon {
+.agentline-logo-icon {
   width: 24px;
   height: 24px;
   flex-shrink: 0;
 }
 
-.yep-anywhere-logo-text {
+.agentline-logo-text {
   font-family: "Inter", system-ui, sans-serif;
   font-size: 16px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: 0;
 }
 
-.yep-anywhere-logo-yep {
-  color: var(--app-yep-green);
+.agentline-logo-primary {
+  color: var(--app-agent-teal);
 }
 
-[data-theme="light"] .yep-anywhere-logo-yep {
-  color: var(--app-yep-green-dark);
+[data-theme="light"] .agentline-logo-primary {
+  color: var(--app-agent-teal-dark);
 }
 
-.yep-anywhere-logo-anywhere {
+.agentline-logo-secondary {
   color: var(--text-primary);
 }
 
@@ -999,12 +1000,12 @@ h2 {
   margin-bottom: 1.5rem;
 }
 
-.login-logo .yep-anywhere-logo-icon {
+.login-logo .agentline-logo-icon {
   width: 36px;
   height: 36px;
 }
 
-.login-logo .yep-anywhere-logo-text {
+.login-logo .agentline-logo-text {
   font-size: 22px;
 }
 
@@ -1957,7 +1958,7 @@ a.sidebar-nav-item {
 }
 
 .mode-selector-check {
-  color: var(--app-yep-green);
+  color: var(--app-agent-teal);
   display: flex;
   align-items: center;
 }
@@ -2069,7 +2070,7 @@ a.sidebar-nav-item {
 }
 
 .send-button {
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: white;
 }
 
@@ -2214,7 +2215,7 @@ a.sidebar-nav-item {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: white;
   border-radius: 8px;
   font-size: var(--font-size-xs);
@@ -2530,7 +2531,7 @@ a.sidebar-nav-item {
 }
 
 .attachment-progress {
-  color: var(--app-yep-green);
+  color: var(--app-agent-teal);
   font-weight: 500;
   flex-shrink: 0;
 }
@@ -3820,7 +3821,7 @@ a.sidebar-nav-item {
 
 .settings-status-badge {
   padding: var(--space-1) var(--space-2);
-  background: var(--success-color, var(--app-yep-green));
+  background: var(--success-color, var(--app-agent-teal));
   border-radius: var(--radius-sm);
   color: #fff;
   font-size: var(--font-size-sm);
@@ -3870,7 +3871,7 @@ a.sidebar-nav-item {
 
 .settings-textarea:focus {
   outline: none;
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
 }
 
 .settings-textarea::placeholder {
@@ -3931,7 +3932,7 @@ a.sidebar-nav-item {
 
 .settings-category-item.active {
   background: var(--bg-hover);
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
 }
 
 .settings-category-icon {
@@ -4021,7 +4022,7 @@ a.sidebar-nav-item {
 }
 
 .font-size-option.active {
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: white;
 }
 
@@ -4179,12 +4180,12 @@ a.sidebar-nav-item {
 }
 
 .btn-primary {
-  background: var(--app-yep-green-dark);
+  background: var(--app-agent-teal-dark);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
 }
 
 .btn-primary:disabled {
@@ -4407,15 +4408,15 @@ a.sidebar-nav-item {
 }
 
 .bulk-action-button--primary {
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: var(--bg-primary);
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
   font-weight: 600;
 }
 
 .bulk-action-button--primary:hover:not(:disabled) {
-  background: var(--app-yep-green);
-  border-color: var(--app-yep-green);
+  background: var(--app-agent-teal);
+  border-color: var(--app-agent-teal);
   opacity: 0.9;
 }
 
@@ -4569,7 +4570,7 @@ a.sidebar-nav-item {
 }
 
 .new-session-defaults-button:hover:not(:disabled) {
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
   background: rgba(217, 119, 87, 0.08);
 }
 
@@ -4687,7 +4688,7 @@ a.sidebar-nav-item {
 }
 
 .provider-option.selected {
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
   background: rgba(217, 119, 87, 0.08);
 }
 
@@ -4886,7 +4887,7 @@ a.sidebar-nav-item {
 }
 
 .mode-option.selected {
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
   background: rgba(217, 119, 87, 0.08);
 }
 
@@ -4972,7 +4973,7 @@ a.sidebar-nav-item {
 }
 
 .executor-option.selected {
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
   background: rgba(217, 119, 87, 0.08);
 }
 
@@ -5032,12 +5033,12 @@ a.sidebar-nav-item {
 
 .remote-executor-input:focus {
   outline: none;
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
 }
 
 .remote-executor-add-button {
   padding: var(--space-2) var(--space-3);
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   border: none;
   border-radius: var(--radius-sm);
   color: white;
@@ -5294,7 +5295,7 @@ a.sidebar-nav-item {
 
   .sidebar-resize-handle:hover,
   .sidebar-resize-handle.active {
-    background: var(--app-yep-green);
+    background: var(--app-agent-teal);
     opacity: 0.6;
   }
 
@@ -5595,7 +5596,7 @@ a.sidebar-nav-item {
 .sidebar-nav-badge {
   font-size: var(--font-size-xs);
   font-weight: 500;
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: white;
   padding: 0.0625rem 0.375rem;
   border-radius: 999px;
@@ -5897,7 +5898,7 @@ a.sidebar-nav-item {
   height: 16px;
   margin: 0;
   cursor: pointer;
-  accent-color: var(--app-yep-green);
+  accent-color: var(--app-agent-teal);
 }
 
 .login-error {
@@ -5913,7 +5914,7 @@ a.sidebar-nav-item {
   padding: var(--space-2) var(--space-4);
   border: none;
   border-radius: var(--radius-md);
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: white;
   font-size: var(--font-size-base);
   font-weight: 500;
@@ -5922,7 +5923,7 @@ a.sidebar-nav-item {
 }
 
 .login-button:hover:not(:disabled) {
-  background: var(--app-yep-green-dark);
+  background: var(--app-agent-teal-dark);
 }
 
 .login-button:disabled {
@@ -5946,7 +5947,7 @@ a.sidebar-nav-item {
   width: 24px;
   height: 24px;
   border: 2px solid var(--border-muted);
-  border-top-color: var(--app-yep-green);
+  border-top-color: var(--app-agent-teal);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto;
@@ -5974,7 +5975,7 @@ a.sidebar-nav-item {
   width: 32px;
   height: 32px;
   border: 3px solid var(--border-muted);
-  border-top-color: var(--app-yep-green);
+  border-top-color: var(--app-agent-teal);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -6006,7 +6007,7 @@ a.sidebar-nav-item {
 }
 
 .login-mode-option:hover {
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
   background: var(--bg-hover);
 }
 
@@ -6267,10 +6268,10 @@ a.sidebar-nav-item {
 }
 
 .form-success {
-  color: var(--success-color, var(--app-yep-green));
+  color: var(--success-color, var(--app-agent-teal));
   font-size: var(--font-size-sm);
   padding: var(--space-2);
-  background: color-mix(in srgb, var(--app-yep-green) 10%, transparent);
+  background: color-mix(in srgb, var(--app-agent-teal) 10%, transparent);
   border-radius: var(--radius-md);
 }
 
@@ -6354,7 +6355,7 @@ a.sidebar-nav-item {
 }
 
 .remote-access-status .status-success::before {
-  background-color: var(--success-color, var(--app-yep-green));
+  background-color: var(--success-color, var(--app-agent-teal));
 }
 
 .remote-access-status .status-warning::before {
@@ -6783,7 +6784,7 @@ a.sidebar-nav-item {
 
 .session-rename-input:focus {
   outline: none;
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
 }
 
 /* Session menu positioning - overlay on right side of text */
@@ -6837,7 +6838,7 @@ a.sidebar-nav-item {
   height: 18px;
   flex-shrink: 0;
   cursor: pointer;
-  accent-color: var(--app-yep-green);
+  accent-color: var(--app-agent-teal);
 }
 
 /* Read state: slightly dimmer than unread */
@@ -6862,7 +6863,7 @@ a.sidebar-nav-item {
   transform: translateY(-50%);
   width: 6px;
   height: 6px;
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   border-radius: 50%;
 }
 
@@ -6894,7 +6895,7 @@ a.sidebar-nav-item {
 }
 
 .filter-dropdown-button.has-selection {
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
   color: var(--text-primary);
 }
 
@@ -6988,8 +6989,8 @@ a.sidebar-nav-item {
 }
 
 .filter-dropdown-checkbox.checked {
-  background: var(--app-yep-green);
-  border-color: var(--app-yep-green);
+  background: var(--app-agent-teal);
+  border-color: var(--app-agent-teal);
   color: white;
 }
 
@@ -7122,7 +7123,7 @@ a.sidebar-nav-item {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: white;
   border: none;
   cursor: pointer;
@@ -7212,7 +7213,7 @@ a.sidebar-nav-item {
   width: 28px;
   height: 28px;
   border-radius: var(--radius-md);
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: white;
   border: none;
   cursor: pointer;
@@ -7477,7 +7478,7 @@ a.sidebar-nav-item {
 }
 
 .onboarding-theme-option.selected {
-  border-color: var(--app-yep-green);
+  border-color: var(--app-agent-teal);
 }
 
 .onboarding-theme-preview {
@@ -7604,11 +7605,11 @@ a.sidebar-nav-item {
 }
 
 .onboarding-progress-dot.active {
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
 }
 
 .onboarding-progress-dot.completed {
-  background: var(--app-yep-green-dark);
+  background: var(--app-agent-teal-dark);
 }
 
 /* ==========================================================================
@@ -7654,7 +7655,7 @@ a.sidebar-nav-item {
   font-size: var(--font-size-xs);
   font-weight: 500;
   padding: 2px 6px;
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: #000;
   border-radius: var(--radius-sm);
 }

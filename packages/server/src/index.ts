@@ -233,9 +233,9 @@ function readExpectedCodexVersionFromPackageJson(): string | null {
       }
 
       const root = parsed as {
-        yepAnywhere?: { codexCli?: { expectedVersion?: string } };
+        agentLine?: { codexCli?: { expectedVersion?: string } };
       };
-      const expected = root.yepAnywhere?.codexCli?.expectedVersion;
+      const expected = root.agentLine?.codexCli?.expectedVersion;
       if (typeof expected === "string" && expected.trim().length > 0) {
         return expected.trim();
       }
@@ -265,7 +265,7 @@ async function warnIfCodexVersionMismatch(): Promise<void> {
   }
 
   console.warn(
-    `[Codex] Version mismatch: expected ${expected} (package.json yepAnywhere.codexCli.expectedVersion), detected ${actual}. Codex behavior may be unpredictable until versions align.`,
+    `[Codex] Version mismatch: expected ${expected} (package.json agentLine.codexCli.expectedVersion), detected ${actual}. Codex behavior may be unpredictable until versions align.`,
   );
 }
 
@@ -989,7 +989,7 @@ async function startServer() {
   }
 
   // If CLI host override was specified (not localhost), also bind to that interface
-  // This handles the case where user runs `yepanywhere --host 0.0.0.0`
+  // This handles the case where user runs `agentline --host 0.0.0.0`
   if (
     config.cliHostOverride &&
     config.host !== "127.0.0.1" &&

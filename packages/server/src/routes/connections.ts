@@ -4,7 +4,7 @@
  * GET /api/connections - List all connected browser profiles with metadata
  */
 
-import type { ConnectionInfo, ConnectionsResponse } from "@yep-anywhere/shared";
+import type { ConnectionInfo, ConnectionsResponse } from "@agentline/shared";
 import { Hono } from "hono";
 import type { PushService } from "../push/index.js";
 import type { ConnectedBrowsersService } from "../services/ConnectedBrowsersService.js";

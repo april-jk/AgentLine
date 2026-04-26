@@ -4,7 +4,7 @@ Research findings on how OpenCode handles tool approvals and dynamic permission 
 
 ## Summary
 
-OpenCode has a full permission system with SSE events for approval requests and HTTP endpoints for responding. This enables Yep Anywhere to intercept and proxy tool approvals through our unified UI.
+OpenCode has a full permission system with SSE events for approval requests and HTTP endpoints for responding. This enables AgentLine to intercept and proxy tool approvals through our unified UI.
 
 ## Permission Configuration
 
@@ -127,9 +127,9 @@ curl -X PATCH http://127.0.0.1:14200/config \
 
 This allows dynamic permission mode switching without restarting the session.
 
-## Mapping Yep Anywhere Modes to OpenCode Permissions
+## Mapping AgentLine Modes to OpenCode Permissions
 
-| Yep Anywhere Mode | OpenCode Permission Config |
+| AgentLine Mode | OpenCode Permission Config |
 |-------------------|---------------------------|
 | `default` | `read: allow, glob: allow, grep: allow, edit: ask, bash: ask, *: ask` |
 | `acceptEdits` | `read: allow, edit: allow, glob: allow, grep: allow, bash: ask, *: ask` |
@@ -147,7 +147,7 @@ To switch permission modes mid-session:
 
 ### Approval Flow Integration
 
-To proxy OpenCode approvals through Yep Anywhere:
+To proxy OpenCode approvals through AgentLine:
 1. Watch SSE stream for `permission.asked` events
 2. Convert to our `ToolApprovalRequest` format
 3. Present to user via our UI

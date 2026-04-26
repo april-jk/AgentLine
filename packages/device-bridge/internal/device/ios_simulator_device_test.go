@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kzahel/yepanywhere/device-bridge/internal/conn"
+	"github.com/kzahel/agentline/device-bridge/internal/conn"
 )
 
 func TestIOSSimulatorDeviceFramingWithMockTransport(t *testing.T) {
@@ -112,24 +112,24 @@ func TestIOSSimulatorDeviceFramingWithMockTransport(t *testing.T) {
 }
 
 func TestIOSSimulatorSourceCandidatesIncludeRepoPaths(t *testing.T) {
-	exePath := "/Users/test/code/yepanywhere/packages/device-bridge/bridge"
-	cwd := "/Users/test/code/yepanywhere/packages/server"
+	exePath := "/Users/test/code/agentline/packages/device-bridge/bridge"
+	cwd := "/Users/test/code/agentline/packages/server"
 
 	candidates := iosSimServerSourceCandidates(exePath, cwd)
-	want := filepath.Clean("/Users/test/code/yepanywhere/packages/ios-sim-server")
+	want := filepath.Clean("/Users/test/code/agentline/packages/ios-sim-server")
 	if !slices.Contains(candidates, want) {
 		t.Fatalf("expected %q in candidates: %v", want, candidates)
 	}
 }
 
 func TestIOSSimulatorBinaryCandidatesIncludeBuiltArtifactPath(t *testing.T) {
-	exePath := "/Users/test/code/yepanywhere/packages/device-bridge/bridge"
-	cwd := "/Users/test/code/yepanywhere/packages/server"
+	exePath := "/Users/test/code/agentline/packages/device-bridge/bridge"
+	cwd := "/Users/test/code/agentline/packages/server"
 
-	candidates := iosSimServerBinaryCandidates("/tmp/yep-anywhere", exePath, cwd, "/Users/test")
+	candidates := iosSimServerBinaryCandidates("/tmp/agentline", exePath, cwd, "/Users/test")
 	sourceCandidates := iosSimServerSourceCandidates(exePath, cwd)
 
-	wantBuilt := filepath.Clean("/Users/test/code/yepanywhere/packages/ios-sim-server/.build/release/ios-sim-server")
+	wantBuilt := filepath.Clean("/Users/test/code/agentline/packages/ios-sim-server/.build/release/ios-sim-server")
 	foundBuilt := false
 	for _, sourceDir := range sourceCandidates {
 		if filepath.Join(sourceDir, ".build", "release", defaultIOSSimServerName) == wantBuilt {
@@ -141,7 +141,7 @@ func TestIOSSimulatorBinaryCandidatesIncludeBuiltArtifactPath(t *testing.T) {
 		t.Fatalf("expected built artifact candidate derived from source dir %q", wantBuilt)
 	}
 
-	wantDataDir := filepath.Clean("/tmp/yep-anywhere/bin/ios-sim-server")
+	wantDataDir := filepath.Clean("/tmp/agentline/bin/ios-sim-server")
 	if !slices.Contains(candidates, wantDataDir) {
 		t.Fatalf("expected %q in binary candidates: %v", wantDataDir, candidates)
 	}

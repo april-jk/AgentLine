@@ -5,7 +5,7 @@ import {
   type RelayServerRejected,
   isRelayClientConnect,
   isRelayServerRegister,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { Logger } from "pino";
 import type { RawData, WebSocket } from "ws";
 import type { RelayConfig } from "./config.js";

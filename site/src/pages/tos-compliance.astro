@@ -3,13 +3,13 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 ---
 
 <ArticleLayout
-  title="How We Use the Claude SDK (and Why We're Not Like the Blocked Tools) - Yep Anywhere"
-  description="Yep Anywhere uses the official Claude SDK without spoofing or header manipulation. Here's how we differ from blocked third-party Claude Code clients."
+  title="How We Use the Claude SDK (and Why We're Not Like the Blocked Tools) - AgentLine"
+  description="AgentLine uses the official Claude SDK without spoofing or header manipulation. Here's how we differ from blocked third-party Claude Code clients."
   date="January 11, 2026"
   publishedTime="2026-01-11"
   showPrivacyInFooter={false}
 >
-  <p>In late 2025 and early 2026, Anthropic sent takedown notices to several third-party Claude Code clients. We want to be transparent about how Yep Anywhere differs from those projects.</p>
+  <p>In late 2025 and early 2026, Anthropic sent takedown notices to several third-party Claude Code clients. We want to be transparent about how AgentLine differs from those projects.</p>
 
   <h3>What Got Blocked</h3>
   <p>Projects like OpenCode, Crush (Charmbracelet), and Windsurf were blocked for <strong>spoofing the Claude Code client identity</strong> to access Claude Max subscription pricing ($200/month) instead of paying per-token API rates.</p>
@@ -23,8 +23,8 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <p>An Anthropic engineer confirmed: <blockquote>"We tightened our safeguards against spoofing the Claude Code harness."</blockquote></p>
 
-  <h3>How Yep Anywhere Is Different</h3>
-  <p>Yep Anywhere does <strong>none of the above</strong>. Here's what we actually do:</p>
+  <h3>How AgentLine Is Different</h3>
+  <p>AgentLine does <strong>none of the above</strong>. Here's what we actually do:</p>
 
   <p><strong>1. We use the official SDK.</strong> We depend on <code>@anthropic-ai/claude-agent-sdk</code>, Anthropic's official published SDK. We call the SDK's <code>query()</code> function directly without modification or header spoofing.</p>
 
@@ -32,7 +32,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <p><strong>3. We don't spoof client identity.</strong> Our code makes no attempt to impersonate Claude Code or any other client. We pass requests to the SDK as-is, which identifies itself appropriately.</p>
 
-  <p><strong>4. We're a remote interface, not a replacement.</strong> Yep Anywhere is a mobile-friendly supervisor for Claude Code sessions running on your own machine. Think of it like SSH for AI agents&mdash;we provide remote access to sessions, not a replacement client.</p>
+  <p><strong>4. We're a remote interface, not a replacement.</strong> AgentLine is a mobile-friendly supervisor for Claude Code sessions running on your own machine. Think of it like SSH for AI agents&mdash;we provide remote access to sessions, not a replacement client.</p>
 
   <h3>Comparison</h3>
   <table class="comparison-table">
@@ -40,7 +40,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
       <tr>
         <th>Aspect</th>
         <th>Blocked Tools</th>
-        <th>Yep Anywhere</th>
+        <th>AgentLine</th>
       </tr>
     </thead>
     <tbody>

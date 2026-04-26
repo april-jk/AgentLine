@@ -129,7 +129,7 @@ describe("GET /version", () => {
     await routes.request("/");
 
     expect(capturedUrl).toMatch(
-      /https:\/\/updates\.yepanywhere\.com\/version\/.+/,
+      /https:\/\/updates\.agentline\.com\/version\/.+/,
     );
   });
 

@@ -1,7 +1,7 @@
 /**
  * Hook for managing remote access settings.
  *
- * Remote access allows connecting to the yepanywhere server from outside
+ * Remote access allows connecting to the agentline server from outside
  * the local network via a relay server. Uses SRP for zero-knowledge
  * password authentication and NaCl for end-to-end encryption.
  */
@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchJSON } from "../api/client";
 
 export interface RelayConfig {
-  /** Relay server URL (e.g., wss://relay.yepanywhere.com/ws) */
+  /** Relay server URL (e.g., wss://relay.agentline.com/ws) */
   url: string;
   /** Username for relay registration */
   username: string;

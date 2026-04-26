@@ -12,7 +12,7 @@ import {
 } from "../lib/activityBus";
 
 // Re-export types for consumers
-export type { AgentActivity } from "@yep-anywhere/shared";
+export type { AgentActivity } from "@agentline/shared";
 export type {
   FileChangeEvent,
   FileChangeType,

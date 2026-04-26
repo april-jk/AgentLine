@@ -25,7 +25,7 @@ impl Default for AppConfig {
 
 pub fn data_dir() -> PathBuf {
     let base = dirs::home_dir().expect("Could not find home directory");
-    base.join(".yep-anywhere-desktop")
+    base.join(".agentline-desktop")
 }
 
 pub fn config_path() -> PathBuf {

@@ -1,4 +1,4 @@
-import type { ConnectionInfo } from "@yep-anywhere/shared";
+import type { ConnectionInfo } from "@agentline/shared";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { activityBus } from "../lib/activityBus";

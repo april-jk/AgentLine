@@ -8,7 +8,7 @@ import type {
   ProviderName,
   ThinkingConfig,
   UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { PermissionMode, SDKMessage } from "../sdk/types.js";
 
 // Constants
@@ -25,7 +25,7 @@ export type {
   ContextUsage,
   InputRequest,
   PendingInputType,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 
 // Project discovery
 export interface Project {
@@ -94,7 +94,7 @@ export interface SessionSummary {
   provider: ProviderName;
   /** Model used for this session (extracted from JSONL, e.g. "claude-opus-4-5-20251101") */
   model?: string;
-  /** Launcher identifier from session metadata (e.g. "Codex Desktop", "yep-anywhere") */
+  /** Launcher identifier from session metadata (e.g. "Codex Desktop", "agentline") */
   originator?: string;
   /** CLI version from session metadata (e.g. "0.101.0") */
   cliVersion?: string;

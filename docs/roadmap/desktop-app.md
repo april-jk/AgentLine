@@ -1,6 +1,6 @@
 # Desktop App (Tauri)
 
-System tray app that bundles Node.js and runs yepanywhere server. No webview — users access the UI via their normal browser.
+System tray app that bundles Node.js and runs agentline server. No webview — users access the UI via their normal browser.
 
 ## Goals
 
@@ -19,13 +19,13 @@ System tray app that bundles Node.js and runs yepanywhere server. No webview —
 ## Architecture
 
 ```
-yepanywhere.app/
+agentline.app/
 ├── Contents/
 │   ├── MacOS/
-│   │   ├── yepanywhere        # Tauri binary (tray only, no window)
+│   │   ├── agentline        # Tauri binary (tray only, no window)
 │   │   └── node               # Bundled Node.js binary (sidecar)
 │   └── Resources/
-│       └── app/               # yepanywhere JS server code
+│       └── app/               # agentline JS server code
 ```
 
 **Size:** ~20MB (no webview = much smaller than Electron)
@@ -40,7 +40,7 @@ yepanywhere.app/
 ### macOS (Menu Bar)
 
 ```
-● yepanywhere
+● agentline
 ├── Open in Browser              → opens localhost:3400
 ├── ────────────────────────────
 ├── ● 3 sessions active
@@ -65,7 +65,7 @@ Same menu, accessed via right-click on tray icon.
 | **Session shortcuts** | Quick access to sessions needing attention |
 | **Native notifications** | OS-level alerts when approval needed |
 | **Auto-launch** | Option to start on login |
-| **Deep links** | `yepanywhere://session/abc123` opens in browser |
+| **Deep links** | `agentline://session/abc123` opens in browser |
 | **Auto-update** | Checks GitHub Releases, prompts to update |
 
 ## Onboarding
@@ -128,7 +128,7 @@ Uses Tauri's built-in updater with GitHub Releases.
       "active": true,
       "pubkey": "YOUR_PUBLIC_KEY",
       "endpoints": [
-        "https://github.com/kgraehl/yepanywhere/releases/latest/download/latest.json"
+        "https://github.com/kgraehl/agentline/releases/latest/download/latest.json"
       ]
     }
   }
@@ -306,7 +306,7 @@ fn main() {
    - Click opens browser to that session
 
 5. **Deep links**
-   - Register `yepanywhere://` URL scheme
+   - Register `agentline://` URL scheme
    - Parse and open in browser
 
 6. **Signing setup**

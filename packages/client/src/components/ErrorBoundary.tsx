@@ -89,8 +89,8 @@ export class ErrorBoundary extends Component<Props, State> {
               <div style={styles.versionWarning}>
                 <strong>Possible version mismatch detected.</strong>
                 <p style={styles.versionHint}>
-                  The frontend and yepanywhere server may be running different
-                  versions. Try refreshing or updating your yepanywhere
+                  The frontend and agentline server may be running different
+                  versions. Try refreshing or updating your agentline
                   installation.
                 </p>
               </div>
@@ -111,7 +111,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </div>
               {isVersionMismatch && (
                 <p style={styles.updateHint}>
-                  To update: <code>npm i -g yepanywhere</code>
+                  To update: <code>npm i -g agentline</code>
                 </p>
               )}
             </div>
@@ -125,7 +125,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 Reload Page
               </button>
               <a
-                href="https://github.com/anthropics/yep-anywhere/issues"
+                href="https://github.com/anthropics/agentline/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={styles.issueLink}

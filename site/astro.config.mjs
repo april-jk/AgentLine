@@ -2,7 +2,7 @@ import sitemap from "@astrojs/sitemap";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
-  site: "https://yepanywhere.com",
+  site: "https://agentline.com",
   integrations: [sitemap()],
   build: {
     format: "file",

@@ -135,7 +135,7 @@ Session Resume (stored session):
 └──────────┘    └───────────┘    └─────────────┘
 ```
 
-Relay only sees encrypted blobs. SRP handshake passes through relay to yepanywhere server.
+Relay only sees encrypted blobs. SRP handshake passes through relay to agentline server.
 
 ---
 

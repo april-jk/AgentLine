@@ -1,6 +1,6 @@
 # Sandboxed Yep-Anywhere
 
-Run yep-anywhere + Claude in a container for filesystem/privilege isolation.
+Run agentline + Claude in a container for filesystem/privilege isolation.
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ Note: In isolated mode, Claude cannot fetch URLs, clone repos, or install packag
 |-----------|----------------|------|
 | `~/code` (or `$CODE_DIR`) | `/home/sandbox/code` | read-write |
 | `~/.claude` | `/home/sandbox/.claude` | read-write |
-| `~/.yep-anywhere` | `/home/sandbox/.yep-anywhere` | read-write |
+| `~/.agentline` | `/home/sandbox/.agentline` | read-write |
 | `~/.gitconfig` | `/home/sandbox/.gitconfig` | read-only |
 | `~/.ssh` | `/home/sandbox/.ssh` | read-only |
 

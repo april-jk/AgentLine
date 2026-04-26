@@ -12,7 +12,7 @@ import {
   type ClaudeSessionEntry,
   getLogicalParentUuid,
   getMessageContent,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 
 /** A node in the conversation DAG */
 export interface DagNode {

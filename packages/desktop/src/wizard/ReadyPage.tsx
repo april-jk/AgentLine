@@ -54,7 +54,7 @@ export function ReadyPage({
           marginBottom: 32,
         }}
       >
-        Yep Anywhere is ready to go. Click below to start the server and open
+        AgentLine is ready to go. Click below to start the server and open
         your dashboard.
       </p>
 
@@ -80,7 +80,7 @@ export function ReadyPage({
         disabled={launching}
         style={{ fontSize: 16, padding: "12px 32px" }}
       >
-        {launching ? "Starting..." : "Launch Yep Anywhere"}
+        {launching ? "Starting..." : "Launch AgentLine"}
       </button>
     </div>
   );

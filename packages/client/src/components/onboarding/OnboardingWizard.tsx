@@ -73,7 +73,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
   const modalTitle = (
     <div className="onboarding-modal-title">
-      <span>Welcome to yepanywhere</span>
+      <span>Welcome to agentline</span>
       <span className="onboarding-step-indicator">
         Step {currentStepIndex + 1} of {ONBOARDING_STEPS.length}
       </span>

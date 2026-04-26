@@ -1,5 +1,5 @@
 {
-  "name": "@yep-anywhere/client",
+  "name": "@agentline/client",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -20,7 +20,7 @@
     "test:e2e:chromeos": "CHROMEOS_HOST=${CHROMEOS_HOST:-chromeroot} playwright test --grep \"streams ChromeOS\""
   },
   "dependencies": {
-    "@yep-anywhere/shared": "workspace:*",
+    "@agentline/shared": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.11.0",

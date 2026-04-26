@@ -1,9 +1,9 @@
-# /login Flow for Yep Anywhere
+# /login Flow for AgentLine
 
 ## Problem
 - `/login` is a CLI-only command, not available through the SDK
 - When auth expires (401), users are stuck if they can't SSH to the server
-- Need to support re-authentication from the Yep Anywhere UI
+- Need to support re-authentication from the AgentLine UI
 
 ## Solution Overview
 Use tmux to run an interactive Claude CLI session, send `/login`, capture the OAuth URL, and relay it to the user.

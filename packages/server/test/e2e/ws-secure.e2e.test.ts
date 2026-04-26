@@ -7,8 +7,6 @@ import type {
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { serve } from "@hono/node-server";
-import { createNodeWebSocket } from "@hono/node-ws";
 import type {
   EncryptedEnvelope,
   RelayEvent,
@@ -31,7 +29,7 @@ import type {
   SrpSessionResumeInit,
   SrpSessionResumed,
   YepMessage,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   BinaryFormat,
   encodeUploadChunkPayload,
@@ -43,7 +41,9 @@ import {
   isSrpServerVerify,
   isSrpSessionInvalid,
   isSrpSessionResumed,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
+import { serve } from "@hono/node-server";
+import { createNodeWebSocket } from "@hono/node-ws";
 import {
   SRPClientSession,
   SRPParameters,

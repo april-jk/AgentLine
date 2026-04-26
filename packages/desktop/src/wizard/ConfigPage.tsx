@@ -25,7 +25,7 @@ export function ConfigPage({
           marginBottom: 24,
         }}
       >
-        Configure how Yep Anywhere runs. You can change these later.
+        Configure how AgentLine runs. You can change these later.
       </p>
 
       <div

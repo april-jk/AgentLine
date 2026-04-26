@@ -73,11 +73,11 @@ Delete from `shared/session/UnifiedSession.ts`:
 // packages/server/src/sessions/dag.ts
 
 // Before
-import type { ClaudeRawSessionMessage } from "@yep-anywhere/shared";
+import type { ClaudeRawSessionMessage } from "@agentline/shared";
 export type RawSessionMessage = ClaudeRawSessionMessage;
 
 // After
-import type { SessionEntry } from "@yep-anywhere/shared";
+import type { SessionEntry } from "@agentline/shared";
 // Use SessionEntry directly, no alias needed
 ```
 

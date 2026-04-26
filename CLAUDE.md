@@ -1,4 +1,4 @@
-# Yep Anywhere
+# AgentLine
 
 For cross-project context (how this project relates to other Kyle projects), see `~/code/dotfiles/projects/README.md`.
 
@@ -39,7 +39,7 @@ Individual overrides (rarely needed):
 
 ## Data Directory & Profiles
 
-Server state is stored in a data directory (default: `~/.yep-anywhere/`). This includes:
+Server state is stored in a data directory (default: `~/.agentline/`). This includes:
 - `logs/` - Server logs
 - `indexes/` - Session index cache
 - `uploads/` - Uploaded files
@@ -58,16 +58,16 @@ Use profiles to run dev and production instances simultaneously (like Chrome pro
 PORT=3400 pnpm start
 
 # Development (dev profile, port 4000)
-PORT=4000 YEP_ANYWHERE_PROFILE=dev pnpm dev
+PORT=4000 AGENTLINE_PROFILE=dev pnpm dev
 ```
 
 This creates separate data directories:
-- Production: `~/.yep-anywhere/`
-- Development: `~/.yep-anywhere-dev/`
+- Production: `~/.agentline/`
+- Development: `~/.agentline-dev/`
 
 Environment variables:
-- `YEP_ANYWHERE_PROFILE` - Profile name suffix (creates `~/.yep-anywhere-{profile}/`)
-- `YEP_ANYWHERE_DATA_DIR` - Full path override for data directory
+- `AGENTLINE_PROFILE` - Profile name suffix (creates `~/.agentline-{profile}/`)
+- `AGENTLINE_DATA_DIR` - Full path override for data directory
 - `CLAUDE_CONFIG_DIR` - Claude Code config directory (default: `~/.claude`). Use this to point at a Claude Code profile (e.g., `~/.claude-work`). Sessions are scanned from `{CLAUDE_CONFIG_DIR}/projects/`.
 
 Note: By default, all instances share `~/.claude/projects/` (SDK-managed sessions). Set `CLAUDE_CONFIG_DIR` to use a different Claude Code profile per instance.
@@ -84,7 +84,7 @@ ENABLED_PROVIDERS=claude pnpm dev
 VOICE_INPUT=false pnpm dev
 
 # Combined example: Claude-only, no voice, dev profile
-ENABLED_PROVIDERS=claude VOICE_INPUT=false PORT=4000 YEP_ANYWHERE_PROFILE=dev pnpm dev
+ENABLED_PROVIDERS=claude VOICE_INPUT=false PORT=4000 AGENTLINE_PROFILE=dev pnpm dev
 ```
 
 Environment variables:
@@ -164,7 +164,7 @@ Never mention Claude, AI, or any AI assistant in commit messages. Write commit m
 
 ## Releasing to npm
 
-The package is published to npm as `yepanywhere` using GitHub Actions with OIDC trusted publishing (no npm tokens stored in secrets).
+The package is published to npm as `agentline` using GitHub Actions with OIDC trusted publishing (no npm tokens stored in secrets).
 
 **Before releasing:**
 
@@ -205,12 +205,12 @@ scripts/release-website.sh 1.5.3
 
 ## Server Logs
 
-Server logs are written to `{dataDir}/logs/` (default: `~/.yep-anywhere/logs/`):
+Server logs are written to `{dataDir}/logs/` (default: `~/.agentline/logs/`):
 
 - `server.log` - Main server log (dev mode with `pnpm dev`)
 - `e2e-server.log` - Server log during E2E tests
 
-To view logs in real-time: `tail -f ~/.yep-anywhere/logs/server.log`
+To view logs in real-time: `tail -f ~/.agentline/logs/server.log`
 
 All `console.log/error/warn` output is captured. Logs are JSON format in the file but pretty-printed to console.
 
@@ -228,7 +228,7 @@ Remote collection of browser `console.log/warn/error` from mobile clients. Usefu
 
 **Enable:** Developer Mode settings → "Remote Log Collection" toggle.
 
-**Storage:** `{dataDir}/logs/client-logs/` (default: `~/.yep-anywhere/logs/client-logs/`). One JSONL file per device per day, named `client-{YYYY-MM-DD}-{deviceId}.jsonl`. The device UUID is persisted in the client's `localStorage`.
+**Storage:** `{dataDir}/logs/client-logs/` (default: `~/.agentline/logs/client-logs/`). One JSONL file per device per day, named `client-{YYYY-MM-DD}-{deviceId}.jsonl`. The device UUID is persisted in the client's `localStorage`.
 
 Each line is a single log event:
 ```json
@@ -239,13 +239,13 @@ A `[ClientInfo]` entry is written on each session start with user agent, screen 
 
 ```bash
 # List device log files
-ls ~/.yep-anywhere/logs/client-logs/
+ls ~/.agentline/logs/client-logs/
 
 # View today's logs for a device
-cat ~/.yep-anywhere/logs/client-logs/client-$(date +%Y-%m-%d)-<deviceId>.jsonl
+cat ~/.agentline/logs/client-logs/client-$(date +%Y-%m-%d)-<deviceId>.jsonl
 
 # Follow incoming logs
-tail -f ~/.yep-anywhere/logs/client-logs/*.jsonl
+tail -f ~/.agentline/logs/client-logs/*.jsonl
 ```
 
 **Implementation:** `packages/client/src/lib/diagnostics/ClientLogCollector.ts` (client), `packages/server/src/routes/client-logs.ts` (server `POST /api/client-logs`).
@@ -315,7 +315,7 @@ npx tsx scripts/validate-tool-results.ts --summary
 npx tsx scripts/validate-tool-results.ts --tool=Edit
 ```
 
-The SDK provides structured `tool_use_result` objects alongside tool results. These are logged to `~/.yep-anywhere/logs/sdk-raw.jsonl` when `LOG_SDK_MESSAGES=true` is set. Run this script after adding new tool schemas or when debugging tool result parsing.
+The SDK provides structured `tool_use_result` objects alongside tool results. These are logged to `~/.agentline/logs/sdk-raw.jsonl` when `LOG_SDK_MESSAGES=true` is set. Run this script after adding new tool schemas or when debugging tool result parsing.
 
 ## Type System
 

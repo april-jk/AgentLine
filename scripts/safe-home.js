@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const ALLOW_ENV_VAR = "YEP_ANYWHERE_ALLOW_SUSPICIOUS_HOME";
+const ALLOW_ENV_VAR = "AGENTLINE_ALLOW_SUSPICIOUS_HOME";
 
 function pathEqualsOrContains(parentPath, childPath) {
   if (parentPath === childPath) return true;
@@ -67,7 +67,7 @@ export function assertSafeHome({
     `[safe-home] HOME=${problem.resolvedHome}`,
     `[safe-home] repo=${problem.repoRoot}`,
     "[safe-home] This can redirect pnpm/corepack caches into the repo (for example ./Library/pnpm).",
-    "[safe-home] Use narrower overrides like LOG_DIR, LOG_TO_FILE=false, or YEP_ANYWHERE_DATA_DIR instead of changing HOME.",
+    "[safe-home] Use narrower overrides like LOG_DIR, LOG_TO_FILE=false, or AGENTLINE_DATA_DIR instead of changing HOME.",
     `[safe-home] If this is truly intentional, rerun with ${ALLOW_ENV_VAR}=true.`,
   ].join("\n");
 

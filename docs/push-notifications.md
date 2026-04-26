@@ -1,6 +1,6 @@
 # Push Notifications Troubleshooting
 
-Push notifications allow Yep Anywhere to alert you when a session needs attention, even when the app is in the background or your phone is locked.
+Push notifications allow AgentLine to alert you when a session needs attention, even when the app is in the background or your phone is locked.
 
 ## Requirements
 
@@ -85,7 +85,7 @@ server {
 
 ## Testing Push Notifications
 
-1. Go to **Settings > Notifications** in Yep Anywhere
+1. Go to **Settings > Notifications** in AgentLine
 2. Enable **Push Notifications** (you'll be prompted for permission)
 3. Click **Send Test** to verify the notification arrives
 
@@ -105,4 +105,4 @@ Open an issue on GitHub with:
 - Any errors from the browser console
 - Server logs if available
 
-[Report an Issue](https://github.com/kzahel/yepanywhere/issues)
+[Report an Issue](https://github.com/kzahel/agentline/issues)

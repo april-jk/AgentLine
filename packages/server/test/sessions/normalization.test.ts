@@ -4,7 +4,7 @@ import type {
   CodexSessionContent,
   UnifiedSession,
   UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { describe, expect, it } from "vitest";
 import { normalizeSession } from "../../src/sessions/normalization.js";
 import type { LoadedSession } from "../../src/sessions/types.js";

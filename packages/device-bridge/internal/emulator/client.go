@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kzahel/yepanywhere/device-bridge/internal/device"
-	pb "github.com/kzahel/yepanywhere/device-bridge/proto/emulatorpb"
+	"github.com/kzahel/agentline/device-bridge/internal/device"
+	pb "github.com/kzahel/agentline/device-bridge/proto/emulatorpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"

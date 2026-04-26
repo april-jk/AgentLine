@@ -5,7 +5,7 @@
  * DELETE /api/browser-profiles/:id - Delete a browser profile
  */
 
-import type { BrowserProfilesResponse } from "@yep-anywhere/shared";
+import type { BrowserProfilesResponse } from "@agentline/shared";
 import { Hono } from "hono";
 import type { PushService } from "../push/index.js";
 import type { BrowserProfileService } from "../services/BrowserProfileService.js";

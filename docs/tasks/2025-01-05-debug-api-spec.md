@@ -49,7 +49,7 @@ This leverages the existing event system without adding new infrastructure.
 |------|--------|-------|
 | SSE messages | `process.getMessageHistory()` | In-memory, includes all `stream_event`s |
 | JSONL messages | `ClaudeSessionReader.getSession()` | From disk, authoritative |
-| Raw stream log | `~/.yep-anywhere/logs/sdk-raw.jsonl` | All SDK events, for deep debugging |
+| Raw stream log | `~/.agentline/logs/sdk-raw.jsonl` | All SDK events, for deep debugging |
 
 ## API Endpoints
 

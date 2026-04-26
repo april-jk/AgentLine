@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	bridgeDevice "github.com/kzahel/yepanywhere/device-bridge/internal/device"
-	"github.com/kzahel/yepanywhere/device-bridge/internal/emulator"
-	"github.com/kzahel/yepanywhere/device-bridge/internal/encoder"
-	"github.com/kzahel/yepanywhere/device-bridge/internal/ipc"
-	"github.com/kzahel/yepanywhere/device-bridge/internal/stream"
+	bridgeDevice "github.com/kzahel/agentline/device-bridge/internal/device"
+	"github.com/kzahel/agentline/device-bridge/internal/emulator"
+	"github.com/kzahel/agentline/device-bridge/internal/encoder"
+	"github.com/kzahel/agentline/device-bridge/internal/ipc"
+	"github.com/kzahel/agentline/device-bridge/internal/stream"
 )
 
 //go:embed web

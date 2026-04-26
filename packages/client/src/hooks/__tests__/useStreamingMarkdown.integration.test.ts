@@ -4,7 +4,7 @@
  * These tests verify the full DOM manipulation flow with verbose logging
  * to help debug streaming markdown rendering issues.
  *
- * Run with: pnpm test --filter=@yep-anywhere/client -- useStreamingMarkdown.integration
+ * Run with: pnpm test --filter=@agentline/client -- useStreamingMarkdown.integration
  */
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

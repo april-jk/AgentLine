@@ -4,7 +4,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Platforms
 
-| Platform | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Platform | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |----------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Web | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | macOS | ✅ (web) | ✅ | ✅ | ✅ | ✅ | ✅ (web) | ✅ |
@@ -15,7 +15,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Agent Support
 
-| Agent | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Agent | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |-------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Claude Code | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Codex | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
@@ -28,7 +28,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Session Management
 
-| Feature | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Feature | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |---------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Multi-session dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Session persistence | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -43,7 +43,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Execution Model
 
-| Feature | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Feature | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |---------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Local execution | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Cloud execution | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -54,7 +54,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Git Integration
 
-| Feature | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Feature | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |---------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Git worktree per session | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ |
 | Working tree diff viewer | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -64,7 +64,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Code Review
 
-| Feature | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Feature | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |---------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Inline diff view | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | File-by-file diff | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -73,7 +73,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Permissions & Approval
 
-| Feature | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Feature | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |---------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Permission approval UI | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Permission modes | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ? |
@@ -82,7 +82,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## UI Features
 
-| Feature | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Feature | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |---------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Real-time streaming | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Thinking/reasoning display | ✅ | ✅ | ✅ | ✅ | ? | ✅ | ? |
@@ -96,7 +96,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Security & Networking
 
-| Feature | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Feature | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |---------|-------------|-----------|----------------|--------|-----------|------|-------|
 | E2E encryption | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Relay for remote access | ✅ | N/A (cloud) | N/A (cloud) | ❌ | ❌ | ❌ | ✅ |
@@ -105,7 +105,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Advanced Features
 
-| Feature | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Feature | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |---------|-------------|-----------|----------------|--------|-----------|------|-------|
 | MCP integration | ✅ | ? | ✅ | ✅ | ? | ? | ❌ |
 | Voice commands | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
@@ -115,7 +115,7 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Installation & Distribution
 
-| Aspect | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Aspect | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |--------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Signed installer/DMG | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | No Node.js required | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
@@ -126,13 +126,13 @@ Comprehensive comparison of AI coding agent supervisors.
 
 ## Licensing & Pricing
 
-| Aspect | yepanywhere | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
+| Aspect | agentline | Codex App | Claude Desktop | emdash | Conductor | HAPI | Happy |
 |--------|-------------|-----------|----------------|--------|-----------|------|-------|
 | Open source | ✅ MIT | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ MIT |
 | Free tier | ✅ | ✅ (limits) | ❌ | ✅ | ? | ✅ | ✅ |
 | Self-hosted | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ |
 
-## Summary: yepanywhere Strengths
+## Summary: agentline Strengths
 
 Features we uniquely have or lead in:
 - Fork/clone conversations

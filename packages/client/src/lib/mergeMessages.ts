@@ -1,4 +1,4 @@
-import { orderByParentChain } from "@yep-anywhere/shared";
+import { orderByParentChain } from "@agentline/shared";
 import type { Message } from "../types";
 
 /**

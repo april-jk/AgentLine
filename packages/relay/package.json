@@ -1,5 +1,5 @@
 {
-  "name": "@yep-anywhere/relay",
+  "name": "@agentline/relay",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
-    "@yep-anywhere/shared": "workspace:*",
+    "@agentline/shared": "workspace:*",
     "better-sqlite3": "^11.8.1",
     "hono": "^4.12.1",
     "pino": "^10.1.0",

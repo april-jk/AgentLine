@@ -2,7 +2,7 @@
 
 ## Vision
 
-Yep Anywhere helps you supervise Claude agents from your phone. But when those agents are building Android apps, you still have to walk over to your desktop to see the result in the emulator. This feature closes that gap: stream a running Android emulator to your phone and control it with touch, right from a new tab in the yep anywhere client.
+AgentLine helps you supervise Claude agents from your phone. But when those agents are building Android apps, you still have to walk over to your desktop to see the result in the emulator. This feature closes that gap: stream a running Android emulator to your phone and control it with touch, right from a new tab in the AgentLine client.
 
 Not a general-purpose remote desktop. A purpose-built, dev-focused tool for checking builds, tapping through UI flows, and debugging layouts — from wherever you are.
 
@@ -65,7 +65,7 @@ Phone                          Relay                Yep Server              Side
 
 ### Why a sidecar binary (not a Node package)
 
-Yep Anywhere has zero native dependencies. Adding WebRTC to the Node process would require either:
+AgentLine has zero native dependencies. Adding WebRTC to the Node process would require either:
 - `node-webrtc` / `wrtc` — native compilation (node-gyp), fragile prebuilt binaries
 - `werift` — pure TS but immature, less battle-tested
 
@@ -83,7 +83,7 @@ A separate Go binary keeps the Node dependency tree clean and uses the most prov
 Like how Playwright downloads browser binaries. The user never manually installs anything:
 
 1. User enables "Emulator Streaming" in settings (or connects to an emulator for the first time)
-2. Server checks `~/.yep-anywhere/bin/emulator-bridge-{os}-{arch}`
+2. Server checks `~/.agentline/bin/emulator-bridge-{os}-{arch}`
 3. If missing, downloads the matching binary from a GitHub release
 4. Binary is cached, subsequent launches are instant
 
@@ -337,7 +337,7 @@ Touch events flow over the WebRTC DataChannel (not through the relay), so input 
 **Goal:** Users can install and use the feature without manual steps.
 
 **Done:**
-- Binary path detection in `EmulatorBridgeService` (dev path → production path at `~/.yep-anywhere/bin/emulator-bridge-{os}-{arch}`)
+- Binary path detection in `EmulatorBridgeService` (dev path → production path at `~/.agentline/bin/emulator-bridge-{os}-{arch}`)
 - Configurable maxFps/maxWidth parameters (defaults: 30fps, 720px)
 - Screenshot REST endpoint (`/emulators/:id/screenshot` → JPEG)
 - CSS letterboxing for different aspect ratios (`object-fit: contain`)

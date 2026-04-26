@@ -3,7 +3,7 @@
  * VAPID Key Setup Script
  *
  * Generates VAPID (Voluntary Application Server Identification) keys for Web Push.
- * Keys are stored in ~/.yep-anywhere/vapid.json and reused across server restarts.
+ * Keys are stored in ~/.agentline/vapid.json and reused across server restarts.
  *
  * Usage:
  *   pnpm setup-vapid           # Generate keys (skips if already exist)

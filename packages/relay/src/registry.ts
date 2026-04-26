@@ -1,4 +1,4 @@
-import { isValidRelayUsername } from "@yep-anywhere/shared";
+import { isValidRelayUsername } from "@agentline/shared";
 import type Database from "better-sqlite3";
 
 export interface UsernameRecord {

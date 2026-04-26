@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kzahel/yepanywhere/device-bridge/internal/device"
-	"github.com/kzahel/yepanywhere/device-bridge/internal/emulator"
+	"github.com/kzahel/agentline/device-bridge/internal/device"
+	"github.com/kzahel/agentline/device-bridge/internal/emulator"
 )
 
 const useAPKForEmulatorEnvVar = "DEVICE_BRIDGE_USE_APK_FOR_EMULATOR"

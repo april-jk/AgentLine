@@ -6,7 +6,7 @@
  * Ollama 0.14+ natively speaks the Anthropic Messages API.
  */
 
-import type { ModelInfo } from "@yep-anywhere/shared";
+import type { ModelInfo } from "@agentline/shared";
 import { getLogger } from "../../logging/logger.js";
 import { ClaudeProvider } from "./claude.js";
 import type { AuthStatus } from "./types.js";

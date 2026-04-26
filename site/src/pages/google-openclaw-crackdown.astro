@@ -3,14 +3,14 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 ---
 
 <ArticleLayout
-  title="Google Is Banning Paying Subscribers for Using OpenClaw - Yep Anywhere"
-  description="Google permanently banned hundreds of AI Pro and Ultra subscribers for using OpenClaw with Antigravity. Here's why this keeps happening and why Yep Anywhere users aren't affected."
+  title="Google Is Banning Paying Subscribers for Using OpenClaw - AgentLine"
+  description="Google permanently banned hundreds of AI Pro and Ultra subscribers for using OpenClaw with Antigravity. Here's why this keeps happening and why AgentLine users aren't affected."
   date="February 23, 2026"
   publishedTime="2026-02-23"
 >
   <p>Google just <a href="https://discuss.ai.google.dev/t/account-restricted-without-warning-google-ai-ultra-oauth-via-openclaw/122778">permanently banned</a> hundreds of Google AI Pro ($20/mo) and Ultra ($249/mo) subscribers for using OpenClaw. No warning. No appeal path. While still charging them.</p>
 
-  <p>This is the same pattern we've been writing about since January. Here's what happened, why it matters, and why Yep Anywhere users aren't affected.</p>
+  <p>This is the same pattern we've been writing about since January. Here's what happened, why it matters, and why AgentLine users aren't affected.</p>
 
   <h3>What happened</h3>
   <p>OpenClaw added support for Google's Antigravity backend &mdash; the infrastructure powering Google's first-party AI products. Users authenticated OpenClaw with their Google account via OAuth, and the tool routed coding-agent requests through Antigravity's subsidized API.</p>
@@ -52,8 +52,8 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <p>The direction is clear: <strong>every major AI provider will eventually crack down on tools that extract subsidized OAuth tokens to power unauthorized backends.</strong> The only question is how they handle it. Anthropic communicated. Google nuked.</p>
 
-  <h3>Where Yep Anywhere stands</h3>
-  <p>Yep Anywhere only uses official CLIs. We spawn <code>claude</code> (via the Agent SDK), <code>codex</code>, and <code>gemini</code> &mdash; the same binaries the providers ship and support. The CLI handles its own authentication, its own API calls, its own billing. We provide a UI on top.</p>
+  <h3>Where AgentLine stands</h3>
+  <p>AgentLine only uses official CLIs. We spawn <code>claude</code> (via the Agent SDK), <code>codex</code>, and <code>gemini</code> &mdash; the same binaries the providers ship and support. The CLI handles its own authentication, its own API calls, its own billing. We provide a UI on top.</p>
 
   <p>This is fundamentally different from what got people banned. OpenClaw extracted OAuth tokens from consumer subscriptions and routed them through its own agent harness to hit subsidized backends. We never touch tokens. We never hit a provider API. We never impersonate a first-party client.</p>
 
@@ -69,7 +69,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   <h3>The right approach for developer tools</h3>
   <p>If you're building tools on top of AI providers, there are really only two sustainable paths:</p>
 
-  <p><strong>Use official CLIs and SDKs.</strong> The provider ships a tool. You use it. Authentication, billing, and rate limits are the provider's problem. Your tool works today and keeps working when policies change, because you were never exploiting anything. This is what Yep Anywhere does.</p>
+  <p><strong>Use official CLIs and SDKs.</strong> The provider ships a tool. You use it. Authentication, billing, and rate limits are the provider's problem. Your tool works today and keeps working when policies change, because you were never exploiting anything. This is what AgentLine does.</p>
 
   <p><strong>Use the API with your own key.</strong> Pay per-token at the published rate. More expensive than consumer subscriptions, but it's the sanctioned programmatic access path.</p>
 

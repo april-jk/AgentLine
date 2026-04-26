@@ -86,7 +86,7 @@ export function ConnectedAppContent({ children }: { children: ReactNode }) {
               need to log in again after refreshing or reconnecting.
             </p>
             <p className="host-offline-detail">
-              <code>npm update -g yepanywhere</code>
+              <code>npm update -g agentline</code>
             </p>
             <p className="host-offline-hint">
               Then restart the server and reconnect.

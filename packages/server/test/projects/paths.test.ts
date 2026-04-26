@@ -168,10 +168,10 @@ describe("Project Path Utilities", () => {
 
     it("matches macOS and Linux paths for same user/project", () => {
       const macos = normalizeProjectPathForDedup(
-        "/Users/kgraehl/code/yepanywhere",
+        "/Users/kgraehl/code/agentline",
       );
       const linux = normalizeProjectPathForDedup(
-        "/home/kgraehl/code/yepanywhere",
+        "/home/kgraehl/code/agentline",
       );
       expect(macos).toBe(linux);
     });
@@ -214,11 +214,9 @@ describe("Project Path Utilities", () => {
 
     it("matches Windows and macOS paths for same user/project", () => {
       const win = normalizeProjectPathForDedup(
-        "C:\\Users\\kgraehl\\code\\yepanywhere",
+        "C:\\Users\\kgraehl\\code\\agentline",
       );
-      const mac = normalizeProjectPathForDedup(
-        "/Users/kgraehl/code/yepanywhere",
-      );
+      const mac = normalizeProjectPathForDedup("/Users/kgraehl/code/agentline");
       expect(win).toBe(mac);
     });
 

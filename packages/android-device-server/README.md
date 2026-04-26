@@ -24,7 +24,7 @@ Output APK:
 
 ```bash
 adb -s <serial> push app/build/outputs/apk/release/yep-device-server.apk /data/local/tmp/yep-device-server.apk
-adb -s <serial> shell CLASSPATH=/data/local/tmp/yep-device-server.apk app_process /system/bin com.yepanywhere.DeviceServer
+adb -s <serial> shell CLASSPATH=/data/local/tmp/yep-device-server.apk app_process /system/bin com.agentline.DeviceServer
 adb -s <serial> forward tcp:27183 tcp:27183
 ```
 

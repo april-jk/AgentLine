@@ -70,14 +70,14 @@ fn bun_path(_app: &AppHandle) -> Result<std::path::PathBuf, String> {
 fn server_entry() -> Result<std::path::PathBuf, String> {
     let installed = config::data_dir()
         .join("node_modules")
-        .join("yepanywhere")
+        .join("agentline")
         .join("dist")
         .join("index.js");
     if installed.exists() {
         return Ok(installed);
     }
 
-    Err("Yep Anywhere server not found. Run setup first.".to_string())
+    Err("AgentLine server not found. Run setup first.".to_string())
 }
 
 /// Set up child process for clean shutdown: kill-on-drop and own process group.
@@ -125,7 +125,7 @@ pub async fn start_server(app: AppHandle) -> Result<(), String> {
         cmd.args(["--login", "-c", "exec pnpm dev"])
             .current_dir(&dev_dir)
             .env("PORT", port.to_string())
-            .env("YEP_ANYWHERE_DATA_DIR", data_dir.to_string_lossy().as_ref())
+            .env("AGENTLINE_DATA_DIR", data_dir.to_string_lossy().as_ref())
             .env("DESKTOP_AUTH_TOKEN", &token);
         setup_child_process(&mut cmd);
         cmd.spawn()
@@ -139,7 +139,7 @@ pub async fn start_server(app: AppHandle) -> Result<(), String> {
             .arg(&entry)
             .env("NODE_ENV", "production")
             .env("PORT", port.to_string())
-            .env("YEP_ANYWHERE_DATA_DIR", data_dir.to_string_lossy().as_ref())
+            .env("AGENTLINE_DATA_DIR", data_dir.to_string_lossy().as_ref())
             .env("DESKTOP_AUTH_TOKEN", &token);
         setup_child_process(&mut cmd);
         cmd.spawn()

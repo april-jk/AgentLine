@@ -11,6 +11,7 @@ import { useRemoteBasePath } from "../hooks/useRemoteBasePath";
 import { useVersion } from "../hooks/useVersion";
 import { useI18n } from "../i18n";
 import { getSessionDisplayTitle, toUrlProjectId } from "../utils";
+import { AgentLineLogo } from "./AgentLineLogo";
 import { AgentsNavItem } from "./AgentsNavItem";
 import { SessionListItem } from "./SessionListItem";
 import {
@@ -18,7 +19,6 @@ import {
   SidebarNavItem,
   SidebarNavSection,
 } from "./SidebarNavItem";
-import { YepAnywhereLogo } from "./YepAnywhereLogo";
 
 const SWIPE_THRESHOLD = 50; // Minimum distance to trigger close
 const SWIPE_ENGAGE_THRESHOLD = 15; // Minimum horizontal distance before swipe engages
@@ -303,13 +303,13 @@ export function Sidebar({
           ) : isDesktop ? (
             /* Desktop expanded mode: show brand (toggle is in toolbar) */
             <span className="sidebar-brand">
-              <YepAnywhereLogo />
+              <AgentLineLogo />
             </span>
           ) : (
             /* Mobile mode: brand text + close button */
             <>
               <span className="sidebar-brand">
-                <YepAnywhereLogo />
+                <AgentLineLogo />
               </span>
               <button
                 type="button"

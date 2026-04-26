@@ -84,14 +84,14 @@ step("Clean previous builds", () => {
 
 // Build shared package (types/schemas)
 step("Build shared package", () => {
-  log("Building @yep-anywhere/shared (TypeScript compilation)...");
-  execStep("pnpm --filter @yep-anywhere/shared build");
+  log("Building @agentline/shared (TypeScript compilation)...");
+  execStep("pnpm --filter @agentline/shared build");
 });
 
 // Build client
 step("Build client", () => {
-  log("Building @yep-anywhere/client (Vite production build)...");
-  execStep("pnpm --filter @yep-anywhere/client build");
+  log("Building @agentline/client (Vite production build)...");
+  execStep("pnpm --filter @agentline/client build");
 
   // Verify client dist exists
   if (!fs.existsSync(CLIENT_DIST)) {
@@ -112,8 +112,8 @@ step("Build client", () => {
 
 // Build server
 step("Build server", () => {
-  log("Building @yep-anywhere/server (TypeScript compilation)...");
-  execStep("pnpm --filter @yep-anywhere/server build");
+  log("Building @agentline/server (TypeScript compilation)...");
+  execStep("pnpm --filter @agentline/server build");
 
   // Verify server dist exists
   const serverDist = path.join(SERVER_PACKAGE, "dist");
@@ -142,14 +142,14 @@ step("Copy server dist to staging", () => {
   log("  Server dist copied to staging");
 });
 
-// Rewrite @yep-anywhere/shared imports to relative paths into bundled/
+// Rewrite @agentline/shared imports to relative paths into bundled/
 // This eliminates the need for a postinstall symlink, which fails with some
 // package managers (Volta) and on platforms with limited symlink support (WSL).
-step("Rewrite @yep-anywhere/shared imports", () => {
+step("Rewrite @agentline/shared imports", () => {
   const stagingDist = path.join(STAGING_DIR, "dist");
   const sharedEntry = path.join(
     STAGING_DIR,
-    "bundled/@yep-anywhere/shared/dist/index.js",
+    "bundled/@agentline/shared/dist/index.js",
   );
 
   function rewriteImports(dir: string): number {
@@ -160,14 +160,14 @@ step("Rewrite @yep-anywhere/shared imports", () => {
         count += rewriteImports(fullPath);
       } else if (entry.name.endsWith(".js")) {
         const content = fs.readFileSync(fullPath, "utf-8");
-        if (!content.includes("@yep-anywhere/shared")) continue;
+        if (!content.includes("@agentline/shared")) continue;
 
         let relPath = path.relative(path.dirname(fullPath), sharedEntry);
         // Ensure it starts with ./ for Node.js ESM resolution
         if (!relPath.startsWith(".")) relPath = `./${relPath}`;
 
         const rewritten = content.replace(
-          /(?<=(from\s+|import\(\s*))(["'])@yep-anywhere\/shared\2/g,
+          /(?<=(from\s+|import\(\s*))(["'])@agentline\/shared\2/g,
           `$2${relPath}$2`,
         );
         fs.writeFileSync(fullPath, rewritten);
@@ -181,13 +181,10 @@ step("Rewrite @yep-anywhere/shared imports", () => {
   log(`  Rewrote imports in ${rewritten} files`);
 });
 
-// Copy shared dist into staging (for @yep-anywhere/shared imports)
+// Copy shared dist into staging (for @agentline/shared imports)
 // We put it in 'bundled/' instead of 'node_modules/' because npm ignores node_modules
 step("Bundle shared into staging", () => {
-  const bundledSharedPath = path.join(
-    STAGING_DIR,
-    "bundled/@yep-anywhere/shared",
-  );
+  const bundledSharedPath = path.join(STAGING_DIR, "bundled/@agentline/shared");
   const bundledSharedDist = path.join(bundledSharedPath, "dist");
 
   log(
@@ -202,7 +199,7 @@ step("Bundle shared into staging", () => {
 
   // Create a minimal package.json for the shared package
   const sharedPackageJson = {
-    name: "@yep-anywhere/shared",
+    name: "@agentline/shared",
     version: NPM_VERSION,
     type: "module",
     main: "dist/index.js",
@@ -249,12 +246,12 @@ step("Generate package.json for npm", () => {
 
   // Create a new package.json for publishing
   const npmPackageJson: Record<string, unknown> = {
-    name: "yepanywhere",
+    name: "agentline",
     version: NPM_VERSION,
     description: "A mobile-first supervisor for Claude Code agents",
     type: "module",
     bin: {
-      yepanywhere: "./dist/cli.js",
+      agentline: "./dist/cli.js",
     },
     main: "./dist/index.js",
     exports: {
@@ -264,16 +261,16 @@ step("Generate package.json for npm", () => {
     // Copy dependencies from source, excluding workspace deps
     dependencies: Object.fromEntries(
       Object.entries(sourcePackageJson.dependencies || {}).filter(
-        ([name]) => !name.startsWith("@yep-anywhere/"),
+        ([name]) => !name.startsWith("@agentline/"),
       ),
     ),
     repository: {
       type: "git",
-      url: "git+https://github.com/kzahel/yepanywhere.git",
+      url: "git+https://github.com/kzahel/agentline.git",
     },
-    homepage: "https://github.com/kzahel/yepanywhere#readme",
+    homepage: "https://github.com/kzahel/agentline#readme",
     bugs: {
-      url: "https://github.com/kzahel/yepanywhere/issues",
+      url: "https://github.com/kzahel/agentline/issues",
     },
     keywords: ["claude", "ai", "agent", "supervisor", "mobile"],
     license: "MIT",
@@ -289,7 +286,7 @@ step("Generate package.json for npm", () => {
     `${JSON.stringify(npmPackageJson, null, 2)}\n`,
   );
 
-  log("  Package name: yepanywhere");
+  log("  Package name: agentline");
   log(`  Version: ${NPM_VERSION}`);
   log("  Written to: dist/npm-package/package.json");
   log("  (Original packages/server/package.json unchanged)");
@@ -305,20 +302,20 @@ step("Copy README to staging", () => {
     log("  Copied README.md from repo root");
   } else {
     // Create a basic README if none exists
-    const basicReadme = `# yepanywhere
+    const basicReadme = `# agentline
 
 A mobile-first supervisor for Claude Code agents.
 
 ## Installation
 
 \`\`\`bash
-npm install -g yepanywhere
+npm install -g agentline
 \`\`\`
 
 ## Usage
 
 \`\`\`bash
-yepanywhere
+agentline
 \`\`\`
 
 Then open http://localhost:3400 in your browser.

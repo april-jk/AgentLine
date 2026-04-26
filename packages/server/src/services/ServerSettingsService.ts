@@ -7,7 +7,7 @@
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import type { NewSessionDefaults } from "@yep-anywhere/shared";
+import type { NewSessionDefaults } from "@agentline/shared";
 
 const CURRENT_VERSION = 1;
 

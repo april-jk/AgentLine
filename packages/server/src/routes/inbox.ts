@@ -9,7 +9,7 @@
  * 5. unread24h - Sessions with hasUnread and updatedAt within 24 hours (not in tiers 1-4)
  */
 
-import { getSessionDisplayTitle } from "@yep-anywhere/shared";
+import { getSessionDisplayTitle } from "@agentline/shared";
 import { Hono } from "hono";
 import type { SessionIndexService } from "../indexes/index.js";
 import { getLogger } from "../logging/logger.js";

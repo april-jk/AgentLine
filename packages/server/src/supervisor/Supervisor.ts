@@ -6,8 +6,8 @@ import {
   SESSION_TITLE_MAX_LENGTH,
   type ThinkingConfig,
   type UrlProjectId,
-} from "@yep-anywhere/shared";
-import type { AgentActivity, PendingInputType } from "@yep-anywhere/shared";
+} from "@agentline/shared";
+import type { AgentActivity, PendingInputType } from "@agentline/shared";
 import { getLogger } from "../logging/logger.js";
 import { getProvider } from "../sdk/providers/index.js";
 import type { AgentProvider } from "../sdk/providers/types.js";

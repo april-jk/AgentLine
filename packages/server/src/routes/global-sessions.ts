@@ -5,10 +5,7 @@
  * this returns a flat list suitable for navigation/sidebar use.
  */
 
-import {
-  type ProviderName,
-  getSessionDisplayTitle,
-} from "@yep-anywhere/shared";
+import { type ProviderName, getSessionDisplayTitle } from "@agentline/shared";
 import { Hono } from "hono";
 import type { SessionIndexService } from "../indexes/index.js";
 import type { SessionMetadataService } from "../metadata/SessionMetadataService.js";

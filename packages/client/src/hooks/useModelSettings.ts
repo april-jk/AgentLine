@@ -3,7 +3,7 @@ import type {
   ModelOption,
   ThinkingMode,
   ThinkingOption,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { useCallback, useState } from "react";
 import {
   LEGACY_KEYS,

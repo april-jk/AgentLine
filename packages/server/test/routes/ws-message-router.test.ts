@@ -1,5 +1,5 @@
-import type { RemoteClientMessage } from "@yep-anywhere/shared";
-import { BinaryFormat } from "@yep-anywhere/shared";
+import type { RemoteClientMessage } from "@agentline/shared";
+import { BinaryFormat } from "@agentline/shared";
 import { describe, expect, it, vi } from "vitest";
 import {
   deriveTransportKey,

@@ -1,4 +1,4 @@
-import type { PatchHunk } from "@yep-anywhere/shared";
+import type { PatchHunk } from "@agentline/shared";
 
 const PATCH_START_MARKER = "*** Begin Patch";
 const PATCH_END_MARKER = "*** End Patch";

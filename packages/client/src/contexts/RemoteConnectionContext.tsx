@@ -15,7 +15,7 @@ import {
   type RelayClientError,
   isRelayClientConnected,
   isRelayClientError,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import {
   type ReactNode,
   createContext,
@@ -146,7 +146,7 @@ const RemoteConnectionContext = createContext<RemoteConnectionState | null>(
   null,
 );
 
-const STORAGE_KEY = "yep-anywhere-remote-credentials";
+const STORAGE_KEY = "agentline-remote-credentials";
 
 function loadStoredCredentials(): StoredCredentials | null {
   try {
@@ -487,7 +487,7 @@ export function RemoteConnectionProvider({ children }: Props) {
           };
         });
 
-        // 4. Now we have a direct pipe to yepanywhere server - do SRP auth
+        // 4. Now we have a direct pipe to agentline server - do SRP auth
         onStatusChange?.("authenticating");
 
         // Store credentials if rememberMe

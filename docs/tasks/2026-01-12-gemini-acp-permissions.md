@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Wire Gemini CLI's `requestPermission` ACP calls to yepanywhere's existing approval UI. Gemini executes its own tools internally but asks us for permission on sensitive operations.
+Wire Gemini CLI's `requestPermission` ACP calls to agentline's existing approval UI. Gemini executes its own tools internally but asks us for permission on sensitive operations.
 
 ## Key Discovery
 
@@ -134,7 +134,7 @@ export class ACPClient {
 
 **File**: `packages/server/src/sdk/providers/gemini-acp.ts`
 
-The provider needs to convert ACP permission requests to yepanywhere's `InputRequest` format and wait for responses.
+The provider needs to convert ACP permission requests to agentline's `InputRequest` format and wait for responses.
 
 ```typescript
 private async *runSession(
@@ -158,7 +158,7 @@ private async *runSession(
     return new Promise<RequestPermissionResponse>((resolve) => {
       pendingPermissions.set(toolCallId, { resolve, acpRequest });
 
-      // Convert to yepanywhere InputRequest format
+      // Convert to agentline InputRequest format
       const inputRequest = this.convertToInputRequest(acpRequest, sessionId);
 
       // Emit as SDKMessage so Process can handle it
@@ -171,7 +171,7 @@ private async *runSession(
 }
 
 /**
- * Convert ACP permission request to yepanywhere InputRequest.
+ * Convert ACP permission request to agentline InputRequest.
  */
 private convertToInputRequest(
   acpRequest: RequestPermissionRequest,
@@ -257,7 +257,7 @@ respondToPermission(
 
 ### Step 4: Permission Mode Support
 
-Map yepanywhere's permission modes to auto-approve behavior:
+Map agentline's permission modes to auto-approve behavior:
 
 ```typescript
 private shouldAutoApprove(
@@ -288,7 +288,7 @@ private shouldAutoApprove(
 
 ### Tool Approval Dialog
 
-Current yepanywhere shows:
+Current agentline shows:
 - Tool name (e.g., "Write", "Bash")
 - Tool input details
 - Approve / Deny buttons

@@ -7,7 +7,7 @@
 
 Before changing message rendering or introducing more aggressive client/server compatibility rules, the relay needs to become a better source of truth for what is actually deployed and actively used.
 
-The first priority is to have yepanywhere servers send version and protocol metadata when they register with the relay. That metadata must be optional so newer servers can report it immediately without breaking older servers or older hosted clients.
+The first priority is to have agentline servers send version and protocol metadata when they register with the relay. That metadata must be optional so newer servers can report it immediately without breaking older servers or older hosted clients.
 
 This note defines:
 
@@ -27,7 +27,7 @@ That is useful for debugging a live incident, but it is not enough for rollout p
 
 Missing information:
 
-- Which yepanywhere versions are currently connecting to relay
+- Which agentline versions are currently connecting to relay
 - Which protocol versions are active among real remote users
 - How many distinct installs are using relay in the last 7/14/30 days
 - Whether a future hosted frontend change would strand phone users on older servers
@@ -266,7 +266,7 @@ Example decision inputs:
 ## Proposed Immediate Work
 
 1. Extend `RelayServerRegister` with optional version and protocol fields
-2. Update the yepanywhere server relay client to send those fields when available
+2. Update the agentline server relay client to send those fields when available
 3. Update the relay to log append-only registration and connection events
 4. Add a lightweight stats page showing version/protocol adoption and connection counts
 

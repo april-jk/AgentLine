@@ -1,4 +1,4 @@
-import type { GitFileChange } from "@yep-anywhere/shared";
+import type { GitFileChange } from "@agentline/shared";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
@@ -103,7 +103,7 @@ function GitStatusContent({
   projectId,
   t,
 }: {
-  status: import("@yep-anywhere/shared").GitStatusInfo;
+  status: import("@agentline/shared").GitStatusInfo;
   projectId: string;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }) {

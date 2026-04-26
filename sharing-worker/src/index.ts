@@ -10,7 +10,7 @@
  *   npx wrangler deploy
  *   npx wrangler secret put UPLOAD_SECRET   # pick any secret
  *
- * Then create ~/.yep-anywhere/sharing.json:
+ * Then create ~/.agentline/sharing.json:
  *   { "workerUrl": "https://yep-sharing.<account>.workers.dev", "secret": "<same secret>" }
  */
 

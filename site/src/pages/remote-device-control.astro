@@ -9,7 +9,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   publishedTime="2026-03-03"
   ogImage="/screenshots/device-stream.png"
 >
-  <p><a href="https://yepanywhere.com">Yep Anywhere</a> lets you supervise AI coding agents from your phone. But when those agents are building mobile apps, you still have to walk to your computer to see the result. Now you don't. Yep streams your Android devices, Android emulators, and iOS Simulators to your phone &mdash; H264 over WebRTC, full touch input. Complete mobile development for both platforms, all from your phone.</p>
+  <p><a href="https://agentline.com">AgentLine</a> lets you supervise AI coding agents from your phone. But when those agents are building mobile apps, you still have to walk to your computer to see the result. Now you don't. Yep streams your Android devices, Android emulators, and iOS Simulators to your phone &mdash; H264 over WebRTC, full touch input. Complete mobile development for both platforms, all from your phone.</p>
 
   <div class="video-embed">
     <iframe
@@ -27,7 +27,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <div class="screenshot-row">
     <figure>
-      <img src="/screenshots/device-sidebar.png" alt="Yep Anywhere sidebar showing Devices tab alongside sessions, projects, and agents" loading="lazy" />
+      <img src="/screenshots/device-sidebar.png" alt="AgentLine sidebar showing Devices tab alongside sessions, projects, and agents" loading="lazy" />
       <figcaption>Devices in the sidebar</figcaption>
     </figure>
     <figure>
@@ -50,7 +50,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <p>Video is peer-to-peer WebRTC &mdash; encrypted, low latency. Signaling goes through Yep's relay, but video and touch data flow directly between your dev machine and your phone. No relay bandwidth cost.</p>
 
-  <p>A Go sidecar (Pion) handles WebRTC and H264 encoding. It's a single pre-built binary, compiled on GitHub Actions for each platform &mdash; no native dependencies, no libdatachannel, no system WebRTC libraries to install. The binary downloads automatically on first connect and only when you actually use device control, so Yep Anywhere stays lightweight. For Android, it talks to your device over ADB. For iOS Simulators, it uses <code>simctl</code> for input and screen capture. Frames are encoded with x264 (<code>ultrafast</code>/<code>zerolatency</code>), hardware-decoded on your phone. Touch and nav buttons go over the WebRTC data channel. Multi-touch and pressure work natively.</p>
+  <p>A Go sidecar (Pion) handles WebRTC and H264 encoding. It's a single pre-built binary, compiled on GitHub Actions for each platform &mdash; no native dependencies, no libdatachannel, no system WebRTC libraries to install. The binary downloads automatically on first connect and only when you actually use device control, so AgentLine stays lightweight. For Android, it talks to your device over ADB. For iOS Simulators, it uses <code>simctl</code> for input and screen capture. Frames are encoded with x264 (<code>ultrafast</code>/<code>zerolatency</code>), hardware-decoded on your phone. Touch and nav buttons go over the WebRTC data channel. Multi-touch and pressure work natively.</p>
 
   <p>Adaptive quality monitors packet loss and drops FPS before you notice stutter, recovers when the connection stabilizes.</p>
 
@@ -64,9 +64,9 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <h2>Try it</h2>
 
-  <p>Device control ships in Yep Anywhere today. Enable Device Bridge in Settings, and any Android emulator, Android device, or iOS Simulator shows up automatically in the Devices tab. iOS support is for Simulators running on your Mac &mdash; real iOS devices are not yet supported. It's still in beta &mdash; expect rough edges.</p>
+  <p>Device control ships in AgentLine today. Enable Device Bridge in Settings, and any Android emulator, Android device, or iOS Simulator shows up automatically in the Devices tab. iOS support is for Simulators running on your Mac &mdash; real iOS devices are not yet supported. It's still in beta &mdash; expect rough edges.</p>
 
-  <p><a href="/#install" class="cta-link">Install Yep Anywhere</a></p>
+  <p><a href="/#install" class="cta-link">Install AgentLine</a></p>
 </ArticleLayout>
 
 <style>

@@ -1,7 +1,7 @@
 import {
   type RelayServerCompatibilityMetadata,
   isValidRelayUsername,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { WebSocket } from "ws";
 import type { UsernameRegistry } from "./registry.js";
 

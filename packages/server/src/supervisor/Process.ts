@@ -8,7 +8,7 @@ import type {
   SlashCommand,
   ThinkingConfig,
   UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { getLogger } from "../logging/logger.js";
 import type { MessageQueue } from "../sdk/messageQueue.js";
 import type {

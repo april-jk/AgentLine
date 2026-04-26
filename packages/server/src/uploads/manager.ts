@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type WriteStream, createWriteStream } from "node:fs";
 import { mkdir, rm, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
-import type { UploadedFile } from "@yep-anywhere/shared";
+import type { UploadedFile } from "@agentline/shared";
 import { getDataDir } from "../config.js";
 
 /** Root directory for uploads (uses dataDir from config for profile support) */

@@ -52,7 +52,7 @@ function isImageMimeType(mimeType: string): boolean {
 
 /**
  * Extract URL components from an uploaded file path.
- * Path format: /.../.yep-anywhere/uploads/{projectId}/{sessionId}/{filename}
+ * Path format: /.../.agentline/uploads/{projectId}/{sessionId}/{filename}
  */
 function getUploadUrl(filePath: string): string | null {
   // Split path and get last 3 components: projectId, sessionId, filename

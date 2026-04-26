@@ -2,7 +2,7 @@ import type {
   DeviceServerMessage,
   DeviceStreamProfileEvent,
   DeviceType,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getGlobalConnection } from "../lib/connection";
 import { getWebSocketConnection } from "../lib/connection/WebSocketConnection";
@@ -61,7 +61,7 @@ function publishProfileTelemetry(event: DeviceStreamProfileEvent) {
   w.__YEP_DEVICE_STREAM_PROFILE_EVENTS__ = existing;
   window.dispatchEvent(
     new CustomEvent<DeviceStreamProfileEvent>(
-      "yep:device_stream_profile_event",
+      "agentline:device_stream_profile_event",
       { detail: event },
     ),
   );

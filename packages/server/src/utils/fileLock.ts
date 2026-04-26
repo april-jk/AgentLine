@@ -1,6 +1,6 @@
 /**
  * File locking utilities for coordinating access to shared data files
- * across multiple yep-anywhere server instances.
+ * across multiple agentline server instances.
  *
  * Uses proper-lockfile which:
  * - Uses mkdir for atomic lock acquisition (works on local + network FS)

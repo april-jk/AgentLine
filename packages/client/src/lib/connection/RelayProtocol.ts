@@ -15,7 +15,7 @@ import type {
   ServerPong,
   UploadedFile,
   YepMessage,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { getOrCreateBrowserProfileId } from "../storageKeys";
 import { generateUUID } from "../uuid";
 import type { StreamHandlers, Subscription, UploadOptions } from "./types";
@@ -49,7 +49,7 @@ function isActivityDebugEnabled(): boolean {
   const w = window as Window & { __ACTIVITY_DEBUG__?: boolean };
   if (w.__ACTIVITY_DEBUG__ === true) return true;
   try {
-    return localStorage.getItem("yep-anywhere-activity-debug") === "true";
+    return localStorage.getItem("agentline-activity-debug") === "true";
   } catch {
     return false;
   }

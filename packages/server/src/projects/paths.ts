@@ -60,7 +60,7 @@
 import { open } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, isAbsolute, join, sep } from "node:path";
-import type { UrlProjectId } from "@yep-anywhere/shared";
+import type { UrlProjectId } from "@agentline/shared";
 import { stripBom } from "../utils/jsonl.js";
 
 /** Check if a path is absolute (works for both Unix and Windows paths). */

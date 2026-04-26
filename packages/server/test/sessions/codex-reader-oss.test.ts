@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { UrlProjectId } from "@yep-anywhere/shared";
+import type { UrlProjectId } from "@agentline/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { encodeProjectId } from "../../src/projects/paths.js";
 import { CodexSessionReader } from "../../src/sessions/codex-reader.js";
@@ -324,12 +324,12 @@ describe("CodexSessionReader - OSS Support", () => {
 
   it("preserves originator from session metadata", async () => {
     const sessionId = "originator-passthrough";
-    await createSessionFile(sessionId, "openai", "gpt-4o", "yep-anywhere");
+    await createSessionFile(sessionId, "openai", "gpt-4o", "agentline");
 
     const summary = await reader.getSessionSummary(
       sessionId,
       "test-project" as UrlProjectId,
     );
-    expect(summary?.originator).toBe("yep-anywhere");
+    expect(summary?.originator).toBe("agentline");
   });
 });

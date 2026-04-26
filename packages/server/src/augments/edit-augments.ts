@@ -6,7 +6,7 @@
  * and completed (tool_result) edits.
  */
 
-import type { EditAugment, PatchHunk } from "@yep-anywhere/shared";
+import type { EditAugment, PatchHunk } from "@agentline/shared";
 import { diffWordsWithSpace, structuredPatch } from "diff";
 import { getLanguageForPath, highlightCode } from "../highlighting/index.js";
 

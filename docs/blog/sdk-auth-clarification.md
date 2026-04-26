@@ -2,7 +2,7 @@
 
 On February 19, 2026, Anthropic updated their [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance) docs for Claude Code. Within hours, Hacker News had 160+ comments, X was on fire, and people were asking whether using the Agent SDK with a Max subscription was about to get them banned.
 
-Here's what actually happened, what the docs actually say, and what it means for Yep Anywhere users.
+Here's what actually happened, what the docs actually say, and what it means for AgentLine users.
 
 ## What the docs say
 
@@ -24,9 +24,9 @@ Thariq, a product leader on Claude Code at Anthropic, [posted on X](https://x.co
 
 Multiple HN commenters noted that a tweet doesn't override written ToS. They're right — Anthropic should fix the docs. But the intent is clear: **individual use of the Agent SDK with your subscription is fine. The restriction targets third-party developers routing other people's subscription credentials through their services.**
 
-## What this means for Yep Anywhere
+## What this means for AgentLine
 
-Yep Anywhere falls squarely under individual use:
+AgentLine falls squarely under individual use:
 
 - **You run it on your own machine**, for yourself
 - **You authenticate via your own Claude CLI** — we don't handle, intercept, or proxy OAuth tokens
@@ -38,7 +38,7 @@ We covered this in detail in our [January compliance post](/tos-compliance.html)
 
 ## The bigger picture
 
-The [HN thread](https://news.ycombinator.com/item?id=47069299) is worth reading. The community frustration isn't really about Yep Anywhere or any specific tool — it's about contradictory docs creating uncertainty for developers who want to build on Claude's platform.
+The [HN thread](https://news.ycombinator.com/item?id=47069299) is worth reading. The community frustration isn't really about AgentLine or any specific tool — it's about contradictory docs creating uncertainty for developers who want to build on Claude's platform.
 
 The tools that got blocked (OpenCode, Crush, etc.) were spoofing client identity to freeload on subscription pricing. That's clearly different from an individual using the official SDK for personal tooling. But when the written terms don't distinguish between the two, everyone gets nervous.
 

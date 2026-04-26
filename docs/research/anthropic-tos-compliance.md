@@ -1,6 +1,6 @@
 # Anthropic Terms of Service Compliance
 
-This document explains how Yep Anywhere differs from third-party Claude tools that received takedown notices from Anthropic in 2025-2026.
+This document explains how AgentLine differs from third-party Claude tools that received takedown notices from Anthropic in 2025-2026.
 
 ## Background: What Got Blocked
 
@@ -26,9 +26,9 @@ Section D.4 of Anthropic's commercial terms prohibits:
 - Using the API to build competing products
 - Reverse engineering or duplicating the services
 
-## How Yep Anywhere Is Different
+## How AgentLine Is Different
 
-Yep Anywhere does **none of the above**. Here's what we actually do:
+AgentLine does **none of the above**. Here's what we actually do:
 
 ### 1. We Use the Official SDK
 
@@ -55,7 +55,7 @@ Our code makes no attempt to impersonate Claude Code or any other client. We pas
 
 ### 4. We're a Remote Interface, Not a Replacement
 
-Yep Anywhere is a mobile-friendly supervisor for Claude Code sessions running on your own machine. Think of it like SSH for AI agents - we provide remote access to sessions, not a replacement client.
+AgentLine is a mobile-friendly supervisor for Claude Code sessions running on your own machine. Think of it like SSH for AI agents - we provide remote access to sessions, not a replacement client.
 
 ## Code Reference
 
@@ -77,7 +77,7 @@ iterator = query({
 
 ## Summary
 
-| Aspect | Blocked Tools | Yep Anywhere |
+| Aspect | Blocked Tools | AgentLine |
 |--------|---------------|--------------|
 | Client identity spoofing | Yes | No |
 | Header manipulation | Yes | No |

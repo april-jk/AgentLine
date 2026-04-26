@@ -6,7 +6,7 @@ export function WelcomePage({ onNext }: Props) {
   return (
     <div style={{ textAlign: "center", maxWidth: 420 }}>
       <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 12 }}>
-        Welcome to Yep Anywhere
+        Welcome to AgentLine
       </h1>
       <p
         style={{

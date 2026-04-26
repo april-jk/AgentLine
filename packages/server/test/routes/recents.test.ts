@@ -1,4 +1,4 @@
-import type { UrlProjectId } from "@yep-anywhere/shared";
+import type { UrlProjectId } from "@agentline/shared";
 import { describe, expect, it, vi } from "vitest";
 import type { ProjectScanner } from "../../src/projects/scanner.js";
 import type { RecentsService } from "../../src/recents/index.js";

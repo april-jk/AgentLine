@@ -4,9 +4,9 @@ Run Claude sessions on remote machines over SSH, with session files synced back 
 
 ## Overview
 
-**Problem**: Running Claude agents on remote machines (more compute, different environments, access to remote filesystems) currently requires installing yep-anywhere on each machine.
+**Problem**: Running Claude agents on remote machines (more compute, different environments, access to remote filesystems) currently requires installing agentline on each machine.
 
-**Solution**: Use the SDK's `spawnClaudeCodeProcess` hook to SSH to a remote machine and run Claude there. Session files are synced back via rsync so the local yep-anywhere UI stays current.
+**Solution**: Use the SDK's `spawnClaudeCodeProcess` hook to SSH to a remote machine and run Claude there. Session files are synced back via rsync so the local agentline UI stays current.
 
 ## Assumptions
 
@@ -21,7 +21,7 @@ Run Claude sessions on remote machines over SSH, with session files synced back 
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Local Machine                             │
 │  ┌─────────────┐     ┌──────────────┐     ┌──────────────────┐  │
-│  │ yep-anywhere│────▶│ ClaudeProvider│────▶│ RemoteSpawn      │  │
+│  │ agentline│────▶│ ClaudeProvider│────▶│ RemoteSpawn      │  │
 │  │   client    │     │              │     │ (SSH + stdio)    │  │
 │  └─────────────┘     └──────────────┘     └────────┬─────────┘  │
 │         ▲                                          │ SSH        │
@@ -316,7 +316,7 @@ For GitHub Actions:
 2. Create new session with remote executor
 3. Send simple prompt ("echo hello")
 4. Verify session appears with executor badge
-5. Check `~/.yep-anywhere/logs/` for remote stderr
+5. Check `~/.agentline/logs/` for remote stderr
 6. Resume session, verify reconnects to same remote
 
 ## Future Enhancements

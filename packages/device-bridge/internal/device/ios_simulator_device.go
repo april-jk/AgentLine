@@ -14,12 +14,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kzahel/yepanywhere/device-bridge/internal/conn"
+	"github.com/kzahel/agentline/device-bridge/internal/conn"
 )
 
 const (
 	iosSimServerEnvVar      = "IOS_SIM_SERVER"
-	iosSimDataDirEnvVar     = "YEP_ANYWHERE_DATA_DIR"
+	iosSimDataDirEnvVar     = "AGENTLINE_DATA_DIR"
 	defaultIOSSimServerName = "ios-sim-server"
 )
 
@@ -349,7 +349,7 @@ func iosSimServerBinaryCandidates(dataDir, exePath, cwd, home string) []string {
 		candidates = append(candidates, filepath.Join(cwd, ".build", "release", defaultIOSSimServerName))
 	}
 	if home != "" {
-		candidates = append(candidates, filepath.Join(home, ".yep-anywhere", "bin", defaultIOSSimServerName))
+		candidates = append(candidates, filepath.Join(home, ".agentline", "bin", defaultIOSSimServerName))
 	}
 	return uniquePaths(candidates)
 }

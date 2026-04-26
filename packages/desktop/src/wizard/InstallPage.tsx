@@ -22,7 +22,7 @@ interface TaskStatus {
 export function InstallPage({ agents, onNext }: Props) {
   const [tasks, setTasks] = useState<TaskStatus[]>(() => {
     const t: TaskStatus[] = [
-      { id: "yep", label: "Yep Anywhere Server", status: "pending" },
+      { id: "yep", label: "AgentLine Server", status: "pending" },
     ];
     if (agents.includes("claude")) {
       t.push({ id: "claude", label: "Claude Code", status: "pending" });

@@ -1,4 +1,4 @@
-import type { UrlProjectId } from "@yep-anywhere/shared";
+import type { UrlProjectId } from "@agentline/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PushNotifier } from "../../src/push/PushNotifier.js";
 import type { PushService } from "../../src/push/PushService.js";

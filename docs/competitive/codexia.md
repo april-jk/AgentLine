@@ -113,7 +113,7 @@ The awesome lists serve as SEO funnels for Codexia discovery — smart growth st
 - 30+ releases (v0.9.2 → v0.26.0) in 6 months — aggressive release cadence
 - Clean commit messages with conventional prefixes (feat/fix/refactor/chore)
 
-## Comparison to yepanywhere
+## Comparison to agentline
 
 ### Codexia has that we don't
 - Tauri desktop app (native feel, small binary)

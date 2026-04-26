@@ -101,7 +101,7 @@ describe("setup-vapid", () => {
 
       expect(keys.publicKey).toBeTruthy();
       expect(keys.privateKey).toBeTruthy();
-      expect(keys.subject).toBe("mailto:yep-anywhere@localhost");
+      expect(keys.subject).toBe("mailto:agentline@localhost");
 
       const validation = validateVapidKeys(keys);
       expect(validation.valid).toBe(true);

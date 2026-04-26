@@ -7,7 +7,7 @@
 
 import { type ChildProcess, exec, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import type { ModelInfo } from "@yep-anywhere/shared";
+import type { ModelInfo } from "@agentline/shared";
 import {
   isCodexCorrelationDebugEnabled,
   logCodexCorrelationDebug,
@@ -663,9 +663,7 @@ export class CodexProvider implements AgentProvider {
   }
 
   private getCodexClientName(): string {
-    return DECLARE_CODEX_ORIGINATOR
-      ? DECLARED_CODEX_ORIGINATOR
-      : "yep-anywhere";
+    return DECLARE_CODEX_ORIGINATOR ? DECLARED_CODEX_ORIGINATOR : "agentline";
   }
 
   /**
@@ -938,8 +936,8 @@ export class CodexProvider implements AgentProvider {
   }
 
   private mapEffortToReasoningEffort(
-    effort?: import("@yep-anywhere/shared").EffortLevel,
-    thinking?: import("@yep-anywhere/shared").ThinkingConfig,
+    effort?: import("@agentline/shared").EffortLevel,
+    thinking?: import("@agentline/shared").ThinkingConfig,
   ): "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | undefined {
     if (thinking?.type === "disabled") {
       return "low";

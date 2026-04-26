@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { YepAnywhereLogo } from "../components/YepAnywhereLogo";
+import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
 import { createDirectHost, loadSavedHosts, saveHost } from "../lib/hostStorage";
@@ -42,7 +42,7 @@ export function DirectLoginPage() {
       <div className="login-page">
         <div className="login-container">
           <div className="login-logo">
-            <YepAnywhereLogo />
+            <AgentLineLogo />
           </div>
           <p className="login-subtitle">{t("reconnecting")}</p>
           <div className="login-loading" data-testid="auto-resume-loading">
@@ -130,7 +130,7 @@ export function DirectLoginPage() {
         </Link>
 
         <div className="login-logo">
-          <YepAnywhereLogo />
+          <AgentLineLogo />
         </div>
         <p className="login-subtitle">{t("directLoginTitle")}</p>
 

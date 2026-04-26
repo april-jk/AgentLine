@@ -7,7 +7,7 @@
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import type { ProviderName } from "@yep-anywhere/shared";
+import type { ProviderName } from "@agentline/shared";
 
 export interface SessionMetadata {
   /** Custom title that overrides auto-generated title */
@@ -34,7 +34,7 @@ export interface SessionMetadataState {
 const CURRENT_VERSION = 1;
 
 export interface SessionMetadataServiceOptions {
-  /** Directory to store metadata state (defaults to ~/.yep-anywhere) */
+  /** Directory to store metadata state (defaults to ~/.agentline) */
   dataDir?: string;
 }
 
@@ -50,7 +50,7 @@ export class SessionMetadataService {
       options.dataDir ??
       path.join(
         process.env.HOME ?? process.env.USERPROFILE ?? ".",
-        ".yep-anywhere",
+        ".agentline",
       );
     this.filePath = path.join(this.dataDir, "session-metadata.json");
     this.state = { sessions: {}, version: CURRENT_VERSION };

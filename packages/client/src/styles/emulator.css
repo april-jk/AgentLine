@@ -51,7 +51,7 @@
 }
 
 .emulator-list-item-status.running {
-  color: var(--app-yep-green);
+  color: var(--app-agent-teal);
 }
 
 .emulator-list-item-status.stopped {
@@ -74,12 +74,12 @@
 }
 
 .emulator-btn-primary {
-  background: var(--app-yep-green);
+  background: var(--app-agent-teal);
   color: white;
 }
 
 .emulator-btn-primary:hover {
-  background: var(--app-yep-green-dark);
+  background: var(--app-agent-teal-dark);
 }
 
 .emulator-btn-secondary {

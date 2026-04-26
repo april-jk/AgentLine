@@ -1,4 +1,4 @@
-# Lightweight sandbox for yep-anywhere + Claude
+# Lightweight sandbox for agentline + Claude
 # Build: docker build -t yep-sandbox docker/
 # Run: docker compose -f docker/docker-compose.yml up
 

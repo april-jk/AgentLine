@@ -2,7 +2,7 @@ import {
   type MarkdownAugment,
   type ProviderName,
   getModelContextWindow,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import { getMessageId } from "../lib/mergeMessages";

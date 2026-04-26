@@ -2,17 +2,17 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
+  type ModelInfo,
+  type SlashCommand,
+  getModelContextWindow,
+} from "@agentline/shared";
+import {
   type SDKMessage as AgentSDKMessage,
   type Query,
   type CanUseTool as SDKCanUseTool,
   type SpawnedProcess,
   query,
 } from "@anthropic-ai/claude-agent-sdk";
-import {
-  type ModelInfo,
-  type SlashCommand,
-  getModelContextWindow,
-} from "@yep-anywhere/shared";
 import { getLogger } from "../../logging/logger.js";
 import { detectClaudeCli } from "../cli-detection.js";
 import { logSDKMessage } from "../messageLogger.js";
@@ -476,7 +476,7 @@ export class ClaudeProvider implements AgentProvider {
           model: options.model,
           thinking: options.thinking,
           effort: options.effort,
-          // Filter env to exclude npm_*, yep-anywhere specific, and other irrelevant vars
+          // Filter env to exclude npm_*, agentline specific, and other irrelevant vars
           env: this.getEnv(),
           // Remote execution via SSH
           spawnClaudeCodeProcess,

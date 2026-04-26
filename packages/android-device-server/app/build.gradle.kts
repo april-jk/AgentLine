@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.yepanywhere.deviceserver"
+    namespace = "com.agentline.deviceserver"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.yepanywhere.deviceserver"
+        applicationId = "com.agentline.deviceserver"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

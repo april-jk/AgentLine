@@ -12,7 +12,7 @@ import {
   type ModelInfo,
   type ProviderName,
   getModelContextWindow,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { getProvider } from "../sdk/providers/index.js";
 
 export class ModelInfoService {

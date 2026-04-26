@@ -1,7 +1,7 @@
 # Debug Session Event Report
 
 **Session ID:** `594a527c-a604-4f5f-9f56-22f8db7e8b41`
-**Project:** `/home/kgraehl/code/yepanywhere`
+**Project:** `/home/kgraehl/code/agentline`
 **Prompt:** "What is 2+2? Answer briefly."
 **Response:** "4"
 **Model:** `claude-opus-4-5-20251101`
@@ -15,8 +15,8 @@
 | **Debug API - Create** | `POST /debug/sessions/create` | Creates session, returns messages |
 | **Debug API - Detail** | `GET /debug/sessions/:id?includeStreamEvents=true` | In-memory SSE events (all types) |
 | **Debug API - Compare** | `GET /debug/sessions/:id/compare` | SSE vs JSONL diff |
-| **JSONL File** | `~/.claude/projects/-home-kgraehl-code-yepanywhere/{session}.jsonl` | Persisted messages on disk |
-| **SDK Raw Log** | `~/.yep-anywhere/logs/sdk-raw.jsonl` | All SDK messages with timestamps |
+| **JSONL File** | `~/.claude/projects/-home-kgraehl-code-agentline/{session}.jsonl` | Persisted messages on disk |
+| **SDK Raw Log** | `~/.agentline/logs/sdk-raw.jsonl` | All SDK messages with timestamps |
 
 ---
 
@@ -74,7 +74,7 @@
 
 ## SDK Raw Log (Full Detail)
 
-From `~/.yep-anywhere/logs/sdk-raw.jsonl`:
+From `~/.agentline/logs/sdk-raw.jsonl`:
 
 | Timestamp (ms) | Type | Details |
 |----------------|------|---------|

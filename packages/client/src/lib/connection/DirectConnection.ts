@@ -1,4 +1,4 @@
-import type { UploadedFile } from "@yep-anywhere/shared";
+import type { UploadedFile } from "@agentline/shared";
 import { uploadFile } from "../../api/upload";
 import { authEvents } from "../authEvents";
 import type {
@@ -11,7 +11,7 @@ import type {
 const API_BASE = "/api";
 
 /**
- * Direct connection to yepanywhere server using native browser APIs.
+ * Direct connection to agentline server using native browser APIs.
  *
  * Handles REST requests (fetch/fetchBlob) and file uploads via HTTP.
  * Subscriptions (session/activity streams) are handled separately by

@@ -93,7 +93,7 @@ Per-chat session isolation via composite key `userId:chatId` prevents context le
 - Shell security: `child_process.spawn()` (no shell interpretation), clean env (removes NODE_OPTIONS, npm_*)
 - No E2E encryption for WebUI or channel traffic
 
-## Comparison to yepanywhere
+## Comparison to agentline
 
 ### What They Have That We Don't
 

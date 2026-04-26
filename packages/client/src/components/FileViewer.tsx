@@ -1,4 +1,4 @@
-import type { FileContentResponse } from "@yep-anywhere/shared";
+import type { FileContentResponse } from "@agentline/shared";
 import { memo, useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { useI18n } from "../i18n";

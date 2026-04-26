@@ -4,7 +4,7 @@ Consolidate duplicate session-related code by using the shared `SessionView` cla
 
 ## Current State
 
-The `SessionView` class and related utilities are defined in `packages/shared/src/session/SessionView.ts` and exported from `@yep-anywhere/shared`:
+The `SessionView` class and related utilities are defined in `packages/shared/src/session/SessionView.ts` and exported from `@agentline/shared`:
 
 - `SessionView` class - unified interface for session display
 - `getSessionDisplayTitle(session)` - utility function for display title
@@ -26,7 +26,7 @@ export function getSessionDisplayTitle(
 }
 ```
 
-**Source of truth:** `@yep-anywhere/shared` exports identical function
+**Source of truth:** `@agentline/shared` exports identical function
 
 ### 2. `SESSION_TITLE_MAX_LENGTH` constant
 
@@ -35,7 +35,7 @@ export function getSessionDisplayTitle(
 export const SESSION_TITLE_MAX_LENGTH = 120;
 ```
 
-**Source of truth:** `@yep-anywhere/shared` exports this constant
+**Source of truth:** `@agentline/shared` exports this constant
 
 ### 3. Manual title extraction in reader
 
@@ -107,20 +107,20 @@ Fetches session title for process info. Currently doesn't include custom title -
 - Update imports in files that use it from this location
 
 **Affected files:**
-- `packages/server/src/sessions/reader.ts` - update import to use `@yep-anywhere/shared`
+- `packages/server/src/sessions/reader.ts` - update import to use `@agentline/shared`
 
 ### Phase 2: Remove duplicate function from client (LOW RISK)
 
 **File:** `packages/client/src/types.ts`
 - Remove `getSessionDisplayTitle()` function (lines 174-179)
-- Add re-export: `export { getSessionDisplayTitle } from "@yep-anywhere/shared";`
+- Add re-export: `export { getSessionDisplayTitle } from "@agentline/shared";`
 
 **Affected client files:** None need changes - same export name
 
 ### Phase 3: Use `getSessionDisplayTitle()` in inbox route (LOW RISK)
 
 **File:** `packages/server/src/routes/inbox.ts`
-- Import `getSessionDisplayTitle` from `@yep-anywhere/shared`
+- Import `getSessionDisplayTitle` from `@agentline/shared`
 - Replace `item.session.customTitle ?? item.session.title` with `getSessionDisplayTitle(item.session)`
 
 ### Phase 4: Add custom title to processes route (MEDIUM RISK)

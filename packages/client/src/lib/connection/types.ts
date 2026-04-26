@@ -2,7 +2,7 @@ import type {
   DeviceServerMessage,
   RemoteClientMessage,
   UploadedFile,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 
 /**
  * WebSocket close codes that indicate non-retryable errors.

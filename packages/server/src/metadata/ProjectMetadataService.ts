@@ -26,7 +26,7 @@ export interface ProjectMetadataState {
 const CURRENT_VERSION = 1;
 
 export interface ProjectMetadataServiceOptions {
-  /** Directory to store metadata state (defaults to ~/.yep-anywhere) */
+  /** Directory to store metadata state (defaults to ~/.agentline) */
   dataDir?: string;
 }
 
@@ -42,7 +42,7 @@ export class ProjectMetadataService {
       options.dataDir ??
       path.join(
         process.env.HOME ?? process.env.USERPROFILE ?? ".",
-        ".yep-anywhere",
+        ".agentline",
       );
     this.filePath = path.join(this.dataDir, "project-metadata.json");
     this.state = { projects: {}, version: CURRENT_VERSION };

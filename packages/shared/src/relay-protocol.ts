@@ -1,9 +1,9 @@
 /**
- * Relay server protocol types for routing yepanywhere servers and phone clients.
+ * Relay server protocol types for routing agentline servers and phone clients.
  *
  * The relay server is a "dumb pipe" that matches clients to servers based on
  * username, then forwards encrypted messages without inspection. This enables
- * phone clients to connect to yepanywhere servers behind NAT.
+ * phone clients to connect to agentline servers behind NAT.
  *
  * Flow:
  * 1. Yepanywhere server connects to relay, sends server_register
@@ -19,7 +19,7 @@
 
 /** Yepanywhere server registers with relay, claiming a username */
 export interface RelayServerCompatibilityMetadata {
-  /** Yep Anywhere app version running on the server. */
+  /** AgentLine app version running on the server. */
   appVersion?: string;
   /** Session resume protocol version supported by this server. */
   resumeProtocolVersion?: number;
@@ -91,10 +91,10 @@ export interface RelayClientError {
 // Union Types
 // ============================================================================
 
-/** Messages from yepanywhere server to relay */
+/** Messages from agentline server to relay */
 export type RelayServerMessage = RelayServerRegister;
 
-/** Responses from relay to yepanywhere server */
+/** Responses from relay to agentline server */
 export type RelayServerResponse = RelayServerRegistered | RelayServerRejected;
 
 /** Messages from phone client to relay */

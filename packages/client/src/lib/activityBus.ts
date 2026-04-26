@@ -3,7 +3,7 @@ import type {
   ContextUsage,
   PendingInputType,
   UrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type { SessionStatus, SessionSummary } from "../types";
 import {
   connectionManager,
@@ -170,7 +170,7 @@ function isActivityDebugEnabled(): boolean {
   if (typeof window === "undefined") return false;
   if (window.__ACTIVITY_DEBUG__ === true) return true;
   try {
-    return localStorage.getItem("yep-anywhere-activity-debug") === "true";
+    return localStorage.getItem("agentline-activity-debug") === "true";
   } catch {
     return false;
   }

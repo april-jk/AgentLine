@@ -15,7 +15,7 @@ import {
   isCompressionSupported,
   parseBinaryEnvelope,
   prependFormatByte,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import nacl from "tweetnacl";
 
 /** Nonce length for secretbox (24 bytes) */
@@ -140,8 +140,8 @@ export function deriveTransportKey(
     );
   }
 
-  // Domain-separated hash: H("yep-transport-v1" || baseKey || nonce)[0..31]
-  const label = new TextEncoder().encode("yep-transport-v1");
+  // Domain-separated hash: H("agentline-transport-v1" || baseKey || nonce)[0..31]
+  const label = new TextEncoder().encode("agentline-transport-v1");
   const material = new Uint8Array(label.length + baseKey.length + nonce.length);
   material.set(label, 0);
   material.set(baseKey, label.length);

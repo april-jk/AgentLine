@@ -95,7 +95,7 @@ Users can override per-provider CLI paths, flags, env vars, and extra args in `s
 
 This sidesteps the hard problem of Gemini integration (parsing its output format or using its SDK to get structured data) by not attempting it at all.
 
-## Comparison to yepanywhere
+## Comparison to agentline
 
 ### emdash has that we don't
 - Multi-agent support (21 vs our 3-4 — but theirs is shallow, see above)

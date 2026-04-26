@@ -1,4 +1,4 @@
-import type { DeviceInfo } from "@yep-anywhere/shared";
+import type { DeviceInfo } from "@agentline/shared";
 import { Hono } from "hono";
 import type { DeviceBridgeService } from "../device/DeviceBridgeService.js";
 import type { ServerSettingsService } from "../services/ServerSettingsService.js";

@@ -368,8 +368,7 @@ async function main() {
   } else {
     // Default to sdk-raw.jsonl in data directory
     const dataDir =
-      process.env.YEP_ANYWHERE_DATA_DIR ||
-      path.join(os.homedir(), ".yep-anywhere");
+      process.env.AGENTLINE_DATA_DIR || path.join(os.homedir(), ".agentline");
     filePath = path.join(dataDir, "logs", "sdk-raw.jsonl");
   }
 

@@ -22,4 +22,4 @@ Notes:
 
 - The full generated Codex protocol dump is intentionally not checked in.
 - Expected local Codex CLI version is configured in root `package.json` at
-  `yepAnywhere.codexCli.expectedVersion`; server startup warns on mismatch.
+  `agentLine.codexCli.expectedVersion`; server startup warns on mismatch.

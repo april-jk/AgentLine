@@ -1,7 +1,7 @@
-# Yep Anywhere Marketing Plan
+# AgentLine Marketing Plan
 
 ## Goal
-Increase mind share for Yep Anywhere as the default mobile-first control plane for long-running coding agents (Claude Code, Codex, and similar local agent workflows).
+Increase mind share for AgentLine as the default mobile-first control plane for long-running coding agents (Claude Code, Codex, and similar local agent workflows).
 
 ## Core Positioning
 
@@ -55,7 +55,7 @@ Create a repeatable screenshot pack for every release:
 - Session dashboard with multiple active repos
 - Resume and continue after disconnect
 - Security/architecture overview (direct vs relay)
-- Side-by-side "without Yep Anywhere / with Yep Anywhere"
+- Side-by-side "without AgentLine / with AgentLine"
 
 Screenshot standards:
 - Use realistic project/session names

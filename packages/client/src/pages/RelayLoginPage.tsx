@@ -1,13 +1,13 @@
 /**
  * RelayLoginPage - Login form for remote access via relay server.
  *
- * Connects to a relay server first, which pairs the client with a yepanywhere
+ * Connects to a relay server first, which pairs the client with a agentline
  * server by username. After pairing, SRP authentication proceeds through the relay.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { YepAnywhereLogo } from "../components/YepAnywhereLogo";
+import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
 import {
@@ -47,7 +47,7 @@ function parseHashCredentials(): {
 }
 
 /** Default relay URL */
-const DEFAULT_RELAY_URL = "wss://relay.yepanywhere.com/ws";
+const DEFAULT_RELAY_URL = "wss://relay.agentline.com/ws";
 
 type ConnectionStatus =
   | "idle"
@@ -136,7 +136,7 @@ export function RelayLoginPage() {
       <div className="login-page">
         <div className="login-container">
           <div className="login-logo">
-            <YepAnywhereLogo />
+            <AgentLineLogo />
           </div>
           <p className="login-subtitle">{t("reconnecting")}</p>
           <div className="login-loading" data-testid="auto-resume-loading">
@@ -212,7 +212,7 @@ export function RelayLoginPage() {
         </Link>
 
         <div className="login-logo">
-          <YepAnywhereLogo />
+          <AgentLineLogo />
         </div>
         <p className="login-subtitle">{t("relayLoginTitle")}</p>
 

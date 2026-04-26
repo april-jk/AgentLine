@@ -14,7 +14,7 @@ From least to most structured:
 
 ```
 Raw Terminal ←————————————————————————————————→ Full API Wrapper
-   emdash        Yep Anywhere       pi-mono         Vercel AI
+   emdash        AgentLine       pi-mono         Vercel AI
    (PTY)         (SDK process)    (reverse OAuth)   (API keys only)
 ```
 
@@ -46,9 +46,9 @@ Raw Terminal ←—————————————————————�
 
 **Verdict:** Maximum breadth, minimum depth. Works great for desktop power users who want a multi-tab terminal. Unusable for mobile supervision or any feature that requires understanding what the agent is doing.
 
-## Approach 2: SDK Process Wrapper (Yep Anywhere)
+## Approach 2: SDK Process Wrapper (AgentLine)
 
-**Project:** [Yep Anywhere](https://github.com/kzahel/yepanywhere)
+**Project:** [AgentLine](https://github.com/kzahel/agentline)
 
 **How it works:** Uses official provider SDKs to spawn and manage agent processes:
 - **Claude:** `@anthropic-ai/claude-code` SDK — structured events (messages, tool calls, diffs, permission requests, thinking blocks)
@@ -176,7 +176,7 @@ OpenCode previously had a mechanism for users to obtain Claude subscription toke
 
 ## Summary Matrix
 
-| Dimension | emdash | Yep Anywhere | pi-mono | Vercel AI | OpenCode |
+| Dimension | emdash | AgentLine | pi-mono | Vercel AI | OpenCode |
 |-----------|--------|--------------|---------|-----------|----------|
 | **Subscription access** | Yes (passive) | Yes (SDK) | Yes (reverse-eng) | No | Partial (Codex, Copilot OAuth) |
 | **Auth stability** | Very high | High | Low | N/A | High (legitimate OAuth) |
@@ -204,14 +204,14 @@ However, providers have reasons to resist this. The official CLIs serve as contr
 ## Open Questions
 
 - **Will providers formalize subscription APIs?** Anthropic and OpenAI both ship SDKs that expose structured output from their CLIs, which is a step in this direction. But neither offers a documented HTTP endpoint for "make an API call against my Pro plan."
-- **Can the SDK wrapper approach become a shared layer?** Rather than every project writing its own Claude SDK adapter, could there be an open-source normalization layer that multiple UIs build on top of? Yep Anywhere's provider adapters are one attempt at this — [claw-starter](https://github.com/nicedaycode/claw-starter) already builds on it.
+- **Can the SDK wrapper approach become a shared layer?** Rather than every project writing its own Claude SDK adapter, could there be an open-source normalization layer that multiple UIs build on top of? AgentLine's provider adapters are one attempt at this — [claw-starter](https://github.com/nicedaycode/claw-starter) already builds on it.
 - **Is reverse-engineered OAuth viable long-term?** Evidence says no. Google has already banned users of OpenClaw projects that reverse-engineered Gemini CLI tokens. OpenCode had to remove Claude subscription token access. Pi-mono's approach works today for some providers but the trend is toward enforcement, not tolerance.
 - **Will terminal passthrough get smarter?** Projects like emdash could add lightweight output parsing (e.g., detecting ANSI escape sequences for diffs) without going full SDK integration. This middle ground is largely unexplored.
 
 ## Projects Referenced
 
 - **emdash:** [github.com/generalaction/emdash](https://github.com/generalaction/emdash) — YC W26, desktop terminal multiplexer
-- **Yep Anywhere:** [github.com/kzahel/yepanywhere](https://github.com/kzahel/yepanywhere) — mobile-first structured supervisor
+- **AgentLine:** [github.com/kzahel/agentline](https://github.com/kzahel/agentline) — mobile-first structured supervisor
 - **pi-mono:** [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono) — multi-provider coding agent with independent OAuth
 - **Vercel AI SDK:** [github.com/vercel/ai](https://github.com/vercel/ai) — provider-agnostic TypeScript SDK
 - **OpenCode:** [github.com/sst/opencode](https://github.com/sst/opencode) — open-source agentic coding CLI/server

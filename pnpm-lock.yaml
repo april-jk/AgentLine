@@ -33,7 +33,7 @@ importers:
 
   packages/client:
     dependencies:
-      '@yep-anywhere/shared':
+      '@agentline/shared':
         specifier: workspace:*
         version: link:../shared
       react:
@@ -155,7 +155,7 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.9
         version: 1.19.11(hono@4.12.8)
-      '@yep-anywhere/shared':
+      '@agentline/shared':
         specifier: workspace:*
         version: link:../shared
       better-sqlite3:
@@ -210,7 +210,7 @@ importers:
       '@openai/codex-sdk':
         specifier: ^0.77.0
         version: 0.77.0
-      '@yep-anywhere/shared':
+      '@agentline/shared':
         specifier: workspace:*
         version: link:../shared
       bcrypt:

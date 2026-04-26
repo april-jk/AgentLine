@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kzahel/yepanywhere/device-bridge/internal/device"
-	"github.com/kzahel/yepanywhere/device-bridge/internal/encoder"
-	"github.com/kzahel/yepanywhere/device-bridge/internal/stream"
+	"github.com/kzahel/agentline/device-bridge/internal/device"
+	"github.com/kzahel/agentline/device-bridge/internal/encoder"
+	"github.com/kzahel/agentline/device-bridge/internal/stream"
 )
 
 // SessionStartOptions are the options for starting a device streaming session.

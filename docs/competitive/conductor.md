@@ -27,7 +27,7 @@ Three-step workflow:
 
 All local, no cloud dependencies.
 
-## Comparison to yepanywhere
+## Comparison to agentline
 
 ### Conductor has that we don't
 - Git worktree per agent

@@ -1,4 +1,4 @@
-import { ALL_PROVIDERS, type ProviderName } from "@yep-anywhere/shared";
+import { ALL_PROVIDERS, type ProviderName } from "@agentline/shared";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { type GlobalSessionItem, api } from "../api/client";
@@ -27,8 +27,8 @@ type AgeFilter = "3" | "7" | "14" | "30";
 
 // Provider colors for filter dropdown (matching ProviderBadge)
 const PROVIDER_COLORS: Record<ProviderName, string> = {
-  claude: "var(--app-yep-green)",
-  "claude-ollama": "var(--app-yep-green)", // Same as Claude
+  claude: "var(--app-agent-teal)",
+  "claude-ollama": "var(--app-agent-teal)", // Same as Claude
   codex: "#10a37f",
   "codex-oss": "#f97316",
   gemini: "#4285f4",

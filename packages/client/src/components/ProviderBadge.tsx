@@ -1,4 +1,4 @@
-import type { ProviderName } from "@yep-anywhere/shared";
+import type { ProviderName } from "@agentline/shared";
 import { MODEL_OPTIONS } from "../hooks/useModelSettings";
 
 const PROVIDER_COLORS: Record<ProviderName, string> = {

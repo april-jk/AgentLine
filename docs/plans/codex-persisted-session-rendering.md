@@ -22,8 +22,8 @@ The work should focus on:
 - Completed: Added/expanded tests in server/client for tool pairing, custom tools, developer filtering, and turn-aborted rendering.
 - Completed: Patched `Edit` renderer safety for aliased Codex `apply_patch` tool calls with missing `file_path` (fallback label now `Patch`; no `split` crash).
 - Completed: Quality gates for this increment:
-  - `pnpm --filter @yep-anywhere/server test -- test/sessions/codex-normalization.test.ts test/sessions/codex-reader-oss.test.ts`
-  - `pnpm --filter @yep-anywhere/client test -- src/lib/__tests__/preprocessMessages.test.ts`
+  - `pnpm --filter @agentline/server test -- test/sessions/codex-normalization.test.ts test/sessions/codex-reader-oss.test.ts`
+  - `pnpm --filter @agentline/client test -- src/lib/__tests__/preprocessMessages.test.ts`
   - `pnpm lint`
   - `pnpm typecheck`
 - Completed: Real-world Codex validation pass: `pnpm -s tsx scripts/validate-jsonl.ts --codex` -> `7407/7407` lines valid across `~/.codex/sessions`.

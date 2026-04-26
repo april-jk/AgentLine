@@ -6,7 +6,7 @@ import {
   type FileMetadata,
   type PatchHunk,
   isUrlProjectId,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { Hono } from "hono";
 import { computeEditAugment } from "../augments/edit-augments.js";
 import { renderMarkdownToHtml } from "../augments/markdown-augments.js";

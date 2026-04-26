@@ -8,7 +8,7 @@ import {
   SESSION_TITLE_MAX_LENGTH,
   type UrlProjectId,
   getModelContextWindow,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import type {
   ContextUsage,
   Message,

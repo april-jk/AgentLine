@@ -5,7 +5,7 @@
 
 ## Overview
 
-A relay service that enables phone clients to connect to yepanywhere servers behind NAT without requiring Tailscale, Cloudflare tunnels, or port forwarding.
+A relay service that enables phone clients to connect to agentline servers behind NAT without requiring Tailscale, Cloudflare tunnels, or port forwarding.
 
 ### Goals
 
@@ -34,14 +34,14 @@ A relay service that enables phone clients to connect to yepanywhere servers beh
                               ▼
                         ┌─────────────────┐
                         │ Config Endpoint │
-                        │ (yepanywhere.com│
+                        │ (agentline.com│
                         │  /api/config)   │
                         └─────────────────┘
 ```
 
 ## Components
 
-### 1. Config Endpoint (yepanywhere.com)
+### 1. Config Endpoint (agentline.com)
 
 Returns relay URLs and version requirements. Allows migration without client updates.
 
@@ -49,7 +49,7 @@ Returns relay URLs and version requirements. Allows migration without client upd
 {
   "relay": {
     "servers": [
-      { "url": "wss://relay.yepanywhere.com", "region": "us" }
+      { "url": "wss://relay.agentline.com", "region": "us" }
     ],
     "minVersion": "0.3.0",
     "maxVersion": null
@@ -62,15 +62,15 @@ Yepanywhere server fetches this on startup (already fetches version info).
 ### 2. Relay
 
 Lightweight WebSocket router. Responsibilities:
-- Accept yepanywhere server connections (authenticated via secret)
+- Accept agentline server connections (authenticated via secret)
 - Accept phone connections (SRP handshake, then encrypted traffic)
-- Route encrypted messages between phone and yepanywhere server
-- Track which yepanywhere server is connected to which relay (for multi-relay scaling)
+- Route encrypted messages between phone and agentline server
+- Track which agentline server is connected to which relay (for multi-relay scaling)
 
 **Does NOT:**
 - Read message contents (E2E encrypted)
 - Store user data
-- Handle SRP verification (user's yepanywhere server does this)
+- Handle SRP verification (user's agentline server does this)
 
 ### 3. Yepanywhere Server Changes
 
@@ -82,7 +82,7 @@ Lightweight WebSocket router. Responsibilities:
 ### 4. Client (Phone/Browser) Changes
 
 - **Connection abstraction** - Interface for Direct vs Relay modes
-- **SRP client** - Authenticate to yepanywhere server via relay
+- **SRP client** - Authenticate to agentline server via relay
 - **Encryption layer** - Encrypt/decrypt all traffic
 - **Relay protocol** - Multiplex HTTP requests, SSE events, uploads over single WebSocket
 
@@ -90,7 +90,7 @@ Lightweight WebSocket router. Responsibilities:
 
 ### Setup (one-time)
 
-1. User opens yepanywhere settings
+1. User opens agentline settings
 2. Enables "Remote Access"
 3. Enters username (e.g., `kgraehl`) - checked for availability
 4. Enters password
@@ -99,7 +99,7 @@ Lightweight WebSocket router. Responsibilities:
 
 ### Connecting from Phone
 
-1. User visits `yepanywhere.com/c/kgraehl`
+1. User visits `agentline.com/c/kgraehl`
 2. Enters password
 3. SRP handshake via relay (proves both sides know password)
 4. Session key established
@@ -173,11 +173,11 @@ class SecureConnection implements Connection {
   // All methods encrypt/decrypt using sessionKey
 }
 
-// Direct secure - WS straight to yepanywhere (LAN testing)
+// Direct secure - WS straight to agentline (LAN testing)
 new SecureConnection('wss://192.168.1.50:3400/ws', 'kgraehl')
 
 // Via relay - WS to relay (production remote access)
-new SecureConnection('wss://relay.yepanywhere.com/ws', 'kgraehl')
+new SecureConnection('wss://relay.agentline.com/ws', 'kgraehl')
 ```
 
 **Connection modes:**
@@ -185,8 +185,8 @@ new SecureConnection('wss://relay.yepanywhere.com/ws', 'kgraehl')
 | Mode | Transport | Auth | Use Case |
 |------|-----------|------|----------|
 | DirectConnection | fetch/WS/SSE | Cookie session | Default for localhost, network tab debugging |
-| WebSocketConnection | WS to yepanywhere | Cookie session | Dev setting to test WS protocol without encryption |
-| SecureConnection (direct) | WS to yepanywhere | SRP + encryption | LAN, test secure protocol without relay |
+| WebSocketConnection | WS to agentline | Cookie session | Dev setting to test WS protocol without encryption |
+| SecureConnection (direct) | WS to agentline | SRP + encryption | LAN, test secure protocol without relay |
 | SecureConnection (relay) | WS to relay | SRP + encryption | Production remote access |
 
 **Mode selection:**
@@ -205,12 +205,12 @@ For load balancing across multiple relays:
 3. **Routing** - Phone connects to correct relay
 
 ```
-Phone ──▶ /api/relay/locate/kgraehl ──▶ { "relay": "wss://relay2.yepanywhere.com" }
+Phone ──▶ /api/relay/locate/kgraehl ──▶ { "relay": "wss://relay2.agentline.com" }
       │
       └──▶ connect to relay2
 ```
 
-This allows rebalancing by telling yepanywhere servers to reconnect to different relays.
+This allows rebalancing by telling agentline servers to reconnect to different relays.
 
 ## Security Considerations
 
@@ -345,11 +345,11 @@ type RelayUploadError = {
 
 **Union types**
 ```typescript
-// Messages from phone/browser → yepanywhere
+// Messages from phone/browser → agentline
 type RemoteClientMessage = RelayRequest | RelaySubscribe | RelayUnsubscribe
                          | RelayUploadStart | RelayUploadChunk | RelayUploadEnd;
 
-// Messages from yepanywhere → phone/browser
+// Messages from agentline → phone/browser
 type YepMessage = RelayResponse | RelayEvent
                 | RelayUploadProgress | RelayUploadComplete | RelayUploadError;
 ```
@@ -365,7 +365,7 @@ Tasks:
 - [x] App works unchanged (just routed through interface)
 
 ### Phase 2b: WebSocket Endpoint + Request/Response
-- [x] `/ws` endpoint on yepanywhere server
+- [x] `/ws` endpoint on agentline server
 - [x] Basic message routing: receive request, call Hono handler, send response
 - [x] WebSocketConnection class implementing Connection interface
 - [x] WebSocketConnection.fetch() - send request, match response by ID
@@ -404,7 +404,7 @@ Tasks:
 
 ### Phase 3.5: Static Site for Direct Secure Testing
 
-Before adding relay complexity, validate the full secure connection flow using a GitHub Pages-hosted client that connects directly to the yepanywhere server.
+Before adding relay complexity, validate the full secure connection flow using a GitHub Pages-hosted client that connects directly to the agentline server.
 
 **Static Site Build** (in `packages/client/`)
 - [x] Add `remote.html` entrypoint and `remote-main.tsx`
@@ -427,7 +427,7 @@ Before adding relay complexity, validate the full secure connection flow using a
 - [x] Handle connection errors gracefully (shows error in login form)
 
 **Testing Scenarios**
-- [ ] Localhost dev server → localhost yepanywhere (primary development flow)
+- [ ] Localhost dev server → localhost agentline (primary development flow)
 - [ ] LAN testing once localhost works (e.g., `ws://192.168.1.50:3400/ws`)
 
 **Nice to Have**
@@ -567,7 +567,7 @@ export const test = base.extend<{
 
 ##### Step 4: Configure CORS for Remote Client Origin
 
-The yepanywhere server WebSocket endpoint must accept connections from the remote client origin.
+The agentline server WebSocket endpoint must accept connections from the remote client origin.
 
 **File: `packages/server/src/routes/ws.ts`** - Add origin validation:
 ```typescript
@@ -875,15 +875,15 @@ Client                           Server
 
 ### Phase 4: Relay
 - [ ] Separate relay package/service
-- [ ] Accept yepanywhere server connections (authenticated)
-- [ ] Accept phone connections (passthrough SRP to yepanywhere server)
+- [ ] Accept agentline server connections (authenticated)
+- [ ] Accept phone connections (passthrough SRP to agentline server)
 - [ ] Route encrypted messages (opaque blobs)
 - [ ] Connection tracking (username → socket mapping)
 - [ ] Reconnection handling
 
 ### Phase 5: Production
-- [ ] Relay client in yepanywhere server (connect to relay on startup)
-- [ ] Config endpoint on yepanywhere.com
+- [ ] Relay client in agentline server (connect to relay on startup)
+- [ ] Config endpoint on agentline.com
 - [ ] Deploy relay
 - [ ] Multi-relay support (if needed)
 - [ ] Monitoring/alerting
@@ -893,8 +893,8 @@ Client                           Server
 1. **Username format** - Allow dots/dashes? Min/max length?
 2. **Password requirements** - Minimum entropy? Passphrase suggestions?
 3. **Session persistence** - ~~How long to cache session key on phone?~~ → See Phase 3.7 (7 days idle, 30 days max)
-4. **Conflict handling** - When yepanywhere server moves to new machine, last-write-wins?
-5. **Offline indicator** - Show "yepanywhere offline" vs "wrong password"?
+4. **Conflict handling** - When agentline server moves to new machine, last-write-wins?
+5. **Offline indicator** - Show "agentline offline" vs "wrong password"?
 
 ## Alternatives Considered
 
@@ -906,7 +906,7 @@ Client                           Server
 ### FCM/Push for Wake-up
 - Pro: No persistent connection
 - Con: FCM is client-focused, not for desktop/server applications
-- Decision: Persistent WebSocket is fine for always-on yepanywhere servers
+- Decision: Persistent WebSocket is fine for always-on agentline servers
 
 ### Direct WebRTC
 - Pro: True P2P, no relay bandwidth

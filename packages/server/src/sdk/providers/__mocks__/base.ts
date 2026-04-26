@@ -7,7 +7,7 @@
  * - Configurable auth status
  */
 
-import type { ModelInfo } from "@yep-anywhere/shared";
+import type { ModelInfo } from "@agentline/shared";
 import { MessageQueue } from "../../messageQueue.js";
 import type { SDKMessage } from "../../types.js";
 import type {

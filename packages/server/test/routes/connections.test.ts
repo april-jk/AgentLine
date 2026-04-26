@@ -1,4 +1,4 @@
-import type { ConnectionsResponse } from "@yep-anywhere/shared";
+import type { ConnectionsResponse } from "@agentline/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PushService } from "../../src/push/index.js";
 import type { StoredSubscription } from "../../src/push/types.js";

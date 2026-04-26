@@ -91,6 +91,6 @@ export default defineConfig({
     // Allow connections from any host (for LAN testing)
     host: true,
     // Allow these hosts to connect
-    allowedHosts: ["localhost", ".yepanywhere.com"],
+    allowedHosts: ["localhost", ".agentline.com"],
   },
 });

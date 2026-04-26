@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content, viewport-fit=cover" />
-    <title>Yep Anywhere</title>
-    <link rel="icon" href="/favicon.ico" sizes="48x48" />
-    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <title>AgentLine</title>
+    <link rel="icon" href="/favicon.ico?v=agentline-image2" sizes="48x48" />
+    <link rel="icon" href="/icon-192.png?v=agentline-image2" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/icon-192.png?v=agentline-image2" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#1a1a2e" />
     <style>
@@ -21,7 +21,7 @@
     <script>
       // Apply theme before page renders to prevent flash
       (function() {
-        var stored = localStorage.getItem('yep-anywhere-theme');
+        var stored = localStorage.getItem('agentline-theme');
         var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'verydark');
         document.documentElement.setAttribute('data-theme', theme);
       })();

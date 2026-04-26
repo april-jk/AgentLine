@@ -1,7 +1,7 @@
 [package]
-name = "yep-anywhere-desktop"
+name = "agentline-desktop"
 version = "0.1.0"
-description = "Yep Anywhere Desktop App"
+description = "AgentLine Desktop App"
 authors = ["Kyle Graehl <kgraehl@gmail.com>"]
 edition = "2021"
 

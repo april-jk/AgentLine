@@ -30,7 +30,7 @@ Three components:
 
 Privacy-focused: relay server is a dumb pipe.
 
-## Comparison to yepanywhere
+## Comparison to agentline
 
 ### Happy has that we don't
 - Voice commands
@@ -55,7 +55,7 @@ Privacy-focused: relay server is a dumb pipe.
 
 ## Security Model
 
-Both Happy and yepanywhere use E2E encryption with a relay:
+Both Happy and agentline use E2E encryption with a relay:
 - CLI/server encrypts before sending to relay
 - Relay can't read content
 - Client decrypts locally

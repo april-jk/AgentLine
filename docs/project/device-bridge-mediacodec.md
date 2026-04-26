@@ -455,7 +455,7 @@ Key files in `server/src/main/java/com/genymobile/scrcpy/`:
 
 | Component | Path |
 |-----------|------|
-| APK source | `packages/android-device-server/app/src/main/java/com/yepanywhere/DeviceServer.java` |
+| APK source | `packages/android-device-server/app/src/main/java/com/agentline/DeviceServer.java` |
 | Go device abstraction | `packages/device-bridge/internal/device/android_device.go` |
 | Go frame source | `packages/device-bridge/internal/device/frame_source.go` |
 | Go encoder (emulator path) | `packages/device-bridge/internal/encoder/h264.go` |

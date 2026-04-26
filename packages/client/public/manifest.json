@@ -1,6 +1,6 @@
 {
-  "name": "Yep Anywhere",
-  "short_name": "Yep Anywhere",
+  "name": "AgentLine",
+  "short_name": "AgentLine",
   "description": "Access your AI agents from anywhere",
   "start_url": ".",
   "display": "standalone",

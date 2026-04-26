@@ -3,7 +3,7 @@ import type {
   AgentStatus as AgentStatusType,
   AppContentBlock,
   AppMessage,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 
 // Re-export shared types
 export type {
@@ -43,7 +43,7 @@ export type {
   AppSession,
   AgentStatus,
   InputRequest,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 
 // Re-export type guards
 export {
@@ -52,7 +52,7 @@ export {
   isSystemMessage,
   isSummaryMessage,
   isConversationMessage,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 
 /**
  * Content block for rendering - loosely typed to handle all possible fields.
@@ -127,7 +127,7 @@ export interface Message {
 import type {
   AppSessionSummary,
   SessionOwnership as SessionOwnershipType,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 
 export type SessionStatus = SessionOwnershipType;
 export type SessionSummary = AppSessionSummary;

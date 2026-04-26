@@ -4,7 +4,7 @@
  * Gemini uses a hybrid model where it executes its own tools internally,
  * but asks for permission on sensitive operations (file writes, shell commands).
  * This provider handles those permission requests by converting them to
- * yepanywhere's InputRequest format and routing through the Process approval flow.
+ * agentline's InputRequest format and routing through the Process approval flow.
  */
 
 import { exec, spawn } from "node:child_process";
@@ -20,7 +20,7 @@ import type {
   SessionUpdate,
   ToolKind,
 } from "@agentclientprotocol/sdk";
-import type { ModelInfo } from "@yep-anywhere/shared";
+import type { ModelInfo } from "@agentline/shared";
 import { getLogger } from "../../logging/logger.js";
 import { whichCommand } from "../cli-detection.js";
 const execAsync = promisify(exec);
@@ -444,7 +444,7 @@ export class GeminiACPProvider implements AgentProvider {
   }
 
   /**
-   * Handle ACP permission request by routing to yepanywhere's approval flow.
+   * Handle ACP permission request by routing to agentline's approval flow.
    *
    * Converts ACP's RequestPermissionRequest to our CanUseTool format,
    * waits for user approval, and converts the result back to ACP format.

@@ -28,7 +28,7 @@ export interface NotificationState {
 const CURRENT_VERSION = 1;
 
 export interface NotificationServiceOptions {
-  /** Directory to store notification state (defaults to ~/.yep-anywhere) */
+  /** Directory to store notification state (defaults to ~/.agentline) */
   dataDir?: string;
   /** EventBus for emitting seen events */
   eventBus?: EventBus;
@@ -47,7 +47,7 @@ export class NotificationService {
       options.dataDir ??
       path.join(
         process.env.HOME ?? process.env.USERPROFILE ?? ".",
-        ".yep-anywhere",
+        ".agentline",
       );
     this.filePath = path.join(this.dataDir, "notifications.json");
     this.eventBus = options.eventBus;

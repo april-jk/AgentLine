@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Staging server for yepanywhere.com
+ * Staging server for agentline.com
  *
  * Serves:
  * - / → Astro dev server (site/)

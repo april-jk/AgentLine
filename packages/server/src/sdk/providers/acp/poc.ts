@@ -71,7 +71,7 @@ async function main() {
     const initResult = await connection.initialize({
       protocolVersion: 1,
       clientInfo: {
-        name: "yepanywhere-poc",
+        name: "agentline-poc",
         version: "0.0.1",
       },
       clientCapabilities: {},

@@ -12,7 +12,7 @@ import * as path from "node:path";
 import type {
   BrowserProfileInfo,
   BrowserProfileOrigin,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 
 const CURRENT_VERSION = 1;
 
@@ -40,7 +40,7 @@ export interface OriginMetadata {
 }
 
 export interface BrowserProfileServiceOptions {
-  /** Directory to store profile data (defaults to ~/.yep-anywhere) */
+  /** Directory to store profile data (defaults to ~/.agentline) */
   dataDir?: string;
 }
 
@@ -57,7 +57,7 @@ export class BrowserProfileService {
       options.dataDir ??
       path.join(
         process.env.HOME ?? process.env.USERPROFILE ?? ".",
-        ".yep-anywhere",
+        ".agentline",
       );
     this.filePath = path.join(this.dataDir, "browser-profiles.json");
     this.state = { version: CURRENT_VERSION, profiles: {} };

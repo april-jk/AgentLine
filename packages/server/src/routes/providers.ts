@@ -1,4 +1,4 @@
-import type { ProviderInfo, ProviderName } from "@yep-anywhere/shared";
+import type { ProviderInfo, ProviderName } from "@agentline/shared";
 import { Hono } from "hono";
 import { getAllProviders } from "../sdk/providers/index.js";
 import type { ModelInfoService } from "../services/ModelInfoService.js";

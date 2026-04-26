@@ -110,9 +110,9 @@ The author's pitch: *"I kept thinking: 'I want to do quick Claude Code sessions 
 - Responsive layouts for desktop and mobile
 - "Open a bookmark and start" experience
 
-## Comparison with Yep Anywhere
+## Comparison with AgentLine
 
-| Aspect | ccsandbox | Yep Anywhere |
+| Aspect | ccsandbox | AgentLine |
 |--------|-----------|--------------|
 | **Core concept** | Sandbox Claude in devcontainers | Supervisor for existing Claude sessions |
 | **Isolation** | Docker containers per workspace | Runs on host (trusts user's machine) |
@@ -177,7 +177,7 @@ Syncs terminal to minimum size across all connected clients viewing same tab:
 // Resizes PTY to this minimum to ensure all clients can see full output
 ```
 
-## Potential Learnings for Yep Anywhere
+## Potential Learnings for AgentLine
 
 1. **Claude-specific features UI** - Their ClaudeChat components (TodoList, PermissionDialog, ThinkingBlock) show what users expect
 2. **Multi-tab within session** - Users may want multiple Claude conversations per project
@@ -193,11 +193,11 @@ ccsandbox targets users who:
 - Accept Docker overhead for isolation benefits
 - Need multi-device access but can manage their own networking
 
-Yep Anywhere targets users who:
+AgentLine targets users who:
 - Already use Claude Code on a dev machine
 - Want mobile supervision without changing workflow
 - Need push notifications for approvals
 - Want zero-friction remote access (Tailscale)
 - Don't want to containerize their development
 
-The products could be complementary - ccsandbox for "start fresh in sandbox" workflows, Yep Anywhere for "supervise existing work" workflows.
+The products could be complementary - ccsandbox for "start fresh in sandbox" workflows, AgentLine for "supervise existing work" workflows.

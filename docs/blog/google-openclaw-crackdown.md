@@ -2,7 +2,7 @@
 
 Google just [permanently banned](https://discuss.ai.google.dev/t/account-restricted-without-warning-google-ai-ultra-oauth-via-openclaw/122778) hundreds of Google AI Pro ($20/mo) and Ultra ($249/mo) subscribers for using OpenClaw. No warning. No appeal path. While still charging them.
 
-This is the same pattern we've been writing about since January. Here's what happened, why it matters, and why Yep Anywhere users aren't affected.
+This is the same pattern we've been writing about since January. Here's what happened, why it matters, and why AgentLine users aren't affected.
 
 ## What happened
 
@@ -44,9 +44,9 @@ This isn't new. We've been tracking this exact pattern:
 
 The direction is clear: **every major AI provider will eventually crack down on tools that extract subsidized OAuth tokens to power unauthorized backends.** The only question is how they handle it. Anthropic communicated. Google nuked.
 
-## Where Yep Anywhere stands
+## Where AgentLine stands
 
-Yep Anywhere only uses official CLIs. We spawn `claude` (via the Agent SDK), `codex`, and `gemini` — the same binaries the providers ship and support. The CLI handles its own authentication, its own API calls, its own billing. We provide a UI on top.
+AgentLine only uses official CLIs. We spawn `claude` (via the Agent SDK), `codex`, and `gemini` — the same binaries the providers ship and support. The CLI handles its own authentication, its own API calls, its own billing. We provide a UI on top.
 
 This is fundamentally different from what got people banned. OpenClaw extracted OAuth tokens from consumer subscriptions and routed them through its own agent harness to hit subsidized backends. We never touch tokens. We never hit a provider API. We never impersonate a first-party client.
 
@@ -64,7 +64,7 @@ Notably, Gemini CLI sessions (`~/.gemini/tmp/`) and Antigravity sessions (`~/.ge
 
 If you're building tools on top of AI providers, there are really only two sustainable paths:
 
-**Use official CLIs and SDKs.** The provider ships a tool. You use it. Authentication, billing, and rate limits are the provider's problem. Your tool works today and keeps working when policies change, because you were never exploiting anything. This is what Yep Anywhere does.
+**Use official CLIs and SDKs.** The provider ships a tool. You use it. Authentication, billing, and rate limits are the provider's problem. Your tool works today and keeps working when policies change, because you were never exploiting anything. This is what AgentLine does.
 
 **Use the API with your own key.** Pay per-token at the published rate. More expensive than consumer subscriptions, but it's the sanctioned programmatic access path.
 

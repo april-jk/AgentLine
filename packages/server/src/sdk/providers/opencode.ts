@@ -16,14 +16,14 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type {
   ModelInfo,
   OpenCodeMessagePartUpdatedEvent,
   OpenCodePart,
   OpenCodeSSEEvent,
-} from "@yep-anywhere/shared";
-import { parseOpenCodeSSEEvent } from "@yep-anywhere/shared";
+} from "@agentline/shared";
+import { parseOpenCodeSSEEvent } from "@agentline/shared";
+import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { getLogger } from "../../logging/logger.js";
 import { whichCommand } from "../cli-detection.js";
 import { MessageQueue } from "../messageQueue.js";
@@ -266,7 +266,7 @@ export class OpenCodeProvider implements AgentProvider {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title: "Yep Anywhere Session" }),
+        body: JSON.stringify({ title: "AgentLine Session" }),
       });
 
       if (!sessionResponse.ok) {

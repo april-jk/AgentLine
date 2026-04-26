@@ -1,9 +1,9 @@
 ; Kill running processes before install/uninstall to prevent conflicts
 
 !macro _KillYepProcesses
-  nsis_tauri_utils::FindProcess "Yep Anywhere.exe" $R0
+  nsis_tauri_utils::FindProcess "AgentLine.exe" $R0
   ${If} $R0 = 0
-    nsis_tauri_utils::KillProcess "Yep Anywhere.exe" $R0
+    nsis_tauri_utils::KillProcess "AgentLine.exe" $R0
   ${EndIf}
 
   nsis_tauri_utils::FindProcess "bun.exe" $R0

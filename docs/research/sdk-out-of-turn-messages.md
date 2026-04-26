@@ -16,7 +16,7 @@ When users send messages while Claude is mid-turn (e.g., waiting on a tool execu
 
 ### Test Session
 - Session ID: `bfeb5d00-385e-4ae8-bce8-6bb25792c5ae`
-- Project: yepanywhere
+- Project: agentline
 
 ### Messages Sent During Tool Execution
 - "Ok I'm speaking out of turn"

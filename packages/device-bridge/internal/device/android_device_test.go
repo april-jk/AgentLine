@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kzahel/yepanywhere/device-bridge/internal/conn"
+	"github.com/kzahel/agentline/device-bridge/internal/conn"
 )
 
 func TestAndroidDeviceWithMockTCPServer(t *testing.T) {

@@ -3,7 +3,7 @@ import type {
   UploadErrorMessage,
   UploadProgressMessage,
   UploadedFile,
-} from "@yep-anywhere/shared";
+} from "@agentline/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   UploadError,

@@ -1,4 +1,4 @@
-import type { GitStatusInfo } from "@yep-anywhere/shared";
+import type { GitStatusInfo } from "@agentline/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 

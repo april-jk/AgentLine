@@ -1,6 +1,6 @@
 # Website Changelog
 
-All notable changes to the Yep Anywhere website and remote relay client will be documented in this file.
+All notable changes to the AgentLine website and remote relay client will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
@@ -207,7 +207,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [site-v1.5.4] - 2026-02-24
 
 ### Added
-- Blog post: Claude Code Remote Control vs Yep Anywhere
+- Blog post: Claude Code Remote Control vs AgentLine
 
 ## [site-v1.5.3] - 2026-02-23
 
@@ -306,7 +306,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [site-v1.2.0] - 2026-02-16
 
 ### Added
-- Blog post: OpenClaw and Yep Anywhere — Two Paths to the Same Future
+- Blog post: OpenClaw and AgentLine — Two Paths to the Same Future
 - News entry linking to the blog post
 
 ### Fixed

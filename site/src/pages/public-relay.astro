@@ -3,18 +3,18 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 ---
 
 <ArticleLayout
-  title="Introducing Public Relay: Supervise Claude Code from Anywhere - Yep Anywhere"
-  description="Yep Anywhere now has a free public relay. Access your Claude Code agents from your phone with end-to-end encryption. No accounts, no setup, just enable and go."
+  title="Introducing Public Relay: Supervise Claude Code from Anywhere - AgentLine"
+  description="AgentLine now has a free public relay. Access your Claude Code agents from your phone with end-to-end encryption. No accounts, no setup, just enable and go."
   date="January 21, 2026"
   publishedTime="2026-01-21"
 >
-  <p>We're excited to announce that Yep Anywhere now has a <strong>free public relay</strong> at <code>relay.yepanywhere.com</code>. This makes it easier than ever to access your Claude Code agents from your phone, tablet, or any device&mdash;no Tailscale, no port forwarding, no VPN setup required.</p>
+  <p>We're excited to announce that AgentLine now has a <strong>free public relay</strong> at <code>relay.agentline.com</code>. This makes it easier than ever to access your Claude Code agents from your phone, tablet, or any device&mdash;no Tailscale, no port forwarding, no VPN setup required.</p>
 
-  <p>Just install Yep Anywhere, enable the relay in Settings, and you're connected from anywhere in the world. Already set up? <a href="https://yepanywhere.com/remote"><strong>Log in at yepanywhere.com/remote</strong></a>.</p>
+  <p>Just install AgentLine, enable the relay in Settings, and you're connected from anywhere in the world. Already set up? <a href="https://agentline.com/remote"><strong>Log in at agentline.com/remote</strong></a>.</p>
 
-  <h2>What is Yep Anywhere?</h2>
+  <h2>What is AgentLine?</h2>
 
-  <p>Yep Anywhere is a <strong>mobile-first web interface for Claude Code</strong>. Think of it as the VS Code Claude extension, but designed for phones and multi-session workflows.</p>
+  <p>AgentLine is a <strong>mobile-first web interface for Claude Code</strong>. Think of it as the VS Code Claude extension, but designed for phones and multi-session workflows.</p>
 
   <p>The core idea: Claude runs on your dev machine (where your code lives), but you can supervise it from anywhere. Walk away from your desk and your agent keeps working. Get a push notification when it needs approval. Respond from your lock screen. Check in between meetings.</p>
 
@@ -52,12 +52,12 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   <p>Previously, you needed Tailscale, ngrok, port forwarding, or a VPN. Now you just enable the relay:</p>
 
   <div class="code-block">
-    <code>npm i -g yepanywhere</code><br>
-    <code>yepanywhere</code><br>
+    <code>npm i -g agentline</code><br>
+    <code>agentline</code><br>
     <code># Open Settings &rarr; Enable "Public Relay"</code>
   </div>
 
-  <p>Your server connects to <code>relay.yepanywhere.com</code> and gets a unique URL. Open that URL on your phone and you're in.</p>
+  <p>Your server connects to <code>relay.agentline.com</code> and gets a unique URL. Open that URL on your phone and you're in.</p>
 
   <div class="feature-highlight">
     <h4>End-to-End Encrypted</h4>
@@ -68,7 +68,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <h2>Full Feature Set</h2>
 
-  <p>Beyond remote access, Yep Anywhere gives you:</p>
+  <p>Beyond remote access, AgentLine gives you:</p>
 
   <ul>
     <li><strong>Real-time streaming</strong> &mdash; Watch Claude think and work, just like in the terminal</li>
@@ -93,20 +93,20 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <div class="code-block">
     <code># Install from npm</code><br>
-    <code>npm i -g yepanywhere</code><br><br>
+    <code>npm i -g agentline</code><br><br>
     <code># Start the server</code><br>
-    <code>yepanywhere</code><br><br>
+    <code>agentline</code><br><br>
     <code># Open http://localhost:3400</code><br>
     <code># Go to Settings &rarr; Enable "Public Relay"</code><br>
     <code># Set a username and password for remote access</code>
   </div>
 
-  <p>Once configured, go to <a href="https://yepanywhere.com/remote"><strong>yepanywhere.com/remote</strong></a> on your phone or any device. Enter your username and password, and you're connected.</p>
+  <p>Once configured, go to <a href="https://agentline.com/remote"><strong>agentline.com/remote</strong></a> on your phone or any device. Enter your username and password, and you're connected.</p>
 
   <div class="cta-section" style="margin: 24px 0;">
     <h3>Ready to Connect?</h3>
     <p>If you've already set up your server, log in now:</p>
-    <a href="https://yepanywhere.com/remote" class="btn btn-primary">Go to Remote Login</a>
+    <a href="https://agentline.com/remote" class="btn btn-primary">Go to Remote Login</a>
   </div>
 
   <h3>Requirements</h3>
@@ -123,7 +123,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     <li><strong>End-to-end encryption</strong> &mdash; The relay can't read your data</li>
     <li><strong>No accounts</strong> &mdash; No email, no signup, no tracking</li>
     <li><strong>Runs locally</strong> &mdash; All your data stays on your machine</li>
-    <li><strong>Open source</strong> &mdash; <a href="https://github.com/kzahel/yepanywhere">100% MIT licensed</a>, audit it yourself</li>
+    <li><strong>Open source</strong> &mdash; <a href="https://github.com/kzahel/agentline">100% MIT licensed</a>, audit it yourself</li>
     <li><strong>Self-host option</strong> &mdash; Run your own relay if you prefer</li>
   </ul>
 
@@ -131,7 +131,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <h2>What's Next</h2>
 
-  <p>We're actively developing Yep Anywhere. Some things we're working on:</p>
+  <p>We're actively developing AgentLine. Some things we're working on:</p>
   <ul>
     <li>Remote executors &mdash; run Claude on VMs or containers via SSH</li>
     <li>Better notification controls</li>
@@ -139,11 +139,11 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     <li>More agent providers (Codex, local models)</li>
   </ul>
 
-  <p>If you have feature requests or find bugs, <a href="https://github.com/kzahel/yepanywhere/issues">open an issue on GitHub</a>.</p>
+  <p>If you have feature requests or find bugs, <a href="https://github.com/kzahel/agentline/issues">open an issue on GitHub</a>.</p>
 
   <div class="cta-section">
     <h3>Try It Now</h3>
-    <p>Install Yep Anywhere and enable the public relay. Your dev machine in your pocket.</p>
+    <p>Install AgentLine and enable the public relay. Your dev machine in your pocket.</p>
     <a href="/#install" class="btn btn-primary">Get Started</a>
   </div>
 </ArticleLayout>

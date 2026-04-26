@@ -10,7 +10,7 @@
  * All routes are prefixed with /debug and live on the maintenance server port.
  */
 import type * as http from "node:http";
-import type { UrlProjectId } from "@yep-anywhere/shared";
+import type { UrlProjectId } from "@agentline/shared";
 import type { SDKMessage } from "../sdk/types.js";
 import { normalizeSession } from "../sessions/normalization.js";
 import type { ClaudeSessionReader } from "../sessions/reader.js";
