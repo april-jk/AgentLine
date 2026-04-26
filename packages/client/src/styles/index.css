@@ -5644,18 +5644,6 @@ a.sidebar-nav-item {
   line-height: 1.5;
 }
 
-.voice-spoken {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.voice-next-question {
-  padding: var(--space-2);
-  border-left: 3px solid var(--app-agent-teal);
-  background: var(--bg-code);
-  color: var(--text-primary);
-}
-
 .voice-worker-block {
   margin-bottom: var(--space-3);
 }
@@ -5709,48 +5697,65 @@ a.sidebar-nav-item {
   background: var(--bg-hover);
 }
 
-.voice-list,
-.voice-transcript {
+.voice-list {
   margin: 0;
   padding-left: 1.25rem;
 }
 
-.voice-list li,
-.voice-transcript li {
+.voice-list li {
   margin-bottom: var(--space-1);
-}
-
-.voice-transcript span {
-  display: inline-block;
-  min-width: 56px;
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.voice-transcript p {
-  display: inline;
-}
-
-.voice-transcript-details {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border-color);
-}
-
-.voice-transcript-details summary {
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.voice-transcript-details .voice-transcript {
-  margin-top: var(--space-2);
 }
 
 .voice-muted {
   color: var(--text-muted);
+}
+
+.voice-bubbles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.voice-bubble-row {
+  display: flex;
+  flex-direction: column;
+  max-width: min(680px, 88%);
+  gap: 4px;
+}
+
+.voice-bubble-user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.voice-bubble-talker {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.voice-bubble-meta {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.voice-bubble {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.voice-bubble-user .voice-bubble {
+  background: var(--app-agent-teal);
+  border-color: var(--app-agent-teal);
+  color: white;
+}
+
+.voice-bubble-talker .voice-bubble {
+  background: var(--bg-code);
+  color: var(--text-primary);
 }
 
 @media (max-width: 760px) {

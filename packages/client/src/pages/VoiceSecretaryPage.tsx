@@ -42,6 +42,29 @@ function TextList({ items }: { items: string[] | undefined }) {
   );
 }
 
+function ConversationBubbles({ result }: { result: VoiceSecretaryResult }) {
+  const visibleTurns = result.callSession.transcript.filter(
+    (turn) => turn.speaker === "user" || turn.speaker === "talker",
+  );
+
+  return (
+    <div className="voice-bubbles" aria-label="Talker conversation">
+      {visibleTurns.map((turn) => {
+        const isUser = turn.speaker === "user";
+        return (
+          <div
+            key={turn.id}
+            className={`voice-bubble-row ${isUser ? "voice-bubble-user" : "voice-bubble-talker"}`}
+          >
+            <div className="voice-bubble-meta">{isUser ? "You" : "Talker"}</div>
+            <div className="voice-bubble">{turn.text}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function VoiceSecretaryResultView({
   result,
 }: { result: VoiceSecretaryResult }) {
@@ -64,10 +87,7 @@ function VoiceSecretaryResultView({
       </div>
 
       <ResultSection title="Talker">
-        <p className="voice-spoken">{result.finalBrief.spokenSummary}</p>
-        <div className="voice-next-question">
-          {result.finalBrief.suggestedNextUtterance}
-        </div>
+        <ConversationBubbles result={result} />
       </ResultSection>
 
       <ResultSection title="Worker">
@@ -123,18 +143,6 @@ function VoiceSecretaryResultView({
             </details>
           ))}
         </div>
-
-        <details className="voice-transcript-details">
-          <summary>Call transcript</summary>
-          <ol className="voice-transcript">
-            {result.callSession.transcript.map((turn) => (
-              <li key={turn.id}>
-                <span>{turn.speaker}</span>
-                <p>{turn.text}</p>
-              </li>
-            ))}
-          </ol>
-        </details>
       </ResultSection>
     </div>
   );
