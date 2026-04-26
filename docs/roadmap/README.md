@@ -86,6 +86,17 @@ Finish experimental provider support:
 
 ---
 
+### 8. Voice Secretary
+Add a voice-native secretary layer that uses a low-latency Talker for calls, a
+read-only ProjectPlanner for project understanding, and formal AgentLine
+provider sessions for all write-capable execution.
+
+See [Voice Secretary](../features/voice-secretary/README.md).
+
+**Value:** Turns AgentLine into a natural phone/voice control surface for AI agents.
+
+---
+
 ## Not Planned
 
 Features competitors have that we're skipping:
@@ -93,10 +104,9 @@ Features competitors have that we're skipping:
 | Feature | Why Not |
 |---------|---------|
 | **Terminal page** | Agent runs commands; redundant |
-| **Voice commands** | Niche; phone keyboard is fine for supervision |
 | **Cloud execution** | Requires infrastructure; users can self-host |
 | **Compare agent outputs** | Multi-agent orchestration is complex; defer |
 
 ## Last Updated
 
-2026-02-03
+2026-04-26
