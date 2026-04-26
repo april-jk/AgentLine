@@ -669,7 +669,13 @@ export function createApp(options: AppOptions): AppResult {
   );
 
   // Voice Secretary simulated call loop
-  app.route("/api/voice-secretary", createVoiceSecretaryRoutes());
+  app.route(
+    "/api/voice-secretary",
+    createVoiceSecretaryRoutes({
+      supervisor,
+      sessionMetadataService: options.sessionMetadataService,
+    }),
+  );
 
   // Server settings routes
   if (options.serverSettingsService) {

@@ -64,6 +64,19 @@ curl -X POST http://localhost:3400/api/voice-secretary/simulate \
 The fixture is intentionally text-only. It proves the internal state machine
 before Volcengine ASR/TTS or real ExecutorAgentSession creation is added.
 
+To create a real AgentLine provider session from the same task packet, pass
+`executorMode: "agentline"`:
+
+```bash
+curl -X POST http://localhost:3400/api/voice-secretary/simulate \
+  -H 'content-type: application/json' \
+  -H 'x-agentline-request: true' \
+  -d '{"projectPath":"/Users/watson/codingProj/AgentLine","utterance":"Prepare the next implementation step.","executorMode":"agentline"}'
+```
+
+Read-only planner tasks use permission mode `plan` so Codex receives a
+read-only sandboxed execution packet.
+
 ## Milestone 3: Web Voice Demo
 
 Deliverables:

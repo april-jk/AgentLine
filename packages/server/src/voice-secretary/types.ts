@@ -107,7 +107,13 @@ export interface ExecutorLink {
 export interface ExecutorReport {
   executionTaskId: string;
   providerSessionId: string;
-  status: "completed" | "failed" | "needs_user" | "cancelled";
+  status:
+    | "queued"
+    | "started"
+    | "completed"
+    | "failed"
+    | "needs_user"
+    | "cancelled";
   summary: string;
   changedFiles?: string[];
   verification?: string[];

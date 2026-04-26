@@ -1,4 +1,8 @@
 export {
+  AgentLineExecutorAgentAdapter,
+  type AgentLineExecutorAgentAdapterOptions,
+} from "./agentline-executor.js";
+export {
   FakeExecutorAgentAdapter,
   ProjectPlanner,
   SimulatedCallLoop,
