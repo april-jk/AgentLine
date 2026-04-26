@@ -1,0 +1,23 @@
+{
+  "name": "agentline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A phone-native control surface for AI agents.",
+  "type": "module",
+  "scripts": {
+    "start": "node --experimental-strip-types src/index.ts",
+    "check": "node --check src/index.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "ai-agent",
+    "voice-agent",
+    "telephony",
+    "codex",
+    "claude-code"
+  ],
+  "license": "MIT"
+}
+
