@@ -374,6 +374,13 @@ export function Sidebar({
               onClick={onNavigate}
               basePath={basePath}
             />
+            <SidebarNavItem
+              to="/voice-secretary"
+              icon={SidebarIcons.voiceSecretary}
+              label="Voice Secretary"
+              onClick={onNavigate}
+              basePath={basePath}
+            />
             {capabilities.includes("git-status") && (
               <SidebarNavItem
                 to="/git-status"

@@ -22,6 +22,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { NewSessionPage } from "./pages/NewSessionPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { SessionPage } from "./pages/SessionPage";
+import { VoiceSecretaryPage } from "./pages/VoiceSecretaryPage";
 import { SettingsLayout } from "./pages/settings";
 import "./styles/index.css";
 
@@ -57,6 +58,7 @@ createRoot(rootElement).render(
               <Route path="/sessions" element={<GlobalSessionsPage />} />
               <Route path="/agents" element={<AgentsPage />} />
               <Route path="/inbox" element={<InboxPage />} />
+              <Route path="/voice-secretary" element={<VoiceSecretaryPage />} />
               <Route path="/settings" element={<SettingsLayout />} />
               <Route path="/settings/:category" element={<SettingsLayout />} />
               {/* Project-scoped pages */}

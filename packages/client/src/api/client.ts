@@ -124,6 +124,100 @@ export interface SessionOptions {
   executor?: string;
 }
 
+export interface VoiceSecretaryTranscriptTurn {
+  id: string;
+  at: string;
+  speaker: "user" | "talker" | "system";
+  text: string;
+  source: "asr" | "tts" | "typed" | "system";
+  confidence?: number;
+}
+
+export interface VoiceSecretaryCallSession {
+  id: string;
+  channel: "web-voice" | "phone" | "telegram" | "feishu" | "simulated";
+  status:
+    | "active"
+    | "waiting_for_planner"
+    | "waiting_for_executor"
+    | "waiting_for_user"
+    | "callback_scheduled"
+    | "completed"
+    | "failed";
+  startedAt: string;
+  endedAt?: string;
+  projectPath?: string;
+  transcript: VoiceSecretaryTranscriptTurn[];
+  plannerRuns: Array<{
+    id: string;
+    requestId: string;
+    status: "completed" | "failed";
+  }>;
+  callbackRequests: Array<{
+    id: string;
+    reason: string;
+    priority: "normal" | "urgent";
+    script: string;
+  }>;
+}
+
+export interface VoiceSecretaryExecutionTask {
+  id: string;
+  projectPath: string;
+  provider: ProviderName;
+  mode: "read_only" | "implementation" | "test" | "review";
+  prompt: string;
+  acceptanceCriteria: string[];
+  riskNotes: string[];
+  requiredVerification: string[];
+}
+
+export interface VoiceSecretaryResult {
+  callSession: VoiceSecretaryCallSession;
+  plannerRequest: {
+    id: string;
+    userIntent: string;
+    knownConstraints: string[];
+    missingInformation: string[];
+    requestedOutcome: string;
+  };
+  plannerResult: {
+    id: string;
+    projectSummary: string;
+    relevantInstructions: Array<{ path: string; summary: string }>;
+    recommendedAction: string;
+    executionTask?: VoiceSecretaryExecutionTask;
+    talkerBrief: {
+      spokenSummary: string;
+      suggestedNextUtterance: string;
+      factsToAvoidOverstating: string[];
+      questionsToAsk: string[];
+    };
+  };
+  executorReport: {
+    executionTaskId: string;
+    providerSessionId: string;
+    status:
+      | "queued"
+      | "started"
+      | "completed"
+      | "failed"
+      | "needs_user"
+      | "cancelled";
+    summary: string;
+    changedFiles?: string[];
+    verification?: string[];
+    questionsForUser?: string[];
+    links?: Array<{ label: string; href: string }>;
+  };
+  finalBrief: {
+    spokenSummary: string;
+    suggestedNextUtterance: string;
+    factsToAvoidOverstating: string[];
+    questionsToAsk: string[];
+  };
+}
+
 export type { UploadedFile } from "@agentline/shared";
 
 const API_BASE = "/api";
@@ -367,6 +461,16 @@ export const api = {
     fetchJSON<{ project: Project }>("/projects", {
       method: "POST",
       body: JSON.stringify({ path }),
+    }),
+
+  simulateVoiceSecretary: (request: {
+    projectPath: string;
+    utterance: string;
+    executorMode?: "fake" | "agentline";
+  }) =>
+    fetchJSON<{ result: VoiceSecretaryResult }>("/voice-secretary/simulate", {
+      method: "POST",
+      body: JSON.stringify(request),
     }),
 
   getProject: (projectId: string) =>

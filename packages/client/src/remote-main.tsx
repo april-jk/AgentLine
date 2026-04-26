@@ -45,6 +45,7 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 import { RelayConnectionGate } from "./pages/RelayConnectionGate";
 import { RelayLoginPage } from "./pages/RelayLoginPage";
 import { SessionPage } from "./pages/SessionPage";
+import { VoiceSecretaryPage } from "./pages/VoiceSecretaryPage";
 import { SettingsLayout } from "./pages/settings";
 import "./styles/index.css";
 
@@ -72,6 +73,7 @@ const APP_ROUTES = (
       <Route path="sessions" element={<GlobalSessionsPage />} />
       <Route path="agents" element={<AgentsPage />} />
       <Route path="inbox" element={<InboxPage />} />
+      <Route path="voice-secretary" element={<VoiceSecretaryPage />} />
       <Route path="git-status" element={<GitStatusPage />} />
       <Route path="devices" element={<EmulatorPage />} />
       <Route path="devices/:deviceId" element={<EmulatorPage />} />
