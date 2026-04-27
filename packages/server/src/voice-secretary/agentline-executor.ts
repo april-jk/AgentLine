@@ -1,5 +1,6 @@
 import type { ProviderName } from "@agentline/shared";
 import type { SessionMetadataService } from "../metadata/index.js";
+import { encodeProjectId } from "../projects/paths.js";
 import type { PermissionMode, UserMessage } from "../sdk/types.js";
 import type { Process } from "../supervisor/Process.js";
 import type {
@@ -57,12 +58,20 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
     const provider = providerForTask(task);
     const userMessage: UserMessage = { text: task.prompt };
 
-    const result = await this.options.supervisor.startSession(
-      task.projectPath,
-      userMessage,
-      permissionModeForTask(task),
-      { providerName: provider },
-    );
+    const result = task.conversationSessionId
+      ? await this.options.supervisor.resumeSession(
+          task.conversationSessionId,
+          task.projectPath,
+          userMessage,
+          permissionModeForTask(task),
+          { providerName: provider },
+        )
+      : await this.options.supervisor.startSession(
+          task.projectPath,
+          userMessage,
+          permissionModeForTask(task),
+          { providerName: provider },
+        );
 
     if (isQueueFullResponse(result)) {
       const report = {
@@ -104,33 +113,41 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
 
     if (this.options.sessionMetadataService) {
       await this.options.sessionMetadataService.setProvider(
-        result.sessionId,
+        task.conversationSessionId ?? result.sessionId,
         provider,
       );
     }
 
+    const providerSessionId = task.conversationSessionId ?? result.sessionId;
+    const projectId = task.conversationSessionId
+      ? encodeProjectId(task.projectPath)
+      : result.projectId;
+
     const report = {
       executionTaskId: task.id,
-      providerSessionId: result.sessionId,
+      providerSessionId,
       status: "started" as const,
-      summary:
-        "正式 AgentLine 执行会话已创建，任务包已经交给 provider 会话；后续代码修改和审计记录都在该会话内发生。",
+      summary: task.conversationSessionId
+        ? "已把任务包交给用户选择的既有对话；该对话现在作为 Worker 上下文继续处理本次电话需求。"
+        : "正式 AgentLine 执行会话已创建，任务包已经交给 provider 会话；后续代码修改和审计记录都在该会话内发生。",
       changedFiles: [],
       verification: [
-        `Created provider session ${result.sessionId}.`,
+        task.conversationSessionId
+          ? `Resumed provider session ${providerSessionId}.`
+          : `Created provider session ${providerSessionId}.`,
         `Permission mode: ${result.permissionMode}.`,
       ],
       links: [
         {
           label: "AgentLine session",
-          href: `/projects/${result.projectId}/sessions/${result.sessionId}`,
+          href: `/projects/${projectId}/sessions/${providerSessionId}`,
         },
       ],
     };
-    this.reports.set(result.sessionId, report);
+    this.reports.set(providerSessionId, report);
 
     return {
-      id: result.sessionId,
+      id: providerSessionId,
       provider: task.provider,
       taskId: task.id,
       processId: result.id,

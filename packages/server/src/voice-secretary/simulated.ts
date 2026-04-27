@@ -109,9 +109,13 @@ async function listTopLevelEntries(projectPath: string): Promise<string[]> {
 export class VoiceSecretaryTalker {
   createOpeningTurn(input: SimulatedCallInput): TranscriptTurn {
     const projectName = basename(input.projectPath);
+    const target =
+      input.conversationSessionId !== undefined
+        ? `对话 ${input.conversationSessionId}`
+        : `${projectName} 项目`;
     return createTranscriptTurn(
       "talker",
-      `收到。我先快速记录你的需求，然后只读检查 ${projectName} 的项目说明，稍后给你一个简短结论。`,
+      `收到。我先快速记录你的需求，然后以 ${target} 作为 Worker 上下文，稍后给你一个简短结论。`,
       "tts",
     );
   }
@@ -124,11 +128,15 @@ export class VoiceSecretaryTalker {
       id: randomUUID(),
       callSessionId: callSession.id,
       projectPath: input.projectPath,
+      conversationSessionId: input.conversationSessionId,
       userIntent: input.utterance,
       conversationSummary: `用户通过模拟通话提出需求：${input.utterance}`,
       knownConstraints: [
         "Talker 只负责低延迟对话，不读取完整项目或修改文件。",
         "ProjectPlanner 只能做只读项目理解和任务下发。",
+        input.conversationSessionId
+          ? "Worker 必须复用用户选择的既有对话上下文。"
+          : "缺省时 Worker 挂载到项目并创建新的正式执行会话。",
         "真实修改必须交给 ExecutorAgentSession。",
       ],
       missingInformation: [],
@@ -167,6 +175,9 @@ export class ProjectPlanner {
       topLevelEntries.length > 0
         ? `项目 ${basename(request.projectPath)} 顶层包含：${topLevelEntries.join(", ")}。`
         : `项目 ${basename(request.projectPath)} 可访问，但未读取到顶层目录列表。`;
+    const contextSummary = request.conversationSessionId
+      ? `${projectSummary} 本次电话将复用对话 ${request.conversationSessionId} 作为 Worker 上下文。`
+      : `${projectSummary} 本次电话缺省挂载到项目，并由 Worker 创建新的执行上下文。`;
 
     const executionTask = this.createExecutionTask(request, instructions);
     const callbackDecision: CallbackDecision = {
@@ -180,7 +191,7 @@ export class ProjectPlanner {
     return {
       id: randomUUID(),
       requestId: request.id,
-      projectSummary,
+      projectSummary: contextSummary,
       relevantInstructions: instructions,
       recommendedAction: "create_executor_session",
       talkerBrief: {
@@ -217,11 +228,15 @@ export class ProjectPlanner {
     return {
       id: randomUUID(),
       projectPath: request.projectPath,
+      conversationSessionId: request.conversationSessionId,
       provider: "codex",
       mode: "read_only",
       prompt: [
         "You are the formal AgentLine executor session for a voice-originated request.",
         "Do not assume the Talker or ProjectPlanner modified code.",
+        request.conversationSessionId
+          ? "You are continuing the user-selected existing conversation as the Worker context."
+          : "No existing conversation was selected, so this Worker context is project-scoped.",
         "",
         `User intent: ${request.userIntent}`,
         "",
@@ -232,6 +247,9 @@ export class ProjectPlanner {
       ].join("\n"),
       acceptanceCriteria: [
         "Executor session receives a structured task packet.",
+        request.conversationSessionId
+          ? "The selected existing conversation receives the Worker handoff."
+          : "A new project-scoped executor session receives the Worker handoff.",
         "No file modifications are made by ProjectPlanner.",
         "Result can be summarized back to the caller.",
       ],
@@ -304,6 +322,7 @@ export class SimulatedCallLoop {
       status: "active",
       startedAt,
       projectPath: input.projectPath,
+      conversationSessionId: input.conversationSessionId,
       transcript: [
         createTranscriptTurn(
           "user",

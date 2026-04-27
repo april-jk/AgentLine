@@ -125,6 +125,53 @@ describe("Voice Secretary routes", () => {
     );
   });
 
+  it("uses a selected conversation as the Worker context", async () => {
+    const resumeSession = vi.fn(async () => ({
+      id: "process-1",
+      sessionId: "existing-codex-session",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+    const setProvider = vi.fn(async () => undefined);
+    const routes = createVoiceSecretaryRoutes({
+      supervisor: { resumeSession } as unknown as Supervisor,
+      sessionMetadataService: { setProvider } as never,
+    });
+
+    const response = await routes.request("/calls", {
+      method: "POST",
+      body: JSON.stringify({
+        projectPath,
+        conversationSessionId: "existing-codex-session",
+        utterance: "Use this conversation to prepare the next handoff.",
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.result.callSession.conversationSessionId).toBe(
+      "existing-codex-session",
+    );
+    expect(json.result.executorReport).toMatchObject({
+      providerSessionId: "existing-codex-session",
+      status: "started",
+    });
+    expect(resumeSession).toHaveBeenCalledWith(
+      "existing-codex-session",
+      projectPath,
+      expect.objectContaining({
+        text: expect.stringContaining(
+          "continuing the user-selected existing conversation",
+        ),
+      }),
+      "plan",
+      { providerName: "codex" },
+    );
+    expect(setProvider).toHaveBeenCalledWith("existing-codex-session", "codex");
+  });
+
   it("rejects AgentLine executor mode when no supervisor is available", async () => {
     const routes = createVoiceSecretaryRoutes();
     const response = await routes.request("/simulate", {

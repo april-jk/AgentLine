@@ -5,6 +5,7 @@ import { PageHeader } from "../components/PageHeader";
 import { useProjects } from "../hooks/useProjects";
 import { useRemoteBasePath } from "../hooks/useRemoteBasePath";
 import { useNavigationLayout } from "../layouts";
+import type { SessionSummary } from "../types";
 
 function StatusBadge({ status }: { status: string }) {
   return (
@@ -69,6 +70,9 @@ function VoiceSecretaryResultView({
   const basePath = useRemoteBasePath();
   const sessionLink = result.executorReport.links?.[0]?.href;
   const task = result.plannerResult.executionTask;
+  const contextLabel = result.callSession.conversationSessionId
+    ? "Conversation"
+    : "Project";
 
   return (
     <div className="voice-results">
@@ -78,7 +82,11 @@ function VoiceSecretaryResultView({
           <strong>{result.callSession.id}</strong>
         </div>
         <div>
-          <span className="voice-kicker">Worker</span>
+          <span className="voice-kicker">Worker context</span>
+          <strong>{contextLabel}</strong>
+        </div>
+        <div>
+          <span className="voice-kicker">Worker action</span>
           <strong>{result.plannerResult.recommendedAction}</strong>
         </div>
         <StatusBadge status={result.callSession.status} />
@@ -114,7 +122,11 @@ function VoiceSecretaryResultView({
           <p>{result.executorReport.summary}</p>
           <div className="voice-grid voice-grid-compact">
             <div>
-              <span className="voice-kicker">Session</span>
+              <span className="voice-kicker">
+                {result.callSession.conversationSessionId
+                  ? "Selected conversation"
+                  : "Session"}
+              </span>
               <strong>{result.executorReport.providerSessionId}</strong>
             </div>
             <div>
@@ -151,6 +163,10 @@ export function VoiceSecretaryPage() {
     useNavigationLayout();
   const { projects } = useProjects();
   const [projectPath, setProjectPath] = useState("");
+  const [conversationSessionId, setConversationSessionId] = useState("");
+  const [projectSessions, setProjectSessions] = useState<SessionSummary[]>([]);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [utterance, setUtterance] = useState(
     "Help me understand what this project should do next.",
   );
@@ -168,6 +184,20 @@ export function VoiceSecretaryPage() {
     [projects],
   );
 
+  const selectedProject = useMemo(
+    () => sortedProjects.find((project) => project.path === projectPath),
+    [projectPath, sortedProjects],
+  );
+
+  const sortedProjectSessions = useMemo(
+    () =>
+      [...projectSessions].sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      ),
+    [projectSessions],
+  );
+
   useEffect(() => {
     if (projectPath || sortedProjects.length === 0) return;
     const agentLineProject =
@@ -178,6 +208,35 @@ export function VoiceSecretaryPage() {
     }
   }, [projectPath, sortedProjects]);
 
+  useEffect(() => {
+    setConversationSessionId("");
+    setProjectSessions([]);
+    setSessionsError(null);
+    if (!selectedProject) return;
+
+    let cancelled = false;
+    setIsLoadingSessions(true);
+    api
+      .getProjectSessions(selectedProject.id)
+      .then((response) => {
+        if (cancelled) return;
+        setProjectSessions(response.sessions);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSessionsError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingSessions(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProject]);
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!projectPath.trim() || !utterance.trim()) return;
@@ -187,6 +246,7 @@ export function VoiceSecretaryPage() {
     try {
       const response = await api.startVoiceSecretaryCall({
         projectPath: projectPath.trim(),
+        conversationSessionId: conversationSessionId.trim() || undefined,
         utterance: utterance.trim(),
       });
       setResult(response.result);
@@ -224,7 +284,10 @@ export function VoiceSecretaryPage() {
                   <span>Project</span>
                   <select
                     value={projectPath}
-                    onChange={(event) => setProjectPath(event.target.value)}
+                    onChange={(event) => {
+                      setProjectPath(event.target.value);
+                      setResult(null);
+                    }}
                   >
                     <option value="">Select a project</option>
                     {sortedProjects.map((project) => (
@@ -233,6 +296,43 @@ export function VoiceSecretaryPage() {
                       </option>
                     ))}
                   </select>
+                </label>
+              </div>
+
+              <div className="voice-form-row voice-form-row-single">
+                <label>
+                  <span>Conversation</span>
+                  <select
+                    value={conversationSessionId}
+                    onChange={(event) => {
+                      setConversationSessionId(event.target.value);
+                      setResult(null);
+                    }}
+                    disabled={!selectedProject || isLoadingSessions}
+                  >
+                    <option value="">
+                      {isLoadingSessions
+                        ? "Loading conversations..."
+                        : "Project scope (default)"}
+                    </option>
+                    {sortedProjectSessions.map((session) => {
+                      const title =
+                        session.customTitle ?? session.title ?? "Untitled";
+                      const provider = session.provider
+                        ? ` · ${session.provider}`
+                        : "";
+                      return (
+                        <option key={session.id} value={session.id}>
+                          {title}{provider} · {session.id}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {sessionsError && (
+                    <small className="voice-field-error">
+                      Failed to load conversations: {sessionsError}
+                    </small>
+                  )}
                 </label>
               </div>
 
@@ -255,8 +355,8 @@ export function VoiceSecretaryPage() {
                   {isSubmitting ? "Starting..." : "Start call handoff"}
                 </button>
                 <span>
-                  Talker records one caller turn, then Worker creates a real
-                  Codex session in plan mode.
+                  Talker records one caller turn, then Worker uses the selected
+                  conversation or defaults to the project.
                 </span>
               </div>
             </form>
@@ -270,7 +370,7 @@ export function VoiceSecretaryPage() {
                 <h2>Ready</h2>
                 <p>
                   Start a call handoff to see Talker reply once and Worker
-                  create the Codex session with project context.
+                  use the selected project or conversation context.
                 </p>
               </div>
             )}

@@ -14,13 +14,23 @@ export interface VoiceSecretaryRoutesDeps {
 
 interface SimulateBody {
   projectPath?: unknown;
+  conversationSessionId?: unknown;
   utterance?: unknown;
   executorMode?: unknown;
 }
 
 interface CallBody {
   projectPath?: unknown;
+  conversationSessionId?: unknown;
   utterance?: unknown;
+}
+
+function parseConversationSessionId(
+  value: unknown,
+): string | undefined | null {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || !value.trim()) return null;
+  return value.trim();
 }
 
 export function createVoiceSecretaryRoutes(
@@ -40,6 +50,12 @@ export function createVoiceSecretaryRoutes(
     if (typeof body.utterance !== "string" || !body.utterance.trim()) {
       return c.json({ error: "utterance is required" }, 400);
     }
+    const conversationSessionId = parseConversationSessionId(
+      body.conversationSessionId,
+    );
+    if (conversationSessionId === null) {
+      return c.json({ error: "conversationSessionId must be a string" }, 400);
+    }
     if (!deps.supervisor) {
       return c.json({ error: "AgentLine executor is unavailable" }, 503);
     }
@@ -51,6 +67,7 @@ export function createVoiceSecretaryRoutes(
     const loop = new VoiceSecretaryCallLoop(executor);
     const result = await loop.run({
       projectPath: body.projectPath,
+      conversationSessionId,
       utterance: body.utterance,
     });
 
@@ -68,6 +85,12 @@ export function createVoiceSecretaryRoutes(
     }
     if (typeof body.utterance !== "string" || !body.utterance.trim()) {
       return c.json({ error: "utterance is required" }, 400);
+    }
+    const conversationSessionId = parseConversationSessionId(
+      body.conversationSessionId,
+    );
+    if (conversationSessionId === null) {
+      return c.json({ error: "conversationSessionId must be a string" }, 400);
     }
 
     const executorMode =
@@ -93,6 +116,7 @@ export function createVoiceSecretaryRoutes(
     const loop = new SimulatedCallLoop(undefined, undefined, executor);
     const result = await loop.run({
       projectPath: body.projectPath,
+      conversationSessionId,
       utterance: body.utterance,
     });
 

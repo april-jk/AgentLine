@@ -147,6 +147,7 @@ export interface VoiceSecretaryCallSession {
   startedAt: string;
   endedAt?: string;
   projectPath?: string;
+  conversationSessionId?: string;
   transcript: VoiceSecretaryTranscriptTurn[];
   plannerRuns: Array<{
     id: string;
@@ -164,6 +165,7 @@ export interface VoiceSecretaryCallSession {
 export interface VoiceSecretaryExecutionTask {
   id: string;
   projectPath: string;
+  conversationSessionId?: string;
   provider: ProviderName;
   mode: "read_only" | "implementation" | "test" | "review";
   prompt: string;
@@ -465,6 +467,7 @@ export const api = {
 
   simulateVoiceSecretary: (request: {
     projectPath: string;
+    conversationSessionId?: string;
     utterance: string;
     executorMode?: "fake" | "agentline";
   }) =>
@@ -475,6 +478,7 @@ export const api = {
 
   startVoiceSecretaryCall: (request: {
     projectPath: string;
+    conversationSessionId?: string;
     utterance: string;
   }) =>
     fetchJSON<{ result: VoiceSecretaryResult }>("/voice-secretary/calls", {
@@ -484,6 +488,9 @@ export const api = {
 
   getProject: (projectId: string) =>
     fetchJSON<{ project: Project }>(`/projects/${projectId}`),
+
+  getProjectSessions: (projectId: string) =>
+    fetchJSON<{ sessions: SessionSummary[] }>(`/projects/${projectId}/sessions`),
 
   getSession: (
     projectId: string,

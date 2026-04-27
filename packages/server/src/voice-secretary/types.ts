@@ -30,6 +30,7 @@ export interface CallSession {
   startedAt: string;
   endedAt?: string;
   projectPath?: string;
+  conversationSessionId?: string;
   transcript: TranscriptTurn[];
   plannerRuns: PlannerRunRef[];
   callbackRequests: CallbackRequest[];
@@ -57,6 +58,7 @@ export interface PlannerRequest {
   id: string;
   callSessionId: string;
   projectPath: string;
+  conversationSessionId?: string;
   userIntent: string;
   conversationSummary: string;
   knownConstraints: string[];
@@ -91,6 +93,7 @@ export type ExecutorProvider = "codex" | "claude" | "opencode" | "gemini";
 export interface ExecutionTask {
   id: string;
   projectPath: string;
+  conversationSessionId?: string;
   provider: ExecutorProvider;
   mode: "read_only" | "implementation" | "test" | "review";
   prompt: string;
@@ -154,6 +157,7 @@ export interface ExecutorSessionRef {
 
 export interface SimulatedCallInput {
   projectPath: string;
+  conversationSessionId?: string;
   utterance: string;
 }
 

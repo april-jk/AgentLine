@@ -5532,6 +5532,11 @@ a.sidebar-nav-item {
   line-height: 1.5;
 }
 
+.voice-field-error {
+  color: var(--danger, #dc2626);
+  font-size: var(--font-size-xs);
+}
+
 .voice-actions {
   display: flex;
   align-items: center;
