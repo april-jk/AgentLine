@@ -31,6 +31,86 @@ See [relay-design.md](relay-design.md) for technical details.
 
 ---
 
+## Self-Hosted Relay from Source
+
+The relay service lives in `packages/relay/` and depends on the workspace package in `packages/shared/`. Prefer directory-based pnpm filters so these commands keep working if package names change.
+
+Run from the repository root:
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+
+pnpm --filter ./packages/shared build
+pnpm --filter ./packages/relay build
+
+NODE_ENV=production \
+RELAY_PORT=4400 \
+RELAY_DATA_DIR=$HOME/.agentline-relay \
+node packages/relay/dist/index.js
+```
+
+Verify the relay:
+
+```bash
+curl http://127.0.0.1:4400/health
+```
+
+For local testing, configure AgentLine to use:
+
+```bash
+agentline --setup-remote-access \
+  --username myserver \
+  --password "secretpass123" \
+  --relay ws://127.0.0.1:4400/ws
+```
+
+For public access, put Caddy, Nginx, or another TLS reverse proxy in front of the relay and use a `wss://` URL:
+
+```text
+wss://relay.yourdomain.com/ws
+```
+
+### Railway Deployment
+
+Deploy the repository root as a Railway service. Do not set the service root to `packages/relay`, because the relay imports the shared workspace package.
+
+Use these service settings:
+
+```text
+Root Directory: /
+Build Command: pnpm install --frozen-lockfile && pnpm --filter ./packages/shared build && pnpm --filter ./packages/relay build
+Start Command: RELAY_PORT=$PORT NODE_ENV=production RELAY_DATA_DIR=/data node packages/relay/dist/index.js
+```
+
+Recommended Railway variables:
+
+```text
+NODE_ENV=production
+RELAY_LOG_TO_CONSOLE=true
+RELAY_LOG_TO_FILE=false
+RELAY_TELEMETRY_ENABLED=true
+```
+
+Add a Railway volume mounted at `/data` if username ownership and telemetry should persist across redeploys. Without a volume, the relay still runs, but its SQLite registry is ephemeral.
+
+After Railway deploys, use the Railway HTTPS domain as a WebSocket URL:
+
+```text
+https://example.up.railway.app  ->  wss://example.up.railway.app/ws
+```
+
+Then configure AgentLine:
+
+```bash
+agentline --setup-remote-access \
+  --username myserver \
+  --password "secretpass123" \
+  --relay wss://example.up.railway.app/ws
+```
+
+---
+
 ## Alternative Options
 
 If you prefer not to use the relay, here are other options. All require you to trust some external party with routing your traffic.

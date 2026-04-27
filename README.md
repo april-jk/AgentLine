@@ -92,7 +92,7 @@ Then connect from anywhere at [agentline.com/remote](https://agentline.com/remot
 
 All traffic is end-to-end encrypted and we can't see your data. No accounts required.
 
-**Self-hosted:** Prefer to run your own infrastructure? Use Tailscale, Caddy, or any reverse proxy with SSL termination. See the [remote access docs](docs/project/remote-access.md) for details.
+**Self-hosted:** Prefer to run your own infrastructure? You can deploy the relay service from `packages/relay/`, or use Tailscale, Caddy, or another reverse proxy path. See the [remote access docs](docs/project/remote-access.md) for details.
 
 ## Why not just use the terminal?
 

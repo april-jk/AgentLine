@@ -118,7 +118,7 @@ export function isValidUsername(username: string): boolean {
 
 ```
 packages/relay/
-├── package.json          # depends on hono, better-sqlite3, @agentline/shared
+├── package.json          # depends on hono, better-sqlite3, and the shared workspace package
 ├── tsconfig.json
 ├── src/
 │   ├── index.ts          # Hono server entry
@@ -670,7 +670,7 @@ async connectWithExistingSocket(ws: WebSocket, username: string, password: strin
 ## Configuration
 
 **Relay server:**
-- `RELAY_PORT` (default: 3500)
+- `RELAY_PORT` (default: 4400)
 - `RELAY_DATA_DIR` (default: `~/.yep-relay/`)
 - `RELAY_LOG_LEVEL` (default: info)
 
@@ -706,9 +706,9 @@ This can be added later without changing the core relay protocol.
 
 ### Local Testing (with local relay)
 
-1. Start relay: `cd packages/relay && pnpm dev` (runs on port 3500)
+1. Start relay from the repository root: `pnpm --filter ./packages/relay dev` (runs on port 4400 by default)
 2. Start agentline: `pnpm dev` (runs on port 3400)
-3. Configure relay in agentline: Settings > Remote Access > Relay URL = `ws://localhost:3500/ws`
+3. Configure relay in agentline: Settings > Remote Access > Relay URL = `ws://localhost:4400/ws`
 4. Set relay username (e.g., "testuser")
 5. Enable remote access with SRP username/password
 6. Verify Settings shows relay status as "Connected" (green)
@@ -729,7 +729,7 @@ This can be added later without changing the core relay protocol.
 
 ### Run tests:
 ```bash
-pnpm --filter @agentline/relay test
-pnpm --filter @agentline/server test
+pnpm --filter ./packages/relay test
+pnpm --filter ./packages/server test
 pnpm test:e2e
 ```
