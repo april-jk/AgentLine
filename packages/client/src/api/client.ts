@@ -473,6 +473,15 @@ export const api = {
       body: JSON.stringify(request),
     }),
 
+  startVoiceSecretaryCall: (request: {
+    projectPath: string;
+    utterance: string;
+  }) =>
+    fetchJSON<{ result: VoiceSecretaryResult }>("/voice-secretary/calls", {
+      method: "POST",
+      body: JSON.stringify(request),
+    }),
+
   getProject: (projectId: string) =>
     fetchJSON<{ project: Project }>(`/projects/${projectId}`),
 
@@ -1158,4 +1167,28 @@ export interface ServerSettings {
   lifecycleWebhookToken?: string;
   /** When true, include dryRun=true in lifecycle webhook payloads */
   lifecycleWebhookDryRun?: boolean;
+  /** Legacy shared Volcengine speech AppID used by the phone module */
+  phoneVolcengineSpeechAppId?: string;
+  /** Legacy shared Volcengine speech API key/access token used by ASR and TTS */
+  phoneVolcengineSpeechAccessToken?: string;
+  /** Legacy shared Volcengine speech Secret Key used by Doubao Speech 2.0 service auth */
+  phoneVolcengineSpeechSecretKey?: string;
+  /** Volcengine ASR AppID used by the phone module */
+  phoneVolcengineAsrAppId?: string;
+  /** Volcengine ASR API key/access token */
+  phoneVolcengineAsrAccessToken?: string;
+  /** Volcengine ASR Secret Key */
+  phoneVolcengineAsrSecretKey?: string;
+  /** Volcengine TTS AppID used by the phone module */
+  phoneVolcengineTtsAppId?: string;
+  /** Volcengine TTS API key/access token */
+  phoneVolcengineTtsAccessToken?: string;
+  /** Volcengine TTS Secret Key */
+  phoneVolcengineTtsSecretKey?: string;
+  /** Volcengine TTS voice type */
+  phoneVolcengineTtsVoiceType?: string;
+  /** Optional Volcengine ASR websocket endpoint override */
+  phoneVolcengineAsrEndpoint?: string;
+  /** Optional Volcengine TTS websocket endpoint override */
+  phoneVolcengineTtsEndpoint?: string;
 }

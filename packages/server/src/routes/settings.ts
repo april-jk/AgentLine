@@ -121,6 +121,27 @@ function parseNewSessionDefaults(
   return Object.keys(parsed).length > 0 ? parsed : undefined;
 }
 
+function applyOptionalStringSetting<K extends keyof ServerSettings>(
+  body: Partial<ServerSettings>,
+  updates: Partial<ServerSettings>,
+  key: K,
+  maxLength: number,
+): void {
+  if (!(key in body)) return;
+
+  const value = body[key];
+  if (value === undefined || value === null || value === "") {
+    updates[key] = undefined;
+    return;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    updates[key] = normalized
+      ? (normalized.slice(0, maxLength) as ServerSettings[K])
+      : undefined;
+  }
+}
+
 export function createSettingsRoutes(deps: SettingsRoutesDeps): Hono {
   const app = new Hono();
   const {
@@ -283,6 +304,68 @@ export function createSettingsRoutes(deps: SettingsRoutesDeps): Hono {
         );
       }
     }
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineSpeechAppId",
+      200,
+    );
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineSpeechAccessToken",
+      5000,
+    );
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineSpeechSecretKey",
+      5000,
+    );
+    applyOptionalStringSetting(body, updates, "phoneVolcengineAsrAppId", 200);
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineAsrAccessToken",
+      5000,
+    );
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineAsrSecretKey",
+      5000,
+    );
+    applyOptionalStringSetting(body, updates, "phoneVolcengineTtsAppId", 200);
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineTtsAccessToken",
+      5000,
+    );
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineTtsSecretKey",
+      5000,
+    );
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineTtsVoiceType",
+      200,
+    );
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineAsrEndpoint",
+      2000,
+    );
+    applyOptionalStringSetting(
+      body,
+      updates,
+      "phoneVolcengineTtsEndpoint",
+      2000,
+    );
 
     if (Object.keys(updates).length === 0) {
       return c.json({ error: "At least one valid setting is required" }, 400);

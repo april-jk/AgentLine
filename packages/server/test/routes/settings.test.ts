@@ -176,6 +176,47 @@ describe("Settings Routes", () => {
         lifecycleWebhookDryRun: false,
       });
     });
+
+    it("accepts phone module Volcengine speech settings", async () => {
+      const routes = createSettingsRoutes({
+        serverSettingsService: mockServerSettingsService,
+      });
+
+      const response = await routes.request("/", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneVolcengineSpeechAppId: " app-123 ",
+          phoneVolcengineSpeechAccessToken: " speech-token ",
+          phoneVolcengineSpeechSecretKey: " speech-secret ",
+          phoneVolcengineAsrAppId: " asr-app ",
+          phoneVolcengineAsrAccessToken: " asr-token ",
+          phoneVolcengineAsrSecretKey: " asr-secret ",
+          phoneVolcengineTtsAppId: " tts-app ",
+          phoneVolcengineTtsAccessToken: " tts-token ",
+          phoneVolcengineTtsSecretKey: " tts-secret ",
+          phoneVolcengineTtsVoiceType: "voice-type",
+          phoneVolcengineAsrEndpoint: "wss://asr.example.com",
+          phoneVolcengineTtsEndpoint: "wss://tts.example.com",
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockServerSettingsService.updateSettings).toHaveBeenCalledWith({
+        phoneVolcengineSpeechAppId: "app-123",
+        phoneVolcengineSpeechAccessToken: "speech-token",
+        phoneVolcengineSpeechSecretKey: "speech-secret",
+        phoneVolcengineAsrAppId: "asr-app",
+        phoneVolcengineAsrAccessToken: "asr-token",
+        phoneVolcengineAsrSecretKey: "asr-secret",
+        phoneVolcengineTtsAppId: "tts-app",
+        phoneVolcengineTtsAccessToken: "tts-token",
+        phoneVolcengineTtsSecretKey: "tts-secret",
+        phoneVolcengineTtsVoiceType: "voice-type",
+        phoneVolcengineAsrEndpoint: "wss://asr.example.com",
+        phoneVolcengineTtsEndpoint: "wss://tts.example.com",
+      });
+    });
   });
 
   describe("POST /remote-executors/:host/test", () => {

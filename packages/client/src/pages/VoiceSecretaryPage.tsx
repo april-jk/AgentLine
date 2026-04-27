@@ -6,8 +6,6 @@ import { useProjects } from "../hooks/useProjects";
 import { useRemoteBasePath } from "../hooks/useRemoteBasePath";
 import { useNavigationLayout } from "../layouts";
 
-type ExecutorMode = "fake" | "agentline";
-
 function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`voice-status voice-status-${status}`}>{status}</span>
@@ -156,7 +154,6 @@ export function VoiceSecretaryPage() {
   const [utterance, setUtterance] = useState(
     "Help me understand what this project should do next.",
   );
-  const [executorMode, setExecutorMode] = useState<ExecutorMode>("fake");
   const [result, setResult] = useState<VoiceSecretaryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -188,10 +185,9 @@ export function VoiceSecretaryPage() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const response = await api.simulateVoiceSecretary({
+      const response = await api.startVoiceSecretaryCall({
         projectPath: projectPath.trim(),
         utterance: utterance.trim(),
-        executorMode,
       });
       setResult(response.result);
     } catch (err) {
@@ -223,7 +219,7 @@ export function VoiceSecretaryPage() {
         <main className="page-scroll-container">
           <div className="page-content-inner">
             <form className="voice-console" onSubmit={submit}>
-              <div className="voice-form-row">
+              <div className="voice-form-row voice-form-row-single">
                 <label>
                   <span>Project</span>
                   <select
@@ -236,18 +232,6 @@ export function VoiceSecretaryPage() {
                         {project.name} - {project.path}
                       </option>
                     ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Worker mode</span>
-                  <select
-                    value={executorMode}
-                    onChange={(event) =>
-                      setExecutorMode(event.target.value as ExecutorMode)
-                    }
-                  >
-                    <option value="fake">Simulation only</option>
-                    <option value="agentline">Create Codex session</option>
                   </select>
                 </label>
               </div>
@@ -268,14 +252,12 @@ export function VoiceSecretaryPage() {
                     isSubmitting || !projectPath.trim() || !utterance.trim()
                   }
                 >
-                  {isSubmitting ? "Running..." : "Run simulated call"}
+                  {isSubmitting ? "Starting..." : "Start call handoff"}
                 </button>
-                {executorMode === "agentline" && (
-                  <span>
-                    Worker creates a real Codex session in plan mode. Talker
-                    stays focused on the caller.
-                  </span>
-                )}
+                <span>
+                  Talker records one caller turn, then Worker creates a real
+                  Codex session in plan mode.
+                </span>
               </div>
             </form>
 
@@ -287,8 +269,8 @@ export function VoiceSecretaryPage() {
               <div className="voice-empty">
                 <h2>Ready</h2>
                 <p>
-                  Run the simulated call to see what Talker says and what Worker
-                  does with the project context.
+                  Start a call handoff to see Talker reply once and Worker
+                  create the Codex session with project context.
                 </p>
               </div>
             )}

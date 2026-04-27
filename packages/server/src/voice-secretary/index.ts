@@ -7,5 +7,7 @@ export {
   ProjectPlanner,
   SimulatedCallLoop,
   SimulatedTalker,
+  VoiceSecretaryCallLoop,
+  VoiceSecretaryTalker,
 } from "./simulated.js";
 export type * from "./types.js";

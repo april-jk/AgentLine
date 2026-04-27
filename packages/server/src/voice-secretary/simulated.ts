@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import type {
+  CallChannel,
   CallSession,
   CallbackDecision,
   ExecutionTask,
@@ -105,7 +106,7 @@ async function listTopLevelEntries(projectPath: string): Promise<string[]> {
   }
 }
 
-export class SimulatedTalker {
+export class VoiceSecretaryTalker {
   createOpeningTurn(input: SimulatedCallInput): TranscriptTurn {
     const projectName = basename(input.projectPath);
     return createTranscriptTurn(
@@ -149,12 +150,14 @@ export class SimulatedTalker {
       suggestedNextUtterance: firstQuestion,
       factsToAvoidOverstating: [
         ...plannerResult.talkerBrief.factsToAvoidOverstating,
-        "模拟执行器没有进行真实代码修改。",
+        "Worker 的本轮任务包是只读理解，不代表已经完成代码修改。",
       ],
       questionsToAsk: [firstQuestion],
     };
   }
 }
+
+export class SimulatedTalker extends VoiceSecretaryTalker {}
 
 export class ProjectPlanner {
   async plan(request: PlannerRequest): Promise<PlannerResult> {
@@ -187,7 +190,7 @@ export class ProjectPlanner {
           "下一步你想让我创建正式执行会话，还是先把计划读给你听？",
         factsToAvoidOverstating: [
           "ProjectPlanner 没有修改文件。",
-          "当前流程使用 fake executor 验证闭环。",
+          "Worker 接到的是只读任务包，真实修改需要后续明确执行任务。",
         ],
         questionsToAsk: [
           "下一步你想让我创建正式执行会话，还是先把计划读给你听？",
@@ -233,7 +236,7 @@ export class ProjectPlanner {
         "Result can be summarized back to the caller.",
       ],
       riskNotes: [
-        "This simulated task is read-only and must not perform implementation.",
+        "This voice-originated task is read-only and must not perform implementation.",
       ],
       requiredVerification: [
         "Confirm the task packet contains user intent and project instructions.",
@@ -287,18 +290,26 @@ export class SimulatedCallLoop {
     private readonly talker = new SimulatedTalker(),
     private readonly planner = new ProjectPlanner(),
     private readonly executor: ExecutorAgentAdapter = new FakeExecutorAgentAdapter(),
+    private readonly options: {
+      channel?: CallChannel;
+      userTurnSource?: TranscriptTurn["source"];
+    } = {},
   ) {}
 
   async run(input: SimulatedCallInput): Promise<SimulatedCallResult> {
     const startedAt = nowIso();
     const callSession: CallSession = {
       id: randomUUID(),
-      channel: "simulated",
+      channel: this.options.channel ?? "simulated",
       status: "active",
       startedAt,
       projectPath: input.projectPath,
       transcript: [
-        createTranscriptTurn("user", input.utterance, "typed"),
+        createTranscriptTurn(
+          "user",
+          input.utterance,
+          this.options.userTurnSource ?? "typed",
+        ),
         this.talker.createOpeningTurn(input),
       ],
       plannerRuns: [],
@@ -347,5 +358,14 @@ export class SimulatedCallLoop {
       executorReport,
       finalBrief,
     };
+  }
+}
+
+export class VoiceSecretaryCallLoop extends SimulatedCallLoop {
+  constructor(executor: ExecutorAgentAdapter) {
+    super(new VoiceSecretaryTalker(), new ProjectPlanner(), executor, {
+      channel: "web-voice",
+      userTurnSource: "asr",
+    });
   }
 }

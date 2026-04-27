@@ -4,6 +4,7 @@ import type { Supervisor } from "../supervisor/Supervisor.js";
 import {
   AgentLineExecutorAgentAdapter,
   SimulatedCallLoop,
+  VoiceSecretaryCallLoop,
 } from "../voice-secretary/index.js";
 
 export interface VoiceSecretaryRoutesDeps {
@@ -17,10 +18,44 @@ interface SimulateBody {
   executorMode?: unknown;
 }
 
+interface CallBody {
+  projectPath?: unknown;
+  utterance?: unknown;
+}
+
 export function createVoiceSecretaryRoutes(
   deps: VoiceSecretaryRoutesDeps = {},
 ): Hono {
   const routes = new Hono();
+
+  routes.post("/calls", async (c) => {
+    const body = await c.req.json<CallBody>().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+
+    if (typeof body.projectPath !== "string" || !body.projectPath.trim()) {
+      return c.json({ error: "projectPath is required" }, 400);
+    }
+    if (typeof body.utterance !== "string" || !body.utterance.trim()) {
+      return c.json({ error: "utterance is required" }, 400);
+    }
+    if (!deps.supervisor) {
+      return c.json({ error: "AgentLine executor is unavailable" }, 503);
+    }
+
+    const executor = new AgentLineExecutorAgentAdapter({
+      supervisor: deps.supervisor,
+      sessionMetadataService: deps.sessionMetadataService,
+    });
+    const loop = new VoiceSecretaryCallLoop(executor);
+    const result = await loop.run({
+      projectPath: body.projectPath,
+      utterance: body.utterance,
+    });
+
+    return c.json({ result });
+  });
 
   routes.post("/simulate", async (c) => {
     const body = await c.req.json<SimulateBody>().catch(() => null);

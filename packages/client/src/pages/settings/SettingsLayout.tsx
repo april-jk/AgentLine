@@ -20,6 +20,7 @@ import { LifecycleWebhooksSettings } from "./LifecycleWebhooksSettings";
 import { LocalAccessSettings } from "./LocalAccessSettings";
 import { ModelSettings } from "./ModelSettings";
 import { NotificationsSettings } from "./NotificationsSettings";
+import { PhoneSettings } from "./PhoneSettings";
 import { ProvidersSettings } from "./ProvidersSettings";
 import { RemoteAccessSettings } from "./RemoteAccessSettings";
 import { RemoteExecutorsSettings } from "./RemoteExecutorsSettings";
@@ -32,6 +33,7 @@ const CATEGORY_COMPONENTS: Record<string, React.ComponentType> = {
   "agent-context": AgentContextSettings,
   notifications: NotificationsSettings,
   webhooks: LifecycleWebhooksSettings,
+  phone: PhoneSettings,
   devices: DevicesSettings,
   "local-access": LocalAccessSettings,
   remote: RemoteAccessSettings,

@@ -14,9 +14,14 @@ on `ASRAdapter` and `TTSAdapter`, not on Volcengine request details.
 
 - Streaming ASR: `wss://openspeech.bytedance.com/api/v2/asr`
 - Online TTS WebSocket: `wss://openspeech.bytedance.com/api/v1/tts/ws_binary`
-- Speech auth: Volcengine console provides `AppID`, `Access Token`, and
-  `Cluster`. Bearer-token auth uses the header format `Authorization:
-  Bearer; {token}`.
+- Speech auth: Doubao Speech 2.0 exposes separate service authentication
+  blocks per capability. ASR and TTS can have different `AppID`,
+  `Access Token`, and `Secret Key`; do not assume one shared key works for
+  both.
+- ASR 2.0 uses WebSocket V3 headers: `X-Api-App-Key`,
+  `X-Api-Access-Key`, `X-Api-Resource-Id`, and a connect/request id.
+- TTS 2.0 HTTP single-direction streaming uses HTTP V3 headers:
+  `X-Api-App-Id`, `X-Api-Access-Key`, `X-Api-Resource-Id`, and request id.
 
 Keep these links as the source of truth when implementation begins:
 
@@ -33,18 +38,26 @@ the variable shape in `.env.example`.
 VOLCENGINE_SPEECH_APP_ID=
 VOLCENGINE_SPEECH_ACCESS_TOKEN=
 
+VOLCENGINE_ASR_APP_ID=
+VOLCENGINE_ASR_ACCESS_TOKEN=
+VOLCENGINE_ASR_SECRET_KEY=
 VOLCENGINE_ASR_ENDPOINT=wss://openspeech.bytedance.com/api/v2/asr
 VOLCENGINE_ASR_CLUSTER=
 VOLCENGINE_ASR_LANGUAGE=zh-CN
 
+VOLCENGINE_TTS_APP_ID=
+VOLCENGINE_TTS_ACCESS_TOKEN=
+VOLCENGINE_TTS_SECRET_KEY=
 VOLCENGINE_TTS_ENDPOINT=wss://openspeech.bytedance.com/api/v1/tts/ws_binary
 VOLCENGINE_TTS_CLUSTER=
 VOLCENGINE_TTS_VOICE_TYPE=
 VOLCENGINE_TTS_AUDIO_ENCODING=mp3
 ```
 
-`VOLCENGINE_SPEECH_ACCESS_TOKEN` should be stored without the `Bearer;` prefix.
-The adapter adds the prefix when constructing the request header.
+`VOLCENGINE_SPEECH_*` is a legacy shared fallback. New integrations should
+prefer the capability-specific `VOLCENGINE_ASR_*` and `VOLCENGINE_TTS_*`
+variables. Access tokens should be stored without a `Bearer;` prefix; adapters
+add provider-specific headers when constructing requests.
 
 ## ASR Adapter Behavior
 
