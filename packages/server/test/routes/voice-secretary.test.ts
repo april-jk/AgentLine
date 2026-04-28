@@ -30,6 +30,7 @@ describe("Voice Secretary routes", () => {
 
   afterEach(async () => {
     await rm(projectPath, { recursive: true, force: true });
+    vi.restoreAllMocks();
   });
 
   it("runs a simulated call fixture", async () => {
@@ -138,6 +139,287 @@ describe("Voice Secretary routes", () => {
       "plan",
       { providerName: "codex" },
     );
+  });
+
+  it("runs an audio call through Volcengine ASR and TTS", async () => {
+    const startSession = vi.fn(async () => ({
+      id: "process-1",
+      sessionId: "codex-session-1",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/recognize/flash")) {
+          return new Response(
+            JSON.stringify({
+              result: {
+                text: "Help me understand what this project should do next.",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "X-Api-Status-Code": "20000000",
+              },
+            },
+          );
+        }
+        if (url.includes("/api/v1/tts")) {
+          return new Response(
+            JSON.stringify({
+              code: 3000,
+              data: "SUQz",
+            }),
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unexpected fetch url: ${url}`);
+      });
+
+    const routes = createVoiceSecretaryRoutes({
+      supervisor: { startSession } as unknown as Supervisor,
+      providerCatalog,
+      serverSettingsService: {
+        getSettings: () => ({
+          phoneVolcengineAsrAppId: "asr-app",
+          phoneVolcengineAsrAccessToken: "asr-token",
+          phoneVolcengineTtsAppId: "tts-app",
+          phoneVolcengineTtsAccessToken: "tts-token",
+          phoneVolcengineTtsVoiceType: "voice-a",
+        }),
+      } as never,
+    });
+
+    const formData = new FormData();
+    formData.set("projectPath", projectPath);
+    formData.set(
+      "audio",
+      new File([new Uint8Array([1, 2, 3])], "turn.wav", { type: "audio/wav" }),
+    );
+
+    const response = await routes.request("/calls/audio", {
+      method: "POST",
+      body: formData,
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.transcript).toBe(
+      "Help me understand what this project should do next.",
+    );
+    expect(json.audioBase64).toBe("SUQz");
+    expect(json.result.callSession.channel).toBe("web-voice");
+    expect(startSession).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses Volcengine TTS v3 async submit/query flow", async () => {
+    const startSession = vi.fn(async () => ({
+      id: "process-1",
+      sessionId: "codex-session-1",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const url = String(input);
+        if (url.includes("/recognize/flash")) {
+          return new Response(
+            JSON.stringify({
+              result: {
+                text: "What should this project do next?",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "X-Api-Status-Code": "20000000",
+              },
+            },
+          );
+        }
+        if (url.includes("/api/v3/tts/submit")) {
+          expect(init?.headers).toMatchObject({
+            "X-Api-App-Id": "tts-app",
+            "X-Api-Access-Key": "tts-token",
+            "X-Api-Resource-Id": "seed-tts-2.0",
+          });
+          return new Response(
+            JSON.stringify({
+              code: 20000000,
+              data: {
+                task_id: "task-1",
+                task_status: 1,
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        if (url.includes("/api/v3/tts/query")) {
+          return new Response(
+            JSON.stringify({
+              code: 20000000,
+              data: {
+                task_id: "task-1",
+                task_status: 2,
+                audio_url: "https://audio.example.com/task-1.wav",
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        if (url.includes("https://audio.example.com/task-1.wav")) {
+          return new Response(Buffer.from("RIFF", "utf8"), {
+            status: 200,
+            headers: {
+              "content-type": "audio/wav",
+            },
+          });
+        }
+        throw new Error(`Unexpected fetch url: ${url}`);
+      });
+
+    const routes = createVoiceSecretaryRoutes({
+      supervisor: { startSession } as unknown as Supervisor,
+      providerCatalog,
+      serverSettingsService: {
+        getSettings: () => ({
+          phoneVolcengineAsrAppId: "asr-app",
+          phoneVolcengineAsrAccessToken: "asr-token",
+          phoneVolcengineTtsAppId: "tts-app",
+          phoneVolcengineTtsAccessToken: "tts-token",
+          phoneVolcengineTtsSecretKey: "tts-secret",
+          phoneVolcengineTtsVoiceType: "voice-a",
+          phoneVolcengineTtsEndpoint:
+            "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
+        }),
+      } as never,
+    });
+
+    const formData = new FormData();
+    formData.set("projectPath", projectPath);
+    formData.set(
+      "audio",
+      new File([new Uint8Array([1, 2, 3])], "turn.wav", { type: "audio/wav" }),
+    );
+
+    const response = await routes.request("/calls/audio", {
+      method: "POST",
+      body: formData,
+      headers: { "X-AgentLine-Request": "true" },
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.audioBase64).toBe(
+      Buffer.from("RIFF", "utf8").toString("base64"),
+    );
+    expect(startSession).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("retries Volcengine ASR with X-Api-Key auth when legacy auth fails", async () => {
+    const startSession = vi.fn(async () => ({
+      id: "process-1",
+      sessionId: "codex-session-1",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+
+    let asrAttempt = 0;
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const url = String(input);
+        if (url.includes("/recognize/flash")) {
+          asrAttempt += 1;
+          if (asrAttempt === 1) {
+            expect(init?.headers).toMatchObject({
+              "X-Api-App-Key": "asr-app",
+              "X-Api-Access-Key": "asr-token",
+            });
+            return new Response(null, {
+              status: 403,
+              headers: {
+                "X-Api-Status-Code": "45000030",
+                "X-Api-Message": "Access denied",
+              },
+            });
+          }
+
+          expect(init?.headers).toMatchObject({
+            "X-Api-Key": "asr-secret",
+          });
+          return new Response(
+            JSON.stringify({
+              result: {
+                text: "Help me understand what this project should do next.",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "X-Api-Status-Code": "20000000",
+              },
+            },
+          );
+        }
+        if (url.includes("/api/v1/tts")) {
+          return new Response(
+            JSON.stringify({
+              code: 3000,
+              data: "SUQz",
+            }),
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unexpected fetch url: ${url}`);
+      });
+
+    const routes = createVoiceSecretaryRoutes({
+      supervisor: { startSession } as unknown as Supervisor,
+      providerCatalog,
+      serverSettingsService: {
+        getSettings: () => ({
+          phoneVolcengineAsrAppId: "asr-app",
+          phoneVolcengineAsrAccessToken: "asr-token",
+          phoneVolcengineAsrSecretKey: "asr-secret",
+          phoneVolcengineTtsAppId: "tts-app",
+          phoneVolcengineTtsAccessToken: "tts-token",
+          phoneVolcengineTtsVoiceType: "voice-a",
+        }),
+      } as never,
+    });
+
+    const formData = new FormData();
+    formData.set("projectPath", projectPath);
+    formData.set(
+      "audio",
+      new File([new Uint8Array([1, 2, 3])], "turn.wav", { type: "audio/wav" }),
+    );
+
+    const response = await routes.request("/calls/audio", {
+      method: "POST",
+      body: formData,
+      headers: { "X-AgentLine-Request": "true" },
+    });
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.transcript).toBe(
+      "Help me understand what this project should do next.",
+    );
+    expect(startSession).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("uses a selected conversation as the Worker context", async () => {

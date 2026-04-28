@@ -17,6 +17,10 @@ import {
   getVoiceSecretaryLlmConfigFromSettings,
 } from "../voice-secretary/talker-llm.js";
 import type { VoiceProviderCatalog } from "../voice-secretary/types.js";
+import {
+  VolcengineSpeechService,
+  getVolcengineSpeechConfigFromSettings,
+} from "../voice-secretary/volcengine-speech.js";
 
 export interface VoiceSecretaryRoutesDeps {
   supervisor?: Supervisor;
@@ -38,6 +42,14 @@ interface CallBody {
   conversationSessionId?: unknown;
   conversationProvider?: unknown;
   utterance?: unknown;
+}
+
+interface AudioTurnResponseBody {
+  transcript: string;
+  confidence?: number;
+  talkerText: string;
+  audioBase64: string;
+  audioContentType: string;
 }
 
 function parseConversationSessionId(value: unknown): string | undefined | null {
@@ -75,6 +87,13 @@ function createTalkerLlm(serverSettingsService?: ServerSettingsService) {
     );
   }
   return new VoiceSecretaryTalkerLlm(getVoiceSecretaryLlmConfig());
+}
+
+function createSpeechService(serverSettingsService?: ServerSettingsService) {
+  const settings = serverSettingsService?.getSettings();
+  return new VolcengineSpeechService(
+    getVolcengineSpeechConfigFromSettings(settings),
+  );
 }
 
 export function createVoiceSecretaryRoutes(
@@ -133,6 +152,111 @@ export function createVoiceSecretaryRoutes(
     });
 
     return c.json({ result });
+  });
+
+  routes.post("/calls/audio", async (c) => {
+    try {
+      if (!deps.supervisor) {
+        return c.json({ error: "AgentLine executor is unavailable" }, 503);
+      }
+
+      const formData = await c.req.formData().catch(() => null);
+      if (!formData) {
+        return c.json({ error: "Invalid multipart form body" }, 400);
+      }
+
+      const projectPathValue = formData.get("projectPath");
+      if (typeof projectPathValue !== "string" || !projectPathValue.trim()) {
+        return c.json({ error: "projectPath is required" }, 400);
+      }
+
+      const conversationSessionId = parseConversationSessionId(
+        formData.get("conversationSessionId"),
+      );
+      if (conversationSessionId === null) {
+        return c.json({ error: "conversationSessionId must be a string" }, 400);
+      }
+      const conversationProvider = parseConversationProvider(
+        formData.get("conversationProvider"),
+      );
+      if (conversationProvider === null) {
+        return c.json({ error: "conversationProvider must be a string" }, 400);
+      }
+
+      const audioFile = formData.get("audio");
+      if (!(audioFile instanceof File) || audioFile.size === 0) {
+        return c.json({ error: "audio is required" }, 400);
+      }
+
+      const speech = createSpeechService(deps.serverSettingsService);
+      if (!speech.enabled) {
+        return c.json({ error: "Volcengine speech is not configured" }, 503);
+      }
+
+      const executor = new AgentLineExecutorAgentAdapter({
+        supervisor: deps.supervisor,
+        sessionMetadataService: deps.sessionMetadataService,
+      });
+      const codexTalker = new CodexEphemeralTalker({
+        getRuntimeConfig: () =>
+          getPhoneTalkerConfig(deps.serverSettingsService),
+      });
+      const llm = createTalkerLlm(deps.serverSettingsService);
+      const talker = new VoiceSecretaryTalker(codexTalker, llm);
+      const planner = new ProjectPlanner(
+        deps.providerCatalog,
+        codexTalker,
+        llm,
+      );
+      const loop = new VoiceSecretaryCallLoop(executor, {
+        providerCatalog: deps.providerCatalog,
+        talker,
+        planner,
+      });
+
+      const transcript = await speech.transcribeAudio(
+        new Uint8Array(await audioFile.arrayBuffer()),
+      );
+      if (!transcript) {
+        return c.json({ error: "Volcengine ASR did not return text" }, 502);
+      }
+
+      const result = await loop.run({
+        projectPath: projectPathValue.trim(),
+        conversationSessionId,
+        conversationProvider,
+        utterance: transcript.text,
+      });
+
+      const talkerText =
+        result.finalBrief.spokenSummary.trim() ||
+        result.callSession.transcript
+          .filter((turn) => turn.speaker === "talker")
+          .map((turn) => turn.text.trim())
+          .find((text) => text.length > 0) ||
+        "我已经准备好了下一步的正式执行建议。";
+      const audio = await speech.synthesizeText(talkerText);
+      if (!audio) {
+        return c.json({ error: "Volcengine TTS did not return audio" }, 502);
+      }
+
+      const body: AudioTurnResponseBody = {
+        transcript: transcript.text,
+        confidence: transcript.confidence,
+        talkerText,
+        audioBase64: audio.audioBase64,
+        audioContentType: audio.contentType,
+      };
+
+      return c.json({ ...body, result });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Voice Secretary audio call failed";
+      console.error("[VoiceSecretary] audio call failed:", error);
+      return c.json({ error: message }, 500);
+    }
   });
 
   routes.post("/simulate", async (c) => {

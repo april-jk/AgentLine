@@ -220,6 +220,15 @@ export interface VoiceSecretaryResult {
   };
 }
 
+export interface VoiceSecretaryAudioTurnResponse {
+  transcript: string;
+  confidence?: number;
+  talkerText: string;
+  audioBase64: string;
+  audioContentType: string;
+  result: VoiceSecretaryResult;
+}
+
 export type { UploadedFile } from "@agentline/shared";
 
 const API_BASE = "/api";
@@ -334,6 +343,27 @@ export async function fetchJSON<T>(
   }
 
   return res.json();
+}
+
+function buildProtectedRequestHeaders(
+  extraHeaders?: HeadersInit,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    "X-AgentLine-Request": "true",
+  };
+  if (desktopAuthToken) {
+    headers["X-Desktop-Token"] = desktopAuthToken;
+  }
+
+  if (!extraHeaders) {
+    return headers;
+  }
+
+  const normalized = new Headers(extraHeaders);
+  for (const [key, value] of normalized.entries()) {
+    headers[key] = value;
+  }
+  return headers;
 }
 
 // Re-export upload functions
@@ -487,6 +517,50 @@ export const api = {
       method: "POST",
       body: JSON.stringify(request),
     }),
+
+  startVoiceSecretaryAudioCall: async (request: {
+    projectPath: string;
+    conversationSessionId?: string;
+    conversationProvider?: ProviderName;
+    audio: Blob;
+    fileName?: string;
+  }) => {
+    const body = new FormData();
+    body.append("projectPath", request.projectPath);
+    if (request.conversationSessionId) {
+      body.append("conversationSessionId", request.conversationSessionId);
+    }
+    if (request.conversationProvider) {
+      body.append("conversationProvider", request.conversationProvider);
+    }
+    body.append(
+      "audio",
+      request.audio,
+      request.fileName ?? "voice-secretary-input.wav",
+    );
+
+    const response = await fetch(`${API_BASE}/voice-secretary/calls/audio`, {
+      method: "POST",
+      body,
+      credentials: "include",
+      headers: buildProtectedRequestHeaders(),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Voice Secretary audio call failed";
+      try {
+        const errorPayload = (await response.json()) as { error?: string };
+        if (errorPayload.error) {
+          errorMessage = errorPayload.error;
+        }
+      } catch {
+        // Ignore response parse failures and fall back to a generic message.
+      }
+      throw new Error(errorMessage);
+    }
+
+    return (await response.json()) as VoiceSecretaryAudioTurnResponse;
+  },
 
   getProject: (projectId: string) =>
     fetchJSON<{ project: Project }>(`/projects/${projectId}`),

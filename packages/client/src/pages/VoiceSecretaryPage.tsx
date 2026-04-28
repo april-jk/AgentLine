@@ -1,11 +1,37 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { type VoiceSecretaryResult, api } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
 import { useProjects } from "../hooks/useProjects";
 import { useRemoteBasePath } from "../hooks/useRemoteBasePath";
+import { useServerSettings } from "../hooks/useServerSettings";
+import { useVoiceRecorder } from "../hooks/useVoiceRecorder";
 import { useNavigationLayout } from "../layouts";
 import type { SessionSummary } from "../types";
+
+interface LiveTurn {
+  id: string;
+  speaker: "user" | "talker" | "system";
+  text: string;
+}
+
+type CallPhase =
+  | "idle"
+  | "ready"
+  | "recording"
+  | "processing"
+  | "playing"
+  | "unsupported";
+
+function makeId(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `voice-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 function StatusBadge({ status }: { status: string }) {
   return (
@@ -41,21 +67,64 @@ function TextList({ items }: { items: string[] | undefined }) {
   );
 }
 
-function ConversationBubbles({ result }: { result: VoiceSecretaryResult }) {
-  const visibleTurns = result.callSession.transcript.filter(
-    (turn) => turn.speaker === "user" || turn.speaker === "talker",
+function buildResultConversationTurns(
+  result: VoiceSecretaryResult,
+): Array<{ id: string; speaker: "user" | "talker" | "system"; text: string }> {
+  const turns = result.callSession.transcript
+    .filter((turn) => turn.speaker === "user" || turn.speaker === "talker")
+    .map((turn) => ({
+      id: turn.id,
+      speaker: turn.speaker,
+      text: turn.text,
+    }));
+
+  const finalSummary = result.finalBrief.spokenSummary.trim();
+  const hasMatchingTalkerTurn = turns.some(
+    (turn) => turn.speaker === "talker" && turn.text.trim() === finalSummary,
   );
+  if (finalSummary && !hasMatchingTalkerTurn) {
+    turns.push({
+      id: `${result.callSession.id}-final-brief`,
+      speaker: "talker",
+      text: finalSummary,
+    });
+  }
+
+  return turns;
+}
+
+function ConversationBubbles({
+  turns,
+}: {
+  turns: Array<{
+    id: string;
+    speaker: "user" | "talker" | "system";
+    text: string;
+  }>;
+}) {
+  if (turns.length === 0) {
+    return <p className="voice-muted">No conversation yet</p>;
+  }
 
   return (
     <div className="voice-bubbles" aria-label="Talker conversation">
-      {visibleTurns.map((turn) => {
+      {turns.map((turn) => {
         const isUser = turn.speaker === "user";
+        const isSystem = turn.speaker === "system";
         return (
           <div
             key={turn.id}
-            className={`voice-bubble-row ${isUser ? "voice-bubble-user" : "voice-bubble-talker"}`}
+            className={`voice-bubble-row ${
+              isSystem
+                ? "voice-bubble-system"
+                : isUser
+                  ? "voice-bubble-user"
+                  : "voice-bubble-talker"
+            }`}
           >
-            <div className="voice-bubble-meta">{isUser ? "You" : "Talker"}</div>
+            <div className="voice-bubble-meta">
+              {isSystem ? "System" : isUser ? "You" : "Talker"}
+            </div>
             <div className="voice-bubble">{turn.text}</div>
           </div>
         );
@@ -73,6 +142,7 @@ function VoiceSecretaryResultView({
   const contextLabel = result.callSession.conversationSessionId
     ? "Conversation"
     : "Project";
+  const turns = buildResultConversationTurns(result);
 
   return (
     <div className="voice-results">
@@ -93,7 +163,7 @@ function VoiceSecretaryResultView({
       </div>
 
       <ResultSection title="Talker">
-        <ConversationBubbles result={result} />
+        <ConversationBubbles turns={turns} />
       </ResultSection>
 
       <ResultSection title="Worker">
@@ -134,15 +204,21 @@ function VoiceSecretaryResultView({
               <strong>{result.executorReport.changedFiles?.length ?? 0}</strong>
             </div>
           </div>
-          {sessionLink && (
+          {sessionLink ? (
             <Link
               className="voice-session-link"
               to={`${basePath}${sessionLink}`}
             >
               Open Codex session
             </Link>
-          )}
+          ) : null}
           <TextList items={result.executorReport.verification} />
+        </div>
+
+        <div className="voice-worker-block">
+          <span className="voice-kicker">Talker callback</span>
+          <p>{result.finalBrief.spokenSummary}</p>
+          <TextList items={result.finalBrief.questionsToAsk} />
         </div>
 
         <div className="voice-instruction-list">
@@ -158,10 +234,63 @@ function VoiceSecretaryResultView({
   );
 }
 
+function getCallPhaseLabel(phase: CallPhase): string {
+  switch (phase) {
+    case "ready":
+      return "Ready for recording";
+    case "recording":
+      return "Recording caller audio...";
+    case "processing":
+      return "Volcengine ASR / Talker / TTS in progress...";
+    case "playing":
+      return "Playing Talker reply...";
+    case "unsupported":
+      return "Audio capture unavailable";
+    default:
+      return "Idle";
+  }
+}
+
+function getConfiguredSpeechLabel(
+  settings: {
+    phoneVolcengineAsrAppId?: string;
+    phoneVolcengineAsrAccessToken?: string;
+    phoneVolcengineTtsAppId?: string;
+    phoneVolcengineTtsAccessToken?: string;
+    phoneVolcengineTtsVoiceType?: string;
+  } | null,
+): string {
+  const asrReady = Boolean(
+    settings?.phoneVolcengineAsrAppId && settings.phoneVolcengineAsrAccessToken,
+  );
+  const ttsReady = Boolean(
+    settings?.phoneVolcengineTtsAppId &&
+      settings.phoneVolcengineTtsAccessToken &&
+      settings.phoneVolcengineTtsVoiceType,
+  );
+
+  if (asrReady && ttsReady) {
+    return "Volcengine ASR/TTS ready";
+  }
+  return "Volcengine speech config incomplete";
+}
+
+function toLiveTurn(speaker: LiveTurn["speaker"], text: string): LiveTurn {
+  return {
+    id: makeId(),
+    speaker,
+    text,
+  };
+}
+
 export function VoiceSecretaryPage() {
   const { openSidebar, isWideScreen, toggleSidebar, isSidebarCollapsed } =
     useNavigationLayout();
   const { projects } = useProjects();
+  const { settings } = useServerSettings();
+  const recorder = useVoiceRecorder();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const [projectPath, setProjectPath] = useState("");
   const [conversationSessionId, setConversationSessionId] = useState("");
   const [projectSessions, setProjectSessions] = useState<SessionSummary[]>([]);
@@ -170,9 +299,15 @@ export function VoiceSecretaryPage() {
   const [utterance, setUtterance] = useState(
     "Help me understand what this project should do next.",
   );
+  const [liveTurns, setLiveTurns] = useState<LiveTurn[]>([]);
   const [result, setResult] = useState<VoiceSecretaryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [callPhase, setCallPhase] = useState<CallPhase>(
+    recorder.isSupported ? "idle" : "unsupported",
+  );
+  const [isCallActive, setIsCallActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastTranscript, setLastTranscript] = useState("");
 
   const sortedProjects = useMemo(
     () =>
@@ -197,12 +332,25 @@ export function VoiceSecretaryPage() {
       ),
     [projectSessions],
   );
+
   const selectedConversation = useMemo(
     () =>
       sortedProjectSessions.find(
         (session) => session.id === conversationSessionId,
       ) ?? null,
     [conversationSessionId, sortedProjectSessions],
+  );
+
+  const appendLiveTurn = useCallback((turn: LiveTurn) => {
+    setLiveTurns((current) => current.concat(turn));
+  }, []);
+
+  const browserSpeechLabel = useMemo(
+    () =>
+      recorder.isSupported
+        ? "Microphone capture ready"
+        : "No microphone capture",
+    [recorder.isSupported],
   );
 
   useEffect(() => {
@@ -226,12 +374,18 @@ export function VoiceSecretaryPage() {
     api
       .getProjectSessions(selectedProject.id)
       .then((response) => {
-        if (cancelled) return;
-        setProjectSessions(response.sessions);
+        if (!cancelled) {
+          setProjectSessions(response.sessions);
+        }
       })
-      .catch((err) => {
-        if (cancelled) return;
-        setSessionsError(err instanceof Error ? err.message : String(err));
+      .catch((sessionError) => {
+        if (!cancelled) {
+          setSessionsError(
+            sessionError instanceof Error
+              ? sessionError.message
+              : String(sessionError),
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) {
@@ -244,26 +398,165 @@ export function VoiceSecretaryPage() {
     };
   }, [selectedProject]);
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!projectPath.trim() || !utterance.trim()) return;
+  useEffect(() => {
+    if (!recorder.error) return;
+    setError(recorder.error);
+  }, [recorder.error]);
 
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      const response = await api.startVoiceSecretaryCall({
-        projectPath: projectPath.trim(),
-        conversationSessionId: conversationSessionId.trim() || undefined,
-        conversationProvider: selectedConversation?.provider,
-        utterance: utterance.trim(),
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
+  const playAudioReply = useCallback(
+    async (audioBase64: string, contentType: string) => {
+      const binary = Uint8Array.from(atob(audioBase64), (char) =>
+        char.charCodeAt(0),
+      );
+      const url = URL.createObjectURL(
+        new Blob([binary], { type: contentType }),
+      );
+      const audio = audioRef.current ?? new Audio();
+      audioRef.current = audio;
+      audio.src = url;
+
+      await audio.play();
+      await new Promise<void>((resolve) => {
+        audio.onended = () => resolve();
+        audio.onerror = () => resolve();
       });
-      setResult(response.result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsSubmitting(false);
+      URL.revokeObjectURL(url);
+    },
+    [],
+  );
+
+  const submitRecordedAudio = useCallback(
+    async (audio: Blob) => {
+      if (!projectPath.trim()) return;
+
+      recorder.setProcessing(true);
+      setIsSubmitting(true);
+      setError(null);
+      setCallPhase("processing");
+
+      try {
+        const response = await api.startVoiceSecretaryAudioCall({
+          projectPath: projectPath.trim(),
+          conversationSessionId: conversationSessionId.trim() || undefined,
+          conversationProvider: selectedConversation?.provider,
+          audio,
+        });
+
+        setLastTranscript(response.transcript);
+        setUtterance(response.transcript);
+        appendLiveTurn(toLiveTurn("user", response.transcript));
+        appendLiveTurn(toLiveTurn("talker", response.talkerText));
+        setResult(response.result);
+
+        setCallPhase("playing");
+        await playAudioReply(response.audioBase64, response.audioContentType);
+        setCallPhase(isCallActive ? "ready" : "idle");
+      } catch (turnError) {
+        const message =
+          turnError instanceof Error ? turnError.message : String(turnError);
+        setError(message);
+        appendLiveTurn(toLiveTurn("system", message));
+        setCallPhase(isCallActive ? "ready" : "idle");
+      } finally {
+        recorder.setProcessing(false);
+        setIsSubmitting(false);
+      }
+    },
+    [
+      appendLiveTurn,
+      conversationSessionId,
+      isCallActive,
+      playAudioReply,
+      projectPath,
+      recorder,
+      selectedConversation?.provider,
+    ],
+  );
+
+  const startCall = useCallback(() => {
+    setError(null);
+    setIsCallActive(true);
+    setCallPhase(recorder.isSupported ? "ready" : "unsupported");
+  }, [recorder.isSupported]);
+
+  const endCall = useCallback(() => {
+    setIsCallActive(false);
+    setCallPhase(recorder.isSupported ? "idle" : "unsupported");
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
-  };
+  }, [recorder.isSupported]);
+
+  const toggleRecording = useCallback(async () => {
+    if (!isCallActive) return;
+
+    if (recorder.isRecording) {
+      const audio = await recorder.stopRecording();
+      if (audio) {
+        await submitRecordedAudio(audio);
+      }
+      return;
+    }
+
+    setError(null);
+    setCallPhase("recording");
+    await recorder.startRecording();
+  }, [isCallActive, recorder, submitRecordedAudio]);
+
+  const submitTypedTurn = useCallback(
+    async (event: React.FormEvent) => {
+      event.preventDefault();
+      if (!projectPath.trim() || !utterance.trim()) return;
+
+      setIsSubmitting(true);
+      setError(null);
+      setCallPhase("processing");
+
+      try {
+        const response = await api.startVoiceSecretaryCall({
+          projectPath: projectPath.trim(),
+          conversationSessionId: conversationSessionId.trim() || undefined,
+          conversationProvider: selectedConversation?.provider,
+          utterance: utterance.trim(),
+        });
+        setLastTranscript(utterance.trim());
+        appendLiveTurn(toLiveTurn("user", utterance.trim()));
+        appendLiveTurn(
+          toLiveTurn("talker", response.result.finalBrief.spokenSummary),
+        );
+        setResult(response.result);
+        setCallPhase(isCallActive ? "ready" : "idle");
+      } catch (turnError) {
+        const message =
+          turnError instanceof Error ? turnError.message : String(turnError);
+        setError(message);
+        appendLiveTurn(toLiveTurn("system", message));
+        setCallPhase(isCallActive ? "ready" : "idle");
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [
+      appendLiveTurn,
+      conversationSessionId,
+      isCallActive,
+      projectPath,
+      selectedConversation?.provider,
+      utterance,
+    ],
+  );
+
+  const callStatusLabel = getCallPhaseLabel(callPhase);
 
   return (
     <div
@@ -286,7 +579,80 @@ export function VoiceSecretaryPage() {
 
         <main className="page-scroll-container">
           <div className="page-content-inner">
-            <form className="voice-console" onSubmit={submit}>
+            <section className="voice-live-console">
+              <div className="voice-live-header">
+                <div>
+                  <span className="voice-kicker">Live call</span>
+                  <h2>Volcengine voice conversation</h2>
+                  <p>
+                    Record one utterance, send it through Volcengine ASR, let
+                    Talker and Worker handle the task, then play the Volcengine
+                    TTS reply.
+                  </p>
+                </div>
+                <div className="voice-live-actions">
+                  <button
+                    type="button"
+                    onClick={isCallActive ? endCall : startCall}
+                    disabled={!projectPath.trim() || isSubmitting}
+                  >
+                    {isCallActive ? "End live call" : "Start live call"}
+                  </button>
+                  <StatusBadge status={callPhase} />
+                </div>
+              </div>
+
+              <div className="voice-live-grid">
+                <div className="voice-live-card">
+                  <span className="voice-kicker">Capture</span>
+                  <strong>{browserSpeechLabel}</strong>
+                  <p>{callStatusLabel}</p>
+                </div>
+                <div className="voice-live-card">
+                  <span className="voice-kicker">Configured provider</span>
+                  <strong>
+                    {settings?.phoneTalkerProvider ?? "codex"} ·{" "}
+                    {settings?.phoneTalkerModel ?? "gpt-5.2"}
+                  </strong>
+                  <p>{getConfiguredSpeechLabel(settings)}</p>
+                </div>
+                <div className="voice-live-card">
+                  <span className="voice-kicker">Last transcript</span>
+                  <strong>{lastTranscript || "None yet"}</strong>
+                  <p>
+                    {recorder.isRecording
+                      ? "Recording microphone input"
+                      : isSubmitting
+                        ? "Waiting for Volcengine and Talker"
+                        : "Ready for the next utterance"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="voice-live-toolbar">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void toggleRecording();
+                  }}
+                  disabled={
+                    !isCallActive || isSubmitting || !recorder.isSupported
+                  }
+                >
+                  {recorder.isRecording
+                    ? "Stop recording"
+                    : "Record one utterance"}
+                </button>
+                <span>
+                  Real voice mode now uses Volcengine on the server side. Edge
+                  only needs microphone permission.
+                </span>
+              </div>
+
+              <ConversationBubbles turns={liveTurns} />
+            </section>
+
+            <form className="voice-console" onSubmit={submitTypedTurn}>
               <div className="voice-form-row voice-form-row-single">
                 <label>
                   <span>Project</span>
@@ -337,16 +703,16 @@ export function VoiceSecretaryPage() {
                       );
                     })}
                   </select>
-                  {sessionsError && (
+                  {sessionsError ? (
                     <small className="voice-field-error">
                       Failed to load conversations: {sessionsError}
                     </small>
-                  )}
+                  ) : null}
                 </label>
               </div>
 
               <label className="voice-utterance">
-                <span>Caller utterance</span>
+                <span>Fallback typed utterance</span>
                 <textarea
                   value={utterance}
                   onChange={(event) => setUtterance(event.target.value)}
@@ -361,16 +727,16 @@ export function VoiceSecretaryPage() {
                     isSubmitting || !projectPath.trim() || !utterance.trim()
                   }
                 >
-                  {isSubmitting ? "Starting..." : "Start call handoff"}
+                  {isSubmitting ? "Submitting..." : "Send typed turn"}
                 </button>
                 <span>
-                  Talker uses one short ephemeral turn, then Worker reuses the
-                  selected conversation provider or falls back to the project.
+                  Typed fallback still uses the same Talker/Worker flow when you
+                  do not want to record audio.
                 </span>
               </div>
             </form>
 
-            {error && <div className="voice-error">{error}</div>}
+            {error ? <div className="voice-error">{error}</div> : null}
 
             {result ? (
               <VoiceSecretaryResultView result={result} />
@@ -378,8 +744,8 @@ export function VoiceSecretaryPage() {
               <div className="voice-empty">
                 <h2>Ready</h2>
                 <p>
-                  Start a call handoff to see Talker return one short reply and
-                  Worker use the selected project or conversation context.
+                  Start a live call, then record one utterance to send real
+                  audio through Volcengine ASR/TTS.
                 </p>
               </div>
             )}
