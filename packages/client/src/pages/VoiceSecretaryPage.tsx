@@ -112,7 +112,7 @@ function VoiceSecretaryResultView({
             <strong>{task?.provider ?? "none"}</strong>
           </div>
           <div>
-            <span className="voice-kicker">Codex session</span>
+            <span className="voice-kicker">Executor session</span>
             <StatusBadge status={result.executorReport.status} />
           </div>
         </div>
@@ -197,6 +197,13 @@ export function VoiceSecretaryPage() {
       ),
     [projectSessions],
   );
+  const selectedConversation = useMemo(
+    () =>
+      sortedProjectSessions.find(
+        (session) => session.id === conversationSessionId,
+      ) ?? null,
+    [conversationSessionId, sortedProjectSessions],
+  );
 
   useEffect(() => {
     if (projectPath || sortedProjects.length === 0) return;
@@ -247,6 +254,7 @@ export function VoiceSecretaryPage() {
       const response = await api.startVoiceSecretaryCall({
         projectPath: projectPath.trim(),
         conversationSessionId: conversationSessionId.trim() || undefined,
+        conversationProvider: selectedConversation?.provider,
         utterance: utterance.trim(),
       });
       setResult(response.result);
@@ -323,7 +331,8 @@ export function VoiceSecretaryPage() {
                         : "";
                       return (
                         <option key={session.id} value={session.id}>
-                          {title}{provider} · {session.id}
+                          {title}
+                          {provider} · {session.id}
                         </option>
                       );
                     })}
@@ -355,8 +364,8 @@ export function VoiceSecretaryPage() {
                   {isSubmitting ? "Starting..." : "Start call handoff"}
                 </button>
                 <span>
-                  Talker records one caller turn, then Worker uses the selected
-                  conversation or defaults to the project.
+                  Talker uses one short ephemeral turn, then Worker reuses the
+                  selected conversation provider or falls back to the project.
                 </span>
               </div>
             </form>
@@ -369,8 +378,8 @@ export function VoiceSecretaryPage() {
               <div className="voice-empty">
                 <h2>Ready</h2>
                 <p>
-                  Start a call handoff to see Talker reply once and Worker
-                  use the selected project or conversation context.
+                  Start a call handoff to see Talker return one short reply and
+                  Worker use the selected project or conversation context.
                 </p>
               </div>
             )}

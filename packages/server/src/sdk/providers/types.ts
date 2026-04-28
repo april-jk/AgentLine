@@ -59,6 +59,12 @@ export interface StartSessionOptions {
   executor?: string;
   /** Environment variables to set on remote (for testing: CLAUDE_SESSIONS_DIR) */
   remoteEnv?: Record<string, string>;
+  /** Local child-process environment overrides for this specific session. */
+  processEnv?: Record<string, string | undefined>;
+  /** Codex-only: start a fresh ephemeral thread that should not persist history. */
+  codexThreadEphemeral?: boolean;
+  /** Codex-only: opt into raw app-server events when supported. */
+  codexExperimentalRawEvents?: boolean;
   /** Global instructions to append to system prompt (from server settings) */
   globalInstructions?: string;
 }

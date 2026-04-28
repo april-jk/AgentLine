@@ -5,6 +5,7 @@
 import {
   ALL_PERMISSION_MODES,
   ALL_PROVIDERS,
+  type EffortLevel,
   type NewSessionDefaults,
   type PermissionMode,
   type ProviderName,
@@ -366,6 +367,35 @@ export function createSettingsRoutes(deps: SettingsRoutesDeps): Hono {
       "phoneVolcengineTtsEndpoint",
       2000,
     );
+    if ("phoneTalkerProvider" in body) {
+      if (
+        body.phoneTalkerProvider === undefined ||
+        body.phoneTalkerProvider === null
+      ) {
+        updates.phoneTalkerProvider = undefined;
+      } else if (
+        typeof body.phoneTalkerProvider === "string" &&
+        body.phoneTalkerProvider.trim().length > 0 &&
+        ALL_PROVIDERS.includes(body.phoneTalkerProvider as ProviderName)
+      ) {
+        updates.phoneTalkerProvider = body.phoneTalkerProvider as ProviderName;
+      }
+    }
+    applyOptionalStringSetting(body, updates, "phoneTalkerModel", 200);
+    if ("phoneTalkerEffort" in body) {
+      if (
+        body.phoneTalkerEffort === undefined ||
+        body.phoneTalkerEffort === null
+      ) {
+        updates.phoneTalkerEffort = undefined;
+      } else if (
+        typeof body.phoneTalkerEffort === "string" &&
+        body.phoneTalkerEffort.trim().length > 0 &&
+        ["low", "medium", "high", "max"].includes(body.phoneTalkerEffort)
+      ) {
+        updates.phoneTalkerEffort = body.phoneTalkerEffort as EffortLevel;
+      }
+    }
 
     if (Object.keys(updates).length === 0) {
       return c.json({ error: "At least one valid setting is required" }, 400);

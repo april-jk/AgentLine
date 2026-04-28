@@ -674,6 +674,7 @@ export function createApp(options: AppOptions): AppResult {
     createVoiceSecretaryRoutes({
       supervisor,
       sessionMetadataService: options.sessionMetadataService,
+      serverSettingsService: options.serverSettingsService,
     }),
   );
 

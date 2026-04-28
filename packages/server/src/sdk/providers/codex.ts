@@ -669,13 +669,24 @@ export class CodexProvider implements AgentProvider {
   /**
    * Build environment overrides for Codex subprocesses.
    */
-  private getCodexEnv(): NodeJS.ProcessEnv {
+  private getCodexEnv(
+    overrides?: Record<string, string | undefined>,
+  ): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = { ...process.env };
     if (this.config.baseUrl) {
       env.OPENAI_BASE_URL = this.config.baseUrl;
     }
     if (this.config.apiKey) {
       env.OPENAI_API_KEY = this.config.apiKey;
+    }
+    if (overrides) {
+      for (const [key, value] of Object.entries(overrides)) {
+        if (value === undefined) {
+          delete env[key];
+        } else {
+          env[key] = value;
+        }
+      }
     }
     return env;
   }
@@ -1073,7 +1084,7 @@ export class CodexProvider implements AgentProvider {
     const appServer = new CodexAppServerClient(
       codexCommand,
       options.cwd,
-      this.getCodexEnv(),
+      this.getCodexEnv(options.processEnv),
     );
     setActiveClient(appServer);
 
@@ -1120,7 +1131,8 @@ export class CodexProvider implements AgentProvider {
         cwd: options.cwd,
         approvalPolicy: policy.approvalPolicy,
         sandbox: policy.sandbox,
-        experimentalRawEvents: false,
+        ephemeral: options.codexThreadEphemeral ?? null,
+        experimentalRawEvents: options.codexExperimentalRawEvents ?? false,
       };
       const threadResult: ThreadResumeResponse | ThreadStartResponse =
         options.resumeSessionId

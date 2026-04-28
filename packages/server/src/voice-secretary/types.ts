@@ -1,3 +1,5 @@
+import type { ProviderName } from "@agentline/shared";
+
 export type CallChannel =
   | "web-voice"
   | "phone"
@@ -59,6 +61,7 @@ export interface PlannerRequest {
   callSessionId: string;
   projectPath: string;
   conversationSessionId?: string;
+  conversationProvider?: ProviderName;
   userIntent: string;
   conversationSummary: string;
   knownConstraints: string[];
@@ -77,6 +80,18 @@ export interface InstructionReference {
   summary: string;
 }
 
+export interface AvailableVoiceProvider {
+  name: ProviderName;
+  displayName: string;
+  authenticated: boolean;
+  installed: boolean;
+  enabled: boolean;
+}
+
+export interface VoiceProviderCatalog {
+  listAvailableProviders(): Promise<AvailableVoiceProvider[]>;
+}
+
 export interface PlannerResult {
   id: string;
   requestId: string;
@@ -88,7 +103,7 @@ export interface PlannerResult {
   callbackDecision: CallbackDecision;
 }
 
-export type ExecutorProvider = "codex" | "claude" | "opencode" | "gemini";
+export type ExecutorProvider = ProviderName;
 
 export interface ExecutionTask {
   id: string;
@@ -158,6 +173,7 @@ export interface ExecutorSessionRef {
 export interface SimulatedCallInput {
   projectPath: string;
   conversationSessionId?: string;
+  conversationProvider?: ProviderName;
   utterance: string;
 }
 

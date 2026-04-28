@@ -7,7 +7,11 @@
 
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import type { NewSessionDefaults } from "@agentline/shared";
+import type {
+  EffortLevel,
+  NewSessionDefaults,
+  ProviderName,
+} from "@agentline/shared";
 
 const CURRENT_VERSION = 1;
 
@@ -67,6 +71,12 @@ export interface ServerSettings {
   phoneVolcengineAsrEndpoint?: string;
   /** Optional Volcengine TTS websocket endpoint override */
   phoneVolcengineTtsEndpoint?: string;
+  /** Provider used for the Talker LLM path in the phone module */
+  phoneTalkerProvider?: ProviderName;
+  /** Model used for the Talker LLM path */
+  phoneTalkerModel?: string;
+  /** Effort level used for the Talker LLM path */
+  phoneTalkerEffort?: EffortLevel;
 }
 
 /** Default settings */
@@ -75,6 +85,9 @@ export const DEFAULT_SERVER_SETTINGS: ServerSettings = {
   persistRemoteSessionsToDisk: false,
   lifecycleWebhooksEnabled: false,
   lifecycleWebhookDryRun: true,
+  phoneTalkerProvider: "codex",
+  phoneTalkerModel: "gpt-5.2",
+  phoneTalkerEffort: "low",
 };
 
 /** Stored state with version for migrations */

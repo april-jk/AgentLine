@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { ALL_PROVIDERS, type ProviderName } from "@agentline/shared";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { EFFORT_LEVEL_OPTIONS } from "../../hooks/useModelSettings";
+import { useProviders } from "../../hooks/useProviders";
 import { useServerSettings } from "../../hooks/useServerSettings";
 import { useI18n } from "../../i18n";
 
 const MAX_SHORT_VALUE = 200;
 const MAX_SECRET_VALUE = 5000;
 const MAX_URL_VALUE = 2000;
+const TALKER_MODEL_LIST_ID = "phone-talker-models";
 
 export function PhoneSettings() {
   const { t } = useI18n();
   const { settings, isLoading, error, updateSetting } = useServerSettings();
+  const { providers } = useProviders();
   const [asrAppId, setAsrAppId] = useState("");
   const [asrAccessToken, setAsrAccessToken] = useState("");
   const [asrSecretKey, setAsrSecretKey] = useState("");
@@ -18,9 +23,31 @@ export function PhoneSettings() {
   const [ttsVoiceType, setTtsVoiceType] = useState("");
   const [asrEndpoint, setAsrEndpoint] = useState("");
   const [ttsEndpoint, setTtsEndpoint] = useState("");
+  const [talkerProvider, setTalkerProvider] = useState<ProviderName>("codex");
+  const [talkerModel, setTalkerModel] = useState("gpt-5.2");
+  const [talkerEffort, setTalkerEffort] =
+    useState<(typeof EFFORT_LEVEL_OPTIONS)[number]["value"]>("low");
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const providerOptions = useMemo(() => {
+    const providerMap = new Map(
+      providers.map((provider) => [provider.name, provider]),
+    );
+    return ALL_PROVIDERS.map((providerName) => {
+      const provider = providerMap.get(providerName);
+      return {
+        name: providerName,
+        label: provider?.displayName ?? providerName,
+        models: provider?.models ?? [],
+      };
+    });
+  }, [providers]);
+
+  const selectedTalkerProvider = providerOptions.find(
+    (provider) => provider.name === talkerProvider,
+  );
 
   useEffect(() => {
     if (!settings) return;
@@ -45,6 +72,9 @@ export function PhoneSettings() {
     setTtsVoiceType(settings.phoneVolcengineTtsVoiceType ?? "");
     setAsrEndpoint(settings.phoneVolcengineAsrEndpoint ?? "");
     setTtsEndpoint(settings.phoneVolcengineTtsEndpoint ?? "");
+    setTalkerProvider(settings.phoneTalkerProvider ?? "codex");
+    setTalkerModel(settings.phoneTalkerModel ?? "gpt-5.2");
+    setTalkerEffort(settings.phoneTalkerEffort ?? "low");
     setHasChanges(false);
   }, [settings]);
 
@@ -53,10 +83,7 @@ export function PhoneSettings() {
     setSaveError(null);
     try {
       await Promise.all([
-        updateSetting(
-          "phoneVolcengineAsrAppId",
-          asrAppId.trim() || undefined,
-        ),
+        updateSetting("phoneVolcengineAsrAppId", asrAppId.trim() || undefined),
         updateSetting(
           "phoneVolcengineAsrAccessToken",
           asrAccessToken.trim() || undefined,
@@ -65,10 +92,7 @@ export function PhoneSettings() {
           "phoneVolcengineAsrSecretKey",
           asrSecretKey.trim() || undefined,
         ),
-        updateSetting(
-          "phoneVolcengineTtsAppId",
-          ttsAppId.trim() || undefined,
-        ),
+        updateSetting("phoneVolcengineTtsAppId", ttsAppId.trim() || undefined),
         updateSetting(
           "phoneVolcengineTtsAccessToken",
           ttsAccessToken.trim() || undefined,
@@ -89,6 +113,9 @@ export function PhoneSettings() {
           "phoneVolcengineTtsEndpoint",
           ttsEndpoint.trim() || undefined,
         ),
+        updateSetting("phoneTalkerProvider", talkerProvider),
+        updateSetting("phoneTalkerModel", talkerModel.trim() || undefined),
+        updateSetting("phoneTalkerEffort", talkerEffort),
       ]);
       setHasChanges(false);
     } catch (err) {
@@ -107,6 +134,9 @@ export function PhoneSettings() {
     ttsAccessToken,
     ttsAppId,
     ttsEndpoint,
+    talkerEffort,
+    talkerModel,
+    talkerProvider,
     ttsSecretKey,
     ttsVoiceType,
     updateSetting,
@@ -168,9 +198,7 @@ export function PhoneSettings() {
             className="settings-input"
             value={asrAccessToken}
             onChange={(event) => {
-              setAsrAccessToken(
-                event.target.value.slice(0, MAX_SECRET_VALUE),
-              );
+              setAsrAccessToken(event.target.value.slice(0, MAX_SECRET_VALUE));
               setHasChanges(true);
               setSaveError(null);
             }}
@@ -228,9 +256,7 @@ export function PhoneSettings() {
             className="settings-input"
             value={ttsAccessToken}
             onChange={(event) => {
-              setTtsAccessToken(
-                event.target.value.slice(0, MAX_SECRET_VALUE),
-              );
+              setTtsAccessToken(event.target.value.slice(0, MAX_SECRET_VALUE));
               setHasChanges(true);
               setSaveError(null);
             }}
@@ -310,6 +336,86 @@ export function PhoneSettings() {
               placeholder="wss://..."
             />
           </div>
+        </div>
+
+        <h3 className="settings-subsection-title">
+          {t("phoneSettingsTalkerTitle")}
+        </h3>
+        <p className="settings-section-description">
+          {t("phoneSettingsTalkerDescription")}
+        </p>
+
+        <div className="settings-item settings-item-stacked">
+          <div className="settings-item-info">
+            <strong>{t("phoneSettingsTalkerProviderTitle")}</strong>
+            <p>{t("phoneSettingsTalkerProviderDescription")}</p>
+          </div>
+          <select
+            className="settings-select"
+            value={talkerProvider}
+            onChange={(event) => {
+              setTalkerProvider(event.target.value as ProviderName);
+              setHasChanges(true);
+              setSaveError(null);
+            }}
+          >
+            {providerOptions.map((provider) => (
+              <option key={provider.name} value={provider.name}>
+                {provider.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="settings-item settings-item-stacked">
+          <div className="settings-item-info">
+            <strong>{t("phoneSettingsTalkerModelTitle")}</strong>
+            <p>{t("phoneSettingsTalkerModelDescription")}</p>
+          </div>
+          <input
+            type="text"
+            className="settings-input"
+            value={talkerModel}
+            onChange={(event) => {
+              setTalkerModel(event.target.value.slice(0, MAX_SHORT_VALUE));
+              setHasChanges(true);
+              setSaveError(null);
+            }}
+            placeholder="gpt-5.2"
+            list={TALKER_MODEL_LIST_ID}
+          />
+          <datalist id={TALKER_MODEL_LIST_ID}>
+            {(selectedTalkerProvider?.models ?? []).map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}
+              </option>
+            ))}
+          </datalist>
+        </div>
+
+        <div className="settings-item settings-item-stacked">
+          <div className="settings-item-info">
+            <strong>{t("phoneSettingsTalkerEffortTitle")}</strong>
+            <p>{t("phoneSettingsTalkerEffortDescription")}</p>
+          </div>
+          <select
+            className="settings-select"
+            value={talkerEffort}
+            onChange={(event) => {
+              setTalkerEffort(
+                event.target
+                  .value as (typeof EFFORT_LEVEL_OPTIONS)[number]["value"],
+              );
+              setHasChanges(true);
+              setSaveError(null);
+            }}
+          >
+            {EFFORT_LEVEL_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="settings-actions-row">

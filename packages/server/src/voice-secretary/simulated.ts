@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
+import { getAllProviders } from "../sdk/providers/index.js";
+import { CodexEphemeralTalker } from "./codex-ephemeral.js";
+import {
+  VoiceSecretaryTalkerLlm,
+  getVoiceSecretaryLlmConfig,
+} from "./talker-llm.js";
 import type {
+  AvailableVoiceProvider,
   CallChannel,
   CallSession,
   CallbackDecision,
@@ -16,6 +23,7 @@ import type {
   SimulatedCallResult,
   TalkerBrief,
   TranscriptTurn,
+  VoiceProviderCatalog,
 } from "./types.js";
 
 const MAX_INSTRUCTION_CHARS = 900;
@@ -106,16 +114,126 @@ async function listTopLevelEntries(projectPath: string): Promise<string[]> {
   }
 }
 
+function chooseRequestedOutcome(
+  utterance: string,
+): PlannerRequest["requestedOutcome"] {
+  const normalized = utterance.toLowerCase();
+  if (
+    /fix|bug|实现|修改|完善|修复|增加|新增|build|feature|ship/.test(normalized)
+  ) {
+    return "implementation";
+  }
+  if (/review|审查|评审/.test(normalized)) {
+    return "investigation";
+  }
+  if (/test|验证|回归|check/.test(normalized)) {
+    return "status_check";
+  }
+  if (/plan|规划|方案|下一步|roadmap/.test(normalized)) {
+    return "plan";
+  }
+  return "answer";
+}
+
+function chooseExecutionMode(
+  outcome: PlannerRequest["requestedOutcome"],
+): ExecutionTask["mode"] {
+  switch (outcome) {
+    case "implementation":
+      return "implementation";
+    case "status_check":
+      return "test";
+    case "investigation":
+      return "review";
+    default:
+      return "read_only";
+  }
+}
+
+function summarizeProviderCatalog(providers: AvailableVoiceProvider[]): string {
+  if (providers.length === 0) {
+    return "当前没有检测到可立即复用的正式 provider，会默认回退到 Codex。";
+  }
+  return `当前可用 provider：${providers.map((provider) => provider.displayName).join("、")}。`;
+}
+
+async function listAvailableProviders(): Promise<AvailableVoiceProvider[]> {
+  const providers = await Promise.all(
+    getAllProviders().map(async (provider) => {
+      const auth = await provider.getAuthStatus();
+      return {
+        name: provider.name,
+        displayName: provider.displayName,
+        installed: auth.installed,
+        authenticated: auth.authenticated,
+        enabled: auth.enabled,
+      };
+    }),
+  );
+
+  const uniqueProviders = new Map<string, AvailableVoiceProvider>();
+  for (const provider of providers) {
+    if (!provider.installed || (!provider.authenticated && !provider.enabled)) {
+      continue;
+    }
+    if (!uniqueProviders.has(provider.name)) {
+      uniqueProviders.set(provider.name, provider);
+    }
+  }
+
+  return [...uniqueProviders.values()];
+}
+
+function chooseExecutorProvider(
+  request: PlannerRequest,
+  providers: AvailableVoiceProvider[],
+): ExecutionTask["provider"] {
+  if (request.conversationProvider) {
+    return request.conversationProvider;
+  }
+
+  const preferredOrder: ExecutionTask["provider"][] = [
+    "codex",
+    "claude",
+    "opencode",
+    "gemini",
+    "claude-ollama",
+    "codex-oss",
+    "gemini-acp",
+  ];
+  const available = new Set(providers.map((provider) => provider.name));
+  return preferredOrder.find((provider) => available.has(provider)) ?? "codex";
+}
+
 export class VoiceSecretaryTalker {
-  createOpeningTurn(input: SimulatedCallInput): TranscriptTurn {
+  constructor(
+    private readonly codexTalker: Pick<
+      CodexEphemeralTalker,
+      "createOpeningText" | "createFinalBrief"
+    > = new CodexEphemeralTalker(),
+    private readonly llm: Pick<
+      VoiceSecretaryTalkerLlm,
+      "createOpeningText" | "createFinalBrief"
+    > = new VoiceSecretaryTalkerLlm(getVoiceSecretaryLlmConfig()),
+  ) {}
+
+  async createOpeningTurn(input: SimulatedCallInput): Promise<TranscriptTurn> {
     const projectName = basename(input.projectPath);
-    const target =
+    const workerContextLabel =
       input.conversationSessionId !== undefined
         ? `对话 ${input.conversationSessionId}`
         : `${projectName} 项目`;
+    const codexOpening = await this.codexTalker.createOpeningText(
+      input,
+      workerContextLabel,
+    );
+    const llmOpening = codexOpening
+      ? codexOpening
+      : await this.llm.createOpeningText(input, workerContextLabel);
     return createTranscriptTurn(
       "talker",
-      `收到。我先快速记录你的需求，然后以 ${target} 作为 Worker 上下文，稍后给你一个简短结论。`,
+      llmOpening ??
+        `收到。我先快速记录你的需求，然后以 ${workerContextLabel} 作为 Worker 上下文，稍后给你一个简短结论。`,
       "tts",
     );
   }
@@ -129,6 +247,7 @@ export class VoiceSecretaryTalker {
       callSessionId: callSession.id,
       projectPath: input.projectPath,
       conversationSessionId: input.conversationSessionId,
+      conversationProvider: input.conversationProvider,
       userIntent: input.utterance,
       conversationSummary: `用户通过模拟通话提出需求：${input.utterance}`,
       knownConstraints: [
@@ -141,14 +260,31 @@ export class VoiceSecretaryTalker {
       ],
       missingInformation: [],
       urgency: "normal",
-      requestedOutcome: "plan",
+      requestedOutcome: chooseRequestedOutcome(input.utterance),
     };
   }
 
-  createFinalBrief(
+  async createFinalBrief(
     plannerResult: PlannerResult,
     executorReport: ExecutorReport,
-  ): TalkerBrief {
+  ): Promise<TalkerBrief> {
+    const codexBrief = await this.codexTalker.createFinalBrief(
+      plannerResult,
+      executorReport,
+    );
+    const llmBrief = codexBrief
+      ? codexBrief
+      : await this.llm.createFinalBrief(plannerResult, executorReport);
+    if (llmBrief) {
+      return {
+        ...llmBrief,
+        factsToAvoidOverstating: [
+          ...llmBrief.factsToAvoidOverstating,
+          "Worker 的本轮任务包和正式执行会话是分开的，不能把排队或启动说成已经改完。",
+        ],
+      };
+    }
+
     const firstQuestion =
       plannerResult.talkerBrief.questionsToAsk[0] ??
       "要我继续把这个任务交给正式执行会话吗？";
@@ -168,9 +304,26 @@ export class VoiceSecretaryTalker {
 export class SimulatedTalker extends VoiceSecretaryTalker {}
 
 export class ProjectPlanner {
+  constructor(
+    private readonly providerCatalog: VoiceProviderCatalog = {
+      listAvailableProviders,
+    },
+    private readonly codexTalker: Pick<
+      CodexEphemeralTalker,
+      "createPlannerBrief"
+    > = new CodexEphemeralTalker(),
+    private readonly llm: Pick<
+      VoiceSecretaryTalkerLlm,
+      "createPlannerBrief"
+    > = new VoiceSecretaryTalkerLlm(getVoiceSecretaryLlmConfig()),
+  ) {}
+
   async plan(request: PlannerRequest): Promise<PlannerResult> {
-    const instructions = await discoverInstructionFiles(request.projectPath);
-    const topLevelEntries = await listTopLevelEntries(request.projectPath);
+    const [instructions, topLevelEntries, providers] = await Promise.all([
+      discoverInstructionFiles(request.projectPath),
+      listTopLevelEntries(request.projectPath),
+      this.providerCatalog.listAvailableProviders(),
+    ]);
     const projectSummary =
       topLevelEntries.length > 0
         ? `项目 ${basename(request.projectPath)} 顶层包含：${topLevelEntries.join(", ")}。`
@@ -178,8 +331,15 @@ export class ProjectPlanner {
     const contextSummary = request.conversationSessionId
       ? `${projectSummary} 本次电话将复用对话 ${request.conversationSessionId} 作为 Worker 上下文。`
       : `${projectSummary} 本次电话缺省挂载到项目，并由 Worker 创建新的执行上下文。`;
+    const providerSummary = request.conversationProvider
+      ? `当前已选对话 provider：${request.conversationProvider}，本次会复用该 provider。`
+      : summarizeProviderCatalog(providers);
 
-    const executionTask = this.createExecutionTask(request, instructions);
+    const executionTask = this.createExecutionTask(
+      request,
+      instructions,
+      providers,
+    );
     const callbackDecision: CallbackDecision = {
       required: true,
       reason: "scheduled_update",
@@ -187,25 +347,41 @@ export class ProjectPlanner {
       script:
         "我已经完成只读项目理解，可以继续创建正式执行会话，或先回答你的补充问题。",
     };
+    const instructionPaths = instructions.map(
+      (instruction) => instruction.path,
+    );
+    const codexBrief = await this.codexTalker.createPlannerBrief(
+      request,
+      contextSummary,
+      providerSummary,
+      instructionPaths,
+    );
+    const llmBrief = codexBrief
+      ? codexBrief
+      : await this.llm.createPlannerBrief(
+          request,
+          contextSummary,
+          providerSummary,
+          instructionPaths,
+        );
+    const defaultSuggestedNext =
+      "下一步你想让我创建正式执行会话，还是先把计划读给你听？";
 
     return {
       id: randomUUID(),
       requestId: request.id,
-      projectSummary: contextSummary,
+      projectSummary: `${contextSummary} ${providerSummary}`,
       relevantInstructions: instructions,
       recommendedAction: "create_executor_session",
-      talkerBrief: {
+      talkerBrief: llmBrief ?? {
         spokenSummary:
           "我已经只读检查了项目说明，并准备好一个正式执行会话可以使用的任务包。",
-        suggestedNextUtterance:
-          "下一步你想让我创建正式执行会话，还是先把计划读给你听？",
+        suggestedNextUtterance: defaultSuggestedNext,
         factsToAvoidOverstating: [
           "ProjectPlanner 没有修改文件。",
           "Worker 接到的是只读任务包，真实修改需要后续明确执行任务。",
         ],
-        questionsToAsk: [
-          "下一步你想让我创建正式执行会话，还是先把计划读给你听？",
-        ],
+        questionsToAsk: [defaultSuggestedNext],
       },
       executionTask,
       callbackDecision,
@@ -215,6 +391,7 @@ export class ProjectPlanner {
   private createExecutionTask(
     request: PlannerRequest,
     instructions: InstructionReference[],
+    providers: AvailableVoiceProvider[],
   ): ExecutionTask {
     const instructionList =
       instructions.length > 0
@@ -224,13 +401,15 @@ export class ProjectPlanner {
             )
             .join("\n")
         : "- No local instruction files were found.";
+    const mode = chooseExecutionMode(request.requestedOutcome);
+    const provider = chooseExecutorProvider(request, providers);
 
     return {
       id: randomUUID(),
       projectPath: request.projectPath,
       conversationSessionId: request.conversationSessionId,
-      provider: "codex",
-      mode: "read_only",
+      provider,
+      mode,
       prompt: [
         "You are the formal AgentLine executor session for a voice-originated request.",
         "Do not assume the Talker or ProjectPlanner modified code.",
@@ -239,6 +418,8 @@ export class ProjectPlanner {
           : "No existing conversation was selected, so this Worker context is project-scoped.",
         "",
         `User intent: ${request.userIntent}`,
+        `Requested outcome: ${request.requestedOutcome}`,
+        `Execution mode: ${mode}`,
         "",
         "Relevant read-only project instructions:",
         instructionList,
@@ -254,7 +435,9 @@ export class ProjectPlanner {
         "Result can be summarized back to the caller.",
       ],
       riskNotes: [
-        "This voice-originated task is read-only and must not perform implementation.",
+        mode === "implementation"
+          ? "Voice-originated implementation must still obey normal provider approval and audit controls."
+          : "This voice-originated task should stay bounded until the formal executor session confirms the next step.",
       ],
       requiredVerification: [
         "Confirm the task packet contains user intent and project instructions.",
@@ -329,7 +512,7 @@ export class SimulatedCallLoop {
           input.utterance,
           this.options.userTurnSource ?? "typed",
         ),
-        this.talker.createOpeningTurn(input),
+        await this.talker.createOpeningTurn(input),
       ],
       plannerRuns: [],
       callbackRequests: [],
@@ -353,7 +536,7 @@ export class SimulatedCallLoop {
       plannerResult.executionTask,
     );
     const executorReport = await this.executor.getReport(executorSession.id);
-    const finalBrief = this.talker.createFinalBrief(
+    const finalBrief = await this.talker.createFinalBrief(
       plannerResult,
       executorReport,
     );
@@ -381,8 +564,18 @@ export class SimulatedCallLoop {
 }
 
 export class VoiceSecretaryCallLoop extends SimulatedCallLoop {
-  constructor(executor: ExecutorAgentAdapter) {
-    super(new VoiceSecretaryTalker(), new ProjectPlanner(), executor, {
+  constructor(
+    executor: ExecutorAgentAdapter,
+    options: {
+      providerCatalog?: VoiceProviderCatalog;
+      talker?: VoiceSecretaryTalker;
+      planner?: ProjectPlanner;
+    } = {},
+  ) {
+    const talker = options.talker ?? new VoiceSecretaryTalker();
+    const planner =
+      options.planner ?? new ProjectPlanner(options.providerCatalog);
+    super(talker, planner, executor, {
       channel: "web-voice",
       userTurnSource: "asr",
     });

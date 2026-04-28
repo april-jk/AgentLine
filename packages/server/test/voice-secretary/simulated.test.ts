@@ -15,6 +15,11 @@ import type {
 
 describe("SimulatedCallLoop", () => {
   let projectPath: string;
+  const nullCodexTalker = {
+    createOpeningText: async () => null,
+    createPlannerBrief: async () => null,
+    createFinalBrief: async () => null,
+  };
 
   beforeEach(async () => {
     projectPath = join(tmpdir(), `voice-secretary-${randomUUID()}`);
@@ -44,7 +49,10 @@ describe("SimulatedCallLoop", () => {
   });
 
   it("turns one simulated utterance into a planner task and fake executor report", async () => {
-    const loop = new SimulatedCallLoop();
+    const loop = new SimulatedCallLoop(
+      new SimulatedTalker(nullCodexTalker),
+      new ProjectPlanner(undefined, nullCodexTalker),
+    );
 
     const result = await loop.run({
       projectPath,
@@ -80,8 +88,8 @@ describe("SimulatedCallLoop", () => {
 
   it("keeps ProjectPlanner read-only while collecting project instructions", async () => {
     const before = await readFile(join(projectPath, "AGENTS.md"), "utf-8");
-    const planner = new ProjectPlanner();
-    const talker = new SimulatedTalker();
+    const planner = new ProjectPlanner(undefined, nullCodexTalker);
+    const talker = new SimulatedTalker(nullCodexTalker);
     const callSession: CallSession = {
       id: randomUUID(),
       channel: "simulated",

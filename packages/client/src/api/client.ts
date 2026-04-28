@@ -468,6 +468,7 @@ export const api = {
   simulateVoiceSecretary: (request: {
     projectPath: string;
     conversationSessionId?: string;
+    conversationProvider?: ProviderName;
     utterance: string;
     executorMode?: "fake" | "agentline";
   }) =>
@@ -479,6 +480,7 @@ export const api = {
   startVoiceSecretaryCall: (request: {
     projectPath: string;
     conversationSessionId?: string;
+    conversationProvider?: ProviderName;
     utterance: string;
   }) =>
     fetchJSON<{ result: VoiceSecretaryResult }>("/voice-secretary/calls", {
@@ -490,7 +492,9 @@ export const api = {
     fetchJSON<{ project: Project }>(`/projects/${projectId}`),
 
   getProjectSessions: (projectId: string) =>
-    fetchJSON<{ sessions: SessionSummary[] }>(`/projects/${projectId}/sessions`),
+    fetchJSON<{ sessions: SessionSummary[] }>(
+      `/projects/${projectId}/sessions`,
+    ),
 
   getSession: (
     projectId: string,
@@ -1198,4 +1202,10 @@ export interface ServerSettings {
   phoneVolcengineAsrEndpoint?: string;
   /** Optional Volcengine TTS websocket endpoint override */
   phoneVolcengineTtsEndpoint?: string;
+  /** Provider used for the Talker LLM path in the phone module */
+  phoneTalkerProvider?: ProviderName;
+  /** Model used for the Talker LLM path */
+  phoneTalkerModel?: string;
+  /** Effort level used for the Talker LLM path */
+  phoneTalkerEffort?: import("@agentline/shared").EffortLevel;
 }

@@ -5,14 +5,27 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createVoiceSecretaryRoutes } from "../../src/routes/voice-secretary.js";
 import type { Supervisor } from "../../src/supervisor/Supervisor.js";
+import type { VoiceProviderCatalog } from "../../src/voice-secretary/types.js";
 
 describe("Voice Secretary routes", () => {
   let projectPath: string;
+  let providerCatalog: VoiceProviderCatalog;
 
   beforeEach(async () => {
     projectPath = join(tmpdir(), `voice-secretary-route-${randomUUID()}`);
     await mkdir(projectPath, { recursive: true });
     await writeFile(join(projectPath, "AGENTS.md"), "# Rules\nRead only.\n");
+    providerCatalog = {
+      listAvailableProviders: vi.fn(async () => [
+        {
+          name: "codex",
+          displayName: "Codex",
+          installed: true,
+          authenticated: true,
+          enabled: true,
+        },
+      ]),
+    };
   });
 
   afterEach(async () => {
@@ -20,7 +33,7 @@ describe("Voice Secretary routes", () => {
   });
 
   it("runs a simulated call fixture", async () => {
-    const routes = createVoiceSecretaryRoutes();
+    const routes = createVoiceSecretaryRoutes({ providerCatalog });
     const response = await routes.request("/simulate", {
       method: "POST",
       body: JSON.stringify({
@@ -50,6 +63,7 @@ describe("Voice Secretary routes", () => {
     const routes = createVoiceSecretaryRoutes({
       supervisor: { startSession } as unknown as Supervisor,
       sessionMetadataService: { setProvider } as never,
+      providerCatalog,
     });
 
     const response = await routes.request("/simulate", {
@@ -90,6 +104,7 @@ describe("Voice Secretary routes", () => {
     }));
     const routes = createVoiceSecretaryRoutes({
       supervisor: { startSession } as unknown as Supervisor,
+      providerCatalog,
     });
 
     const response = await routes.request("/calls", {
@@ -137,6 +152,7 @@ describe("Voice Secretary routes", () => {
     const routes = createVoiceSecretaryRoutes({
       supervisor: { resumeSession } as unknown as Supervisor,
       sessionMetadataService: { setProvider } as never,
+      providerCatalog,
     });
 
     const response = await routes.request("/calls", {
@@ -144,6 +160,7 @@ describe("Voice Secretary routes", () => {
       body: JSON.stringify({
         projectPath,
         conversationSessionId: "existing-codex-session",
+        conversationProvider: "claude",
         utterance: "Use this conversation to prepare the next handoff.",
       }),
       headers: { "content-type": "application/json" },
@@ -167,13 +184,16 @@ describe("Voice Secretary routes", () => {
         ),
       }),
       "plan",
-      { providerName: "codex" },
+      { providerName: "claude" },
     );
-    expect(setProvider).toHaveBeenCalledWith("existing-codex-session", "codex");
+    expect(setProvider).toHaveBeenCalledWith(
+      "existing-codex-session",
+      "claude",
+    );
   });
 
   it("rejects AgentLine executor mode when no supervisor is available", async () => {
-    const routes = createVoiceSecretaryRoutes();
+    const routes = createVoiceSecretaryRoutes({ providerCatalog });
     const response = await routes.request("/simulate", {
       method: "POST",
       body: JSON.stringify({
@@ -188,7 +208,7 @@ describe("Voice Secretary routes", () => {
   });
 
   it("rejects real calls when no supervisor is available", async () => {
-    const routes = createVoiceSecretaryRoutes();
+    const routes = createVoiceSecretaryRoutes({ providerCatalog });
     const response = await routes.request("/calls", {
       method: "POST",
       body: JSON.stringify({
@@ -202,7 +222,7 @@ describe("Voice Secretary routes", () => {
   });
 
   it("rejects missing required input", async () => {
-    const routes = createVoiceSecretaryRoutes();
+    const routes = createVoiceSecretaryRoutes({ providerCatalog });
     const response = await routes.request("/simulate", {
       method: "POST",
       body: JSON.stringify({ projectPath }),
