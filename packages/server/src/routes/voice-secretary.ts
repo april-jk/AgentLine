@@ -11,6 +11,11 @@ import {
   VoiceSecretaryCallLoop,
   VoiceSecretaryTalker,
 } from "../voice-secretary/index.js";
+import {
+  VoiceSecretaryTalkerLlm,
+  getVoiceSecretaryLlmConfig,
+  getVoiceSecretaryLlmConfigFromSettings,
+} from "../voice-secretary/talker-llm.js";
 import type { VoiceProviderCatalog } from "../voice-secretary/types.js";
 
 export interface VoiceSecretaryRoutesDeps {
@@ -50,7 +55,7 @@ function parseConversationProvider(
 }
 
 function getPhoneTalkerConfig(serverSettingsService?: ServerSettingsService): {
-  provider: ProviderName;
+  provider: ProviderName | "custom-api";
   model: string;
   effort: "low" | "medium" | "high" | "max";
 } {
@@ -60,6 +65,16 @@ function getPhoneTalkerConfig(serverSettingsService?: ServerSettingsService): {
     model: settings?.phoneTalkerModel ?? "gpt-5.2",
     effort: settings?.phoneTalkerEffort ?? "low",
   };
+}
+
+function createTalkerLlm(serverSettingsService?: ServerSettingsService) {
+  const settings = serverSettingsService?.getSettings();
+  if (settings?.phoneTalkerProvider === "custom-api") {
+    return new VoiceSecretaryTalkerLlm(
+      getVoiceSecretaryLlmConfigFromSettings(settings),
+    );
+  }
+  return new VoiceSecretaryTalkerLlm(getVoiceSecretaryLlmConfig());
 }
 
 export function createVoiceSecretaryRoutes(
@@ -102,8 +117,9 @@ export function createVoiceSecretaryRoutes(
     const codexTalker = new CodexEphemeralTalker({
       getRuntimeConfig: () => getPhoneTalkerConfig(deps.serverSettingsService),
     });
-    const talker = new VoiceSecretaryTalker(codexTalker);
-    const planner = new ProjectPlanner(deps.providerCatalog, codexTalker);
+    const llm = createTalkerLlm(deps.serverSettingsService);
+    const talker = new VoiceSecretaryTalker(codexTalker, llm);
+    const planner = new ProjectPlanner(deps.providerCatalog, codexTalker, llm);
     const loop = new VoiceSecretaryCallLoop(executor, {
       providerCatalog: deps.providerCatalog,
       talker,
@@ -164,7 +180,13 @@ export function createVoiceSecretaryRoutes(
             sessionMetadataService: deps.sessionMetadataService,
           })
         : undefined;
-    const loop = new SimulatedCallLoop(undefined, undefined, executor);
+    const codexTalker = new CodexEphemeralTalker({
+      getRuntimeConfig: () => getPhoneTalkerConfig(deps.serverSettingsService),
+    });
+    const llm = createTalkerLlm(deps.serverSettingsService);
+    const talker = new VoiceSecretaryTalker(codexTalker, llm);
+    const planner = new ProjectPlanner(deps.providerCatalog, codexTalker, llm);
+    const loop = new SimulatedCallLoop(talker, planner, executor);
     const result = await loop.run({
       projectPath: body.projectPath,
       conversationSessionId,

@@ -1203,9 +1203,15 @@ export interface ServerSettings {
   /** Optional Volcengine TTS websocket endpoint override */
   phoneVolcengineTtsEndpoint?: string;
   /** Provider used for the Talker LLM path in the phone module */
-  phoneTalkerProvider?: ProviderName;
+  phoneTalkerProvider?: ProviderName | "custom-api";
   /** Model used for the Talker LLM path */
   phoneTalkerModel?: string;
   /** Effort level used for the Talker LLM path */
   phoneTalkerEffort?: import("@agentline/shared").EffortLevel;
+  /** Base URL used by the custom Talker API provider */
+  phoneTalkerApiBaseUrl?: string;
+  /** API key used by the custom Talker API provider */
+  phoneTalkerApiKey?: string;
+  /** Whether to explicitly disable reasoning/thinking for the custom Talker API provider */
+  phoneTalkerApiDisableThinking?: boolean;
 }

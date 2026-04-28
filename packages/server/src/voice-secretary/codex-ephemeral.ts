@@ -16,6 +16,7 @@ import type {
   StartSessionOptions,
 } from "../sdk/providers/types.js";
 import type { SDKMessage } from "../sdk/types.js";
+import type { TalkerProviderName } from "../services/ServerSettingsService.js";
 import type {
   ExecutorReport,
   PlannerRequest,
@@ -49,7 +50,7 @@ interface CodexEphemeralTalkerOptions {
 
 interface VoiceSecretaryTalkerRuntimeConfig {
   enabled?: boolean;
-  provider?: ProviderName;
+  provider?: TalkerProviderName;
   model?: string;
   effort?: EffortLevel;
 }

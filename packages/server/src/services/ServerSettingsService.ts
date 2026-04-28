@@ -15,6 +15,8 @@ import type {
 
 const CURRENT_VERSION = 1;
 
+export type TalkerProviderName = ProviderName | "custom-api";
+
 /** Server-wide settings */
 export interface ServerSettings {
   /** Whether clients should register the service worker (for push notifications) */
@@ -72,11 +74,17 @@ export interface ServerSettings {
   /** Optional Volcengine TTS websocket endpoint override */
   phoneVolcengineTtsEndpoint?: string;
   /** Provider used for the Talker LLM path in the phone module */
-  phoneTalkerProvider?: ProviderName;
+  phoneTalkerProvider?: TalkerProviderName;
   /** Model used for the Talker LLM path */
   phoneTalkerModel?: string;
   /** Effort level used for the Talker LLM path */
   phoneTalkerEffort?: EffortLevel;
+  /** Base URL used by the custom Talker API provider */
+  phoneTalkerApiBaseUrl?: string;
+  /** API key used by the custom Talker API provider */
+  phoneTalkerApiKey?: string;
+  /** Whether to explicitly disable reasoning/thinking for the custom Talker API provider */
+  phoneTalkerApiDisableThinking?: boolean;
 }
 
 /** Default settings */

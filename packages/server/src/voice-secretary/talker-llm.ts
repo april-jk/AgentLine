@@ -1,4 +1,5 @@
 import { basename } from "node:path";
+import type { ServerSettings } from "../services/ServerSettingsService.js";
 import type {
   ExecutorReport,
   PlannerRequest,
@@ -20,11 +21,12 @@ interface OpenAiCompatibleResponse {
   }>;
 }
 
-interface VoiceSecretaryLlmConfig {
+export interface VoiceSecretaryLlmConfig {
   apiKey: string;
   baseUrl: string;
   model: string;
   timeoutMs: number;
+  disableThinking?: boolean;
 }
 
 function trimTrailingSlash(value: string): string {
@@ -87,6 +89,43 @@ export function getVoiceSecretaryLlmConfig(
   };
 }
 
+export function getVoiceSecretaryLlmConfigFromSettings(
+  settings: Pick<
+    ServerSettings,
+    | "phoneTalkerProvider"
+    | "phoneTalkerModel"
+    | "phoneTalkerApiBaseUrl"
+    | "phoneTalkerApiKey"
+    | "phoneTalkerApiDisableThinking"
+  >,
+  env: NodeJS.ProcessEnv = process.env,
+): VoiceSecretaryLlmConfig | null {
+  if (settings.phoneTalkerProvider !== "custom-api") {
+    return null;
+  }
+
+  const apiKey = settings.phoneTalkerApiKey?.trim();
+  const baseUrl = settings.phoneTalkerApiBaseUrl?.trim();
+  const model = settings.phoneTalkerModel?.trim();
+  if (!apiKey || !baseUrl || !model) {
+    return null;
+  }
+
+  const timeoutRaw = env.VOICE_SECRETARY_LLM_TIMEOUT_MS?.trim();
+  const timeoutMs =
+    timeoutRaw && Number.isFinite(Number(timeoutRaw))
+      ? Math.max(1000, Number(timeoutRaw))
+      : 12000;
+
+  return {
+    apiKey,
+    baseUrl: trimTrailingSlash(baseUrl),
+    model,
+    timeoutMs,
+    disableThinking: settings.phoneTalkerApiDisableThinking ?? false,
+  };
+}
+
 async function requestJson<T>(
   config: VoiceSecretaryLlmConfig,
   messages: ChatMessage[],
@@ -106,6 +145,13 @@ async function requestJson<T>(
         model: config.model,
         temperature: 0.2,
         response_format: { type: "json_object" },
+        ...(config.disableThinking
+          ? {
+              reasoning_effort: "none",
+              reasoning: { effort: "none" },
+              thinking: { type: "disabled" },
+            }
+          : {}),
         messages,
       }),
     });

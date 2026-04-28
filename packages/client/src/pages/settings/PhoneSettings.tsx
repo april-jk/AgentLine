@@ -9,6 +9,12 @@ const MAX_SHORT_VALUE = 200;
 const MAX_SECRET_VALUE = 5000;
 const MAX_URL_VALUE = 2000;
 const TALKER_MODEL_LIST_ID = "phone-talker-models";
+type TalkerProviderOption = ProviderName | "custom-api";
+interface TalkerProviderChoice {
+  name: TalkerProviderOption;
+  label: string;
+  models: Array<{ id: string; name: string }>;
+}
 
 export function PhoneSettings() {
   const { t } = useI18n();
@@ -23,27 +29,41 @@ export function PhoneSettings() {
   const [ttsVoiceType, setTtsVoiceType] = useState("");
   const [asrEndpoint, setAsrEndpoint] = useState("");
   const [ttsEndpoint, setTtsEndpoint] = useState("");
-  const [talkerProvider, setTalkerProvider] = useState<ProviderName>("codex");
+  const [talkerProvider, setTalkerProvider] =
+    useState<TalkerProviderOption>("codex");
   const [talkerModel, setTalkerModel] = useState("gpt-5.2");
   const [talkerEffort, setTalkerEffort] =
     useState<(typeof EFFORT_LEVEL_OPTIONS)[number]["value"]>("low");
+  const [talkerApiBaseUrl, setTalkerApiBaseUrl] = useState("");
+  const [talkerApiKey, setTalkerApiKey] = useState("");
+  const [talkerApiDisableThinking, setTalkerApiDisableThinking] =
+    useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const providerOptions = useMemo(() => {
+  const providerOptions = useMemo<TalkerProviderChoice[]>(() => {
     const providerMap = new Map(
       providers.map((provider) => [provider.name, provider]),
     );
-    return ALL_PROVIDERS.map((providerName) => {
-      const provider = providerMap.get(providerName);
-      return {
-        name: providerName,
-        label: provider?.displayName ?? providerName,
-        models: provider?.models ?? [],
-      };
-    });
-  }, [providers]);
+    const builtinOptions: TalkerProviderChoice[] = ALL_PROVIDERS.map(
+      (providerName) => {
+        const provider = providerMap.get(providerName);
+        return {
+          name: providerName,
+          label: provider?.displayName ?? providerName,
+          models: provider?.models ?? [],
+        };
+      },
+    );
+    return builtinOptions.concat([
+      {
+        name: "custom-api" as const,
+        label: t("phoneSettingsTalkerProviderCustomApi"),
+        models: [],
+      },
+    ]);
+  }, [providers, t]);
 
   const selectedTalkerProvider = providerOptions.find(
     (provider) => provider.name === talkerProvider,
@@ -75,6 +95,11 @@ export function PhoneSettings() {
     setTalkerProvider(settings.phoneTalkerProvider ?? "codex");
     setTalkerModel(settings.phoneTalkerModel ?? "gpt-5.2");
     setTalkerEffort(settings.phoneTalkerEffort ?? "low");
+    setTalkerApiBaseUrl(settings.phoneTalkerApiBaseUrl ?? "");
+    setTalkerApiKey(settings.phoneTalkerApiKey ?? "");
+    setTalkerApiDisableThinking(
+      settings.phoneTalkerApiDisableThinking ?? false,
+    );
     setHasChanges(false);
   }, [settings]);
 
@@ -116,6 +141,15 @@ export function PhoneSettings() {
         updateSetting("phoneTalkerProvider", talkerProvider),
         updateSetting("phoneTalkerModel", talkerModel.trim() || undefined),
         updateSetting("phoneTalkerEffort", talkerEffort),
+        updateSetting(
+          "phoneTalkerApiBaseUrl",
+          talkerApiBaseUrl.trim() || undefined,
+        ),
+        updateSetting("phoneTalkerApiKey", talkerApiKey.trim() || undefined),
+        updateSetting(
+          "phoneTalkerApiDisableThinking",
+          talkerApiDisableThinking,
+        ),
       ]);
       setHasChanges(false);
     } catch (err) {
@@ -135,6 +169,9 @@ export function PhoneSettings() {
     ttsAppId,
     ttsEndpoint,
     talkerEffort,
+    talkerApiBaseUrl,
+    talkerApiDisableThinking,
+    talkerApiKey,
     talkerModel,
     talkerProvider,
     ttsSecretKey,
@@ -354,7 +391,7 @@ export function PhoneSettings() {
             className="settings-select"
             value={talkerProvider}
             onChange={(event) => {
-              setTalkerProvider(event.target.value as ProviderName);
+              setTalkerProvider(event.target.value as TalkerProviderOption);
               setHasChanges(true);
               setSaveError(null);
             }}
@@ -366,6 +403,70 @@ export function PhoneSettings() {
             ))}
           </select>
         </div>
+
+        {talkerProvider === "custom-api" && (
+          <>
+            <div className="settings-item settings-item-stacked">
+              <div className="settings-item-info">
+                <strong>{t("phoneSettingsTalkerApiBaseUrlTitle")}</strong>
+                <p>{t("phoneSettingsTalkerApiBaseUrlDescription")}</p>
+              </div>
+              <input
+                type="url"
+                className="settings-input"
+                value={talkerApiBaseUrl}
+                onChange={(event) => {
+                  setTalkerApiBaseUrl(
+                    event.target.value.slice(0, MAX_URL_VALUE),
+                  );
+                  setHasChanges(true);
+                  setSaveError(null);
+                }}
+                placeholder="https://api.example.com/v1"
+              />
+            </div>
+
+            <div className="settings-item settings-item-stacked">
+              <div className="settings-item-info">
+                <strong>{t("phoneSettingsTalkerApiKeyTitle")}</strong>
+                <p>{t("phoneSettingsTalkerApiKeyDescription")}</p>
+              </div>
+              <input
+                type="password"
+                className="settings-input"
+                value={talkerApiKey}
+                onChange={(event) => {
+                  setTalkerApiKey(
+                    event.target.value.slice(0, MAX_SECRET_VALUE),
+                  );
+                  setHasChanges(true);
+                  setSaveError(null);
+                }}
+                placeholder="sk-..."
+              />
+            </div>
+
+            <div className="settings-item">
+              <div className="settings-item-info">
+                <strong>
+                  {t("phoneSettingsTalkerApiDisableThinkingTitle")}
+                </strong>
+                <p>{t("phoneSettingsTalkerApiDisableThinkingDescription")}</p>
+              </div>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={talkerApiDisableThinking}
+                  onChange={(event) => {
+                    setTalkerApiDisableThinking(event.target.checked);
+                    setHasChanges(true);
+                    setSaveError(null);
+                  }}
+                />
+              </label>
+            </div>
+          </>
+        )}
 
         <div className="settings-item settings-item-stacked">
           <div className="settings-item-info">
@@ -393,30 +494,32 @@ export function PhoneSettings() {
           </datalist>
         </div>
 
-        <div className="settings-item settings-item-stacked">
-          <div className="settings-item-info">
-            <strong>{t("phoneSettingsTalkerEffortTitle")}</strong>
-            <p>{t("phoneSettingsTalkerEffortDescription")}</p>
+        {talkerProvider !== "custom-api" && (
+          <div className="settings-item settings-item-stacked">
+            <div className="settings-item-info">
+              <strong>{t("phoneSettingsTalkerEffortTitle")}</strong>
+              <p>{t("phoneSettingsTalkerEffortDescription")}</p>
+            </div>
+            <select
+              className="settings-select"
+              value={talkerEffort}
+              onChange={(event) => {
+                setTalkerEffort(
+                  event.target
+                    .value as (typeof EFFORT_LEVEL_OPTIONS)[number]["value"],
+                );
+                setHasChanges(true);
+                setSaveError(null);
+              }}
+            >
+              {EFFORT_LEVEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
-          <select
-            className="settings-select"
-            value={talkerEffort}
-            onChange={(event) => {
-              setTalkerEffort(
-                event.target
-                  .value as (typeof EFFORT_LEVEL_OPTIONS)[number]["value"],
-              );
-              setHasChanges(true);
-              setSaveError(null);
-            }}
-          >
-            {EFFORT_LEVEL_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        )}
 
         <div className="settings-actions-row">
           <button

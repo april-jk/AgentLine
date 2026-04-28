@@ -37,6 +37,8 @@ export interface SettingsRoutesDeps {
   onOllamaUseFullSystemPromptChanged?: (enabled: boolean) => void;
 }
 
+const TALKER_PROVIDER_OPTIONS = [...ALL_PROVIDERS, "custom-api"] as const;
+
 function parseHostAliasList(rawHosts: unknown[]): {
   hosts: string[];
   invalidHost?: string;
@@ -376,9 +378,13 @@ export function createSettingsRoutes(deps: SettingsRoutesDeps): Hono {
       } else if (
         typeof body.phoneTalkerProvider === "string" &&
         body.phoneTalkerProvider.trim().length > 0 &&
-        ALL_PROVIDERS.includes(body.phoneTalkerProvider as ProviderName)
+        TALKER_PROVIDER_OPTIONS.includes(
+          body.phoneTalkerProvider as (typeof TALKER_PROVIDER_OPTIONS)[number],
+        )
       ) {
-        updates.phoneTalkerProvider = body.phoneTalkerProvider as ProviderName;
+        updates.phoneTalkerProvider = body.phoneTalkerProvider as
+          | ProviderName
+          | "custom-api";
       }
     }
     applyOptionalStringSetting(body, updates, "phoneTalkerModel", 200);
@@ -395,6 +401,12 @@ export function createSettingsRoutes(deps: SettingsRoutesDeps): Hono {
       ) {
         updates.phoneTalkerEffort = body.phoneTalkerEffort as EffortLevel;
       }
+    }
+    applyOptionalStringSetting(body, updates, "phoneTalkerApiBaseUrl", 2000);
+    applyOptionalStringSetting(body, updates, "phoneTalkerApiKey", 5000);
+    if (typeof body.phoneTalkerApiDisableThinking === "boolean") {
+      updates.phoneTalkerApiDisableThinking =
+        body.phoneTalkerApiDisableThinking;
     }
 
     if (Object.keys(updates).length === 0) {
