@@ -14,7 +14,8 @@ const DEFAULT_ASR_WS_RESOURCE_IDS = [
   "volc.seedasr.sauc.concurrent",
 ];
 const DEFAULT_TTS_CLUSTER = "volcano_tts";
-const DEFAULT_TTS_V3_RESOURCE_IDS = ["seed-tts-2.0", "volc.service_type.10029"];
+const DEFAULT_TTS_V3_RESOURCE_ID = "seed-tts-2.0";
+const DEFAULT_TTS_V3_QUERY_RESOURCE_ID = "volc.service_type.10029";
 
 export interface VolcengineSpeechConfig {
   asrAppId: string;
@@ -44,6 +45,13 @@ interface VolcengineTtsResponse {
   code?: number;
   message?: string;
   data?: string;
+}
+
+interface VolcengineTtsV3DirectResponse {
+  code?: number;
+  message?: string;
+  data?: string;
+  sentence?: unknown;
 }
 
 export interface VolcengineSpeechTurnAudio {
@@ -128,8 +136,62 @@ function isVolcengineTtsV3Endpoint(endpoint: string): boolean {
   return endpoint.includes("/api/v3/tts/");
 }
 
+function isVolcengineTtsV3UnidirectionalEndpoint(endpoint: string): boolean {
+  return endpoint.includes("/api/v3/tts/unidirectional");
+}
+
 function isWebSocketEndpoint(endpoint: string): boolean {
   return /^wss?:\/\//i.test(endpoint);
+}
+
+function parseConcatenatedJsonObjects(
+  text: string,
+): Array<Record<string, unknown>> {
+  const results: Array<Record<string, unknown>> = [];
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === undefined) continue;
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      if (depth === 0) {
+        start = index;
+      }
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        const candidate = text.slice(start, index + 1);
+        results.push(JSON.parse(candidate) as Record<string, unknown>);
+        start = -1;
+      }
+    }
+  }
+
+  return results;
 }
 
 function parseWavePcmS16Le(input: Uint8Array): Uint8Array {
@@ -515,6 +577,9 @@ export class VolcengineSpeechService {
     }
 
     if (isVolcengineTtsV3Endpoint(this.config.ttsEndpoint)) {
+      if (isVolcengineTtsV3UnidirectionalEndpoint(this.config.ttsEndpoint)) {
+        return this.synthesizeTextV3Unidirectional(trimmedText);
+      }
       return this.synthesizeTextV3(trimmedText);
     }
 
@@ -594,45 +659,43 @@ export class VolcengineSpeechService {
       endpointUrl.origin,
     ).toString();
 
-    for (const resourceId of DEFAULT_TTS_V3_RESOURCE_IDS) {
-      const submitRequestId = randomUUID();
-      const submitResponse = await fetch(submitUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Api-App-Id": this.config.ttsAppId,
-          "X-Api-Access-Key": this.config.ttsAccessToken,
-          "X-Api-Resource-Id": resourceId,
-          "X-Api-Request-Id": submitRequestId,
-        },
-        body: JSON.stringify({
-          user: { uid: "agentline-voice-secretary" },
-          unique_id: submitRequestId,
-          req_params: {
-            text: trimmedText,
-            speaker: this.config.ttsVoiceType,
-            audio_params: {
-              format: this.config.ttsEncoding,
-              sample_rate: this.config.ttsEncoding === "wav" ? 16000 : 24000,
-            },
+    const submitRequestId = randomUUID();
+    const submitResponse = await fetch(submitUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Api-App-Id": this.config.ttsAppId,
+        "X-Api-Access-Key": this.config.ttsAccessToken,
+        "X-Api-Resource-Id": DEFAULT_TTS_V3_RESOURCE_ID,
+        "X-Api-Request-Id": submitRequestId,
+      },
+      body: JSON.stringify({
+        user: { uid: "agentline-voice-secretary" },
+        unique_id: submitRequestId,
+        req_params: {
+          text: trimmedText,
+          speaker: this.config.ttsVoiceType,
+          audio_params: {
+            format: this.config.ttsEncoding,
+            sample_rate: this.config.ttsEncoding === "wav" ? 16000 : 24000,
           },
-        }),
-      });
+        },
+      }),
+    });
 
-      const submitJson = (await submitResponse.json().catch(() => null)) as {
-        code?: number;
-        message?: string;
-        data?: { task_id?: string };
-      } | null;
-      const taskId = submitJson?.data?.task_id;
-      if (!submitResponse.ok || submitJson?.code !== 20000000 || !taskId) {
-        errors.push(
-          `${resourceId}: submit failed${submitJson?.message ? ` ${submitJson.message}` : ""}`,
-        );
-        continue;
-      }
-
+    const submitJson = (await submitResponse.json().catch(() => null)) as {
+      code?: number;
+      message?: string;
+      data?: { task_id?: string };
+    } | null;
+    const taskId = submitJson?.data?.task_id;
+    if (!submitResponse.ok || submitJson?.code !== 20000000 || !taskId) {
+      errors.push(
+        `${DEFAULT_TTS_V3_RESOURCE_ID}: submit failed${submitJson?.message ? ` ${submitJson.message}` : ""}`,
+      );
+    } else {
       let audioUrl: string | undefined;
+      let sawTerminalFailure = false;
       for (let attempt = 0; attempt < 20; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         const queryResponse = await fetch(queryUrl, {
@@ -641,7 +704,7 @@ export class VolcengineSpeechService {
             "Content-Type": "application/json",
             "X-Api-App-Id": this.config.ttsAppId,
             "X-Api-Access-Key": this.config.ttsAccessToken,
-            "X-Api-Resource-Id": resourceId,
+            "X-Api-Resource-Id": DEFAULT_TTS_V3_QUERY_RESOURCE_ID,
             "X-Api-Request-Id": randomUUID(),
           },
           body: JSON.stringify({ task_id: taskId }),
@@ -656,8 +719,9 @@ export class VolcengineSpeechService {
         } | null;
         if (!queryResponse.ok || queryJson?.code !== 20000000) {
           errors.push(
-            `${resourceId}: query failed${queryJson?.message ? ` ${queryJson.message}` : ""}`,
+            `${DEFAULT_TTS_V3_QUERY_RESOURCE_ID}: query failed${queryJson?.message ? ` ${queryJson.message}` : ""}`,
           );
+          sawTerminalFailure = true;
           break;
         }
         if (queryJson.data?.audio_url) {
@@ -665,34 +729,97 @@ export class VolcengineSpeechService {
           break;
         }
         if (queryJson.data?.task_status === 3) {
-          errors.push(`${resourceId}: task failed`);
+          errors.push(`${DEFAULT_TTS_V3_QUERY_RESOURCE_ID}: task failed`);
+          sawTerminalFailure = true;
           break;
         }
       }
 
-      if (!audioUrl) {
-        continue;
+      if (!audioUrl && !sawTerminalFailure) {
+        errors.push(
+          `${DEFAULT_TTS_V3_QUERY_RESOURCE_ID}: query timed out waiting for audio_url`,
+        );
       }
 
-      const audioResponse = await fetch(audioUrl);
-      if (!audioResponse.ok) {
-        errors.push(
-          `${resourceId}: audio download failed (${audioResponse.status})`,
-        );
-        continue;
+      if (audioUrl) {
+        const audioResponse = await fetch(audioUrl);
+        if (!audioResponse.ok) {
+          errors.push(
+            `${DEFAULT_TTS_V3_QUERY_RESOURCE_ID}: audio download failed (${audioResponse.status})`,
+          );
+        } else {
+          const audioBytes = new Uint8Array(await audioResponse.arrayBuffer());
+          return {
+            audioBase64: toBase64(audioBytes),
+            contentType:
+              audioResponse.headers.get("content-type") ??
+              (this.config.ttsEncoding === "wav" ? "audio/wav" : "audio/mpeg"),
+            text: trimmedText,
+          };
+        }
       }
-      const audioBytes = new Uint8Array(await audioResponse.arrayBuffer());
-      return {
-        audioBase64: toBase64(audioBytes),
-        contentType:
-          audioResponse.headers.get("content-type") ??
-          (this.config.ttsEncoding === "wav" ? "audio/wav" : "audio/mpeg"),
-        text: trimmedText,
-      };
     }
 
     throw new Error(
       `Volcengine TTS v3 failed${errors.length > 0 ? `: ${errors.join(" | ")}` : ""}`,
     );
+  }
+
+  private async synthesizeTextV3Unidirectional(
+    trimmedText: string,
+  ): Promise<VolcengineSpeechTurnAudio> {
+    if (!this.config) {
+      throw new Error("Volcengine TTS is not configured");
+    }
+
+    const response = await fetch(this.config.ttsEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Api-App-Id": this.config.ttsAppId,
+        "X-Api-Access-Key": this.config.ttsAccessToken,
+        "X-Api-Resource-Id": DEFAULT_TTS_V3_RESOURCE_ID,
+        "X-Api-Request-Id": randomUUID(),
+      },
+      body: JSON.stringify({
+        user: { uid: "agentline-voice-secretary" },
+        req_params: {
+          text: trimmedText,
+          speaker: this.config.ttsVoiceType,
+          audio_params: {
+            format: this.config.ttsEncoding,
+            sample_rate: this.config.ttsEncoding === "wav" ? 16000 : 24000,
+          },
+        },
+      }),
+    });
+
+    const rawText = await response.text();
+    const payloads = parseConcatenatedJsonObjects(
+      rawText,
+    ) as VolcengineTtsV3DirectResponse[];
+    const errorPayload = payloads.find((payload) => {
+      if (payload.code === 0 || payload.code === 20000000) {
+        return false;
+      }
+      return true;
+    });
+    const audioChunks = payloads
+      .map((payload) => payload.data)
+      .filter((chunk): chunk is string => Boolean(chunk))
+      .map((chunk) => Buffer.from(chunk, "base64"));
+    if (!response.ok || errorPayload || audioChunks.length === 0) {
+      throw new Error(
+        `Volcengine TTS v3 unidirectional failed${errorPayload?.message ? `: ${errorPayload.message}` : response.ok ? "" : ` (${response.status})`}`,
+      );
+    }
+    const audioBase64 = Buffer.concat(audioChunks).toString("base64");
+
+    return {
+      audioBase64,
+      contentType:
+        this.config.ttsEncoding === "wav" ? "audio/wav" : "audio/mpeg",
+      text: trimmedText,
+    };
   }
 }

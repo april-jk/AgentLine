@@ -23,6 +23,7 @@ import type {
   PlannerResult,
   SimulatedCallInput,
   TalkerBrief,
+  TalkerContextFrame,
 } from "./types.js";
 
 interface JsonRequest {
@@ -178,10 +179,12 @@ export class CodexEphemeralTalker {
   async createOpeningText(
     input: SimulatedCallInput,
     workerContextLabel: string,
+    context?: TalkerContextFrame,
   ): Promise<string | null> {
     const result = await this.createOpeningTextWithMetrics(
       input,
       workerContextLabel,
+      context,
     );
     return result.text;
   }
@@ -189,6 +192,7 @@ export class CodexEphemeralTalker {
   async createOpeningTextWithMetrics(
     input: SimulatedCallInput,
     workerContextLabel: string,
+    context?: TalkerContextFrame,
   ): Promise<{
     text: string | null;
     metrics: CodexEphemeralTalkerMetrics | null;
@@ -203,6 +207,11 @@ export class CodexEphemeralTalker {
         projectName: basename(input.projectPath),
         workerContext: workerContextLabel,
         userIntent: input.utterance,
+        projectIndexSummary: context?.projectIndex?.summary ?? "",
+        memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
+        memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
+        recentTurns: context?.recentTurns ?? [],
+        latestWorkerMessage: context?.latestWorkerMessage ?? "",
       },
     });
 
@@ -217,6 +226,7 @@ export class CodexEphemeralTalker {
     projectSummary: string,
     providerSummary: string,
     instructionPaths: string[],
+    context?: TalkerContextFrame,
   ): Promise<TalkerBrief | null> {
     if (!this.isEnabledForCurrentConfig()) return null;
     const result = await this.requestJson<{
@@ -235,6 +245,11 @@ export class CodexEphemeralTalker {
         conversationScope: request.conversationSessionId
           ? "conversation"
           : "project",
+        projectIndexSummary: context?.projectIndex?.summary ?? "",
+        memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
+        memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
+        recentTurns: context?.recentTurns ?? [],
+        latestWorkerMessage: context?.latestWorkerMessage ?? "",
       },
     });
 
@@ -263,6 +278,7 @@ export class CodexEphemeralTalker {
   async createFinalBrief(
     plannerResult: PlannerResult,
     executorReport: ExecutorReport,
+    context?: TalkerContextFrame,
   ): Promise<TalkerBrief | null> {
     if (!this.isEnabledForCurrentConfig()) return null;
     const result = await this.requestJson<{
@@ -280,6 +296,12 @@ export class CodexEphemeralTalker {
         executorSummary: executorReport.summary,
         verification: executorReport.verification ?? [],
         changedFiles: executorReport.changedFiles ?? [],
+        projectIndexSummary: context?.projectIndex?.summary ?? "",
+        memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
+        memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
+        recentTurns: context?.recentTurns ?? [],
+        latestWorkerMessage: context?.latestWorkerMessage ?? "",
+        workerStatus: context?.workerStatus ?? "",
       },
     });
 

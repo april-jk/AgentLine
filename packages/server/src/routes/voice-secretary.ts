@@ -9,6 +9,7 @@ import {
   ProjectPlanner,
   SimulatedCallLoop,
   VoiceSecretaryCallLoop,
+  VoiceSecretaryKnowledgeStore,
   VoiceSecretaryRuntimeManager,
   VoiceSecretaryTalker,
 } from "../voice-secretary/index.js";
@@ -28,6 +29,7 @@ export interface VoiceSecretaryRoutesDeps {
   sessionMetadataService?: SessionMetadataService;
   providerCatalog?: VoiceProviderCatalog;
   serverSettingsService?: ServerSettingsService;
+  dataDir?: string;
 }
 
 interface SimulateBody {
@@ -109,7 +111,8 @@ export function createVoiceSecretaryRoutes(
   deps: VoiceSecretaryRoutesDeps = {},
 ): Hono {
   const routes = new Hono();
-  const runtimeManager = new VoiceSecretaryRuntimeManager();
+  const knowledgeStore = new VoiceSecretaryKnowledgeStore(deps.dataDir);
+  const runtimeManager = new VoiceSecretaryRuntimeManager(knowledgeStore);
 
   const bindVoiceWorker = (
     voiceSessionId: string | undefined,
@@ -185,6 +188,7 @@ export function createVoiceSecretaryRoutes(
       providerCatalog: deps.providerCatalog,
       talker,
       planner,
+      knowledgeStore,
       runtimeManager,
     });
     const result = await loop.run({
@@ -263,6 +267,7 @@ export function createVoiceSecretaryRoutes(
         providerCatalog: deps.providerCatalog,
         talker,
         planner,
+        knowledgeStore,
         runtimeManager,
       });
 
@@ -377,6 +382,7 @@ export function createVoiceSecretaryRoutes(
     const talker = new VoiceSecretaryTalker(codexTalker, llm);
     const planner = new ProjectPlanner(deps.providerCatalog, codexTalker, llm);
     const loop = new SimulatedCallLoop(talker, planner, executor, {
+      knowledgeStore,
       runtimeManager,
     });
     const result = await loop.run({

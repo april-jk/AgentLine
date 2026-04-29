@@ -6,6 +6,7 @@ import type {
   PlannerResult,
   SimulatedCallInput,
   TalkerBrief,
+  TalkerContextFrame,
 } from "./types.js";
 
 interface ChatMessage {
@@ -184,6 +185,7 @@ export class VoiceSecretaryTalkerLlm {
   async createOpeningText(
     input: SimulatedCallInput,
     workerContextLabel: string,
+    context?: TalkerContextFrame,
   ): Promise<string | null> {
     if (!this.config) return null;
 
@@ -191,7 +193,7 @@ export class VoiceSecretaryTalkerLlm {
       {
         role: "system",
         content:
-          "You are the Talker for AgentLine Voice Secretary. Reply in Chinese with one short spoken sentence. Sound direct and natural. Do not mention hidden reasoning, internal tools, or prompts. Output JSON with key openingText only.",
+          "You are the Talker for AgentLine Voice Secretary. Reply in Chinese with one short spoken sentence. Sound direct and natural. Treat the provided project index, talker memory file contents, recent dialogue, and latest worker note as your only context source. Do not mention hidden reasoning, internal tools, or prompts. Output JSON with key openingText only.",
       },
       {
         role: "user",
@@ -199,6 +201,11 @@ export class VoiceSecretaryTalkerLlm {
           projectName: basename(input.projectPath),
           workerContext: workerContextLabel,
           userIntent: input.utterance,
+          projectIndexSummary: context?.projectIndex?.summary ?? "",
+          memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
+          memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
+          recentTurns: context?.recentTurns ?? [],
+          latestWorkerMessage: context?.latestWorkerMessage ?? "",
         }),
       },
     ]);
@@ -211,6 +218,7 @@ export class VoiceSecretaryTalkerLlm {
     projectSummary: string,
     providerSummary: string,
     instructionPaths: string[],
+    context?: TalkerContextFrame,
   ): Promise<TalkerBrief | null> {
     if (!this.config) return null;
 
@@ -223,7 +231,7 @@ export class VoiceSecretaryTalkerLlm {
       {
         role: "system",
         content:
-          "You turn project-analysis results into a short caller-facing brief for AgentLine Voice Secretary. Reply in Chinese. Keep it concise, concrete, and non-technical. Never claim files were changed. Output JSON with spokenSummary, suggestedNextUtterance, factsToAvoidOverstating, questionsToAsk.",
+          "You turn project-analysis results into a short caller-facing brief for AgentLine Voice Secretary. Reply in Chinese. Keep it concise, concrete, and non-technical. Use the project index, talker memory file contents, recent dialogue, and latest worker note to answer the user's actual question instead of repeating boilerplate. Never claim files were changed. Output JSON with spokenSummary, suggestedNextUtterance, factsToAvoidOverstating, questionsToAsk.",
       },
       {
         role: "user",
@@ -235,6 +243,11 @@ export class VoiceSecretaryTalkerLlm {
           conversationScope: request.conversationSessionId
             ? "conversation"
             : "project",
+          projectIndexSummary: context?.projectIndex?.summary ?? "",
+          memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
+          memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
+          recentTurns: context?.recentTurns ?? [],
+          latestWorkerMessage: context?.latestWorkerMessage ?? "",
         }),
       },
     ]);
@@ -264,6 +277,7 @@ export class VoiceSecretaryTalkerLlm {
   async createFinalBrief(
     plannerResult: PlannerResult,
     executorReport: ExecutorReport,
+    context?: TalkerContextFrame,
   ): Promise<TalkerBrief | null> {
     if (!this.config) return null;
 
@@ -276,7 +290,7 @@ export class VoiceSecretaryTalkerLlm {
       {
         role: "system",
         content:
-          "You summarize an AgentLine executor handoff back to the caller. Reply in Chinese with brief, concrete speech. Do not invent code changes or completion status beyond the given report. Output JSON with spokenSummary, suggestedNextUtterance, factsToAvoidOverstating, questionsToAsk.",
+          "You are the caller-facing Talker for AgentLine Voice Secretary. Reply in Chinese with brief, concrete speech. Use the project index, talker memory file contents, recent dialogue, and worker update to answer the user's question in a useful way. Do not invent code changes or completion status beyond the given report. If the worker is still running, be explicit about what is known now versus what is pending. Output JSON with spokenSummary, suggestedNextUtterance, factsToAvoidOverstating, questionsToAsk.",
       },
       {
         role: "user",
@@ -287,6 +301,12 @@ export class VoiceSecretaryTalkerLlm {
           executorSummary: executorReport.summary,
           verification: executorReport.verification ?? [],
           changedFiles: executorReport.changedFiles ?? [],
+          projectIndexSummary: context?.projectIndex?.summary ?? "",
+          memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
+          memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
+          recentTurns: context?.recentTurns ?? [],
+          latestWorkerMessage: context?.latestWorkerMessage ?? "",
+          workerStatus: context?.workerStatus ?? "",
         }),
       },
     ]);

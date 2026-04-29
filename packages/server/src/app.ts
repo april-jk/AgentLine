@@ -675,6 +675,7 @@ export function createApp(options: AppOptions): AppResult {
       supervisor,
       sessionMetadataService: options.sessionMetadataService,
       serverSettingsService: options.serverSettingsService,
+      dataDir: options.dataDir,
     }),
   );
 

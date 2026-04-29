@@ -336,7 +336,7 @@ describe("Voice Secretary routes", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("uses Volcengine TTS v3 async submit/query flow", async () => {
+  it("uses Volcengine TTS v3 unidirectional flow", async () => {
     const startSession = vi.fn(async () => ({
       id: "process-1",
       sessionId: "codex-session-1",
@@ -364,43 +364,24 @@ describe("Voice Secretary routes", () => {
             },
           );
         }
-        if (url.includes("/api/v3/tts/submit")) {
+        if (url.includes("/api/v3/tts/unidirectional")) {
           expect(init?.headers).toMatchObject({
             "X-Api-App-Id": "tts-app",
             "X-Api-Access-Key": "tts-token",
             "X-Api-Resource-Id": "seed-tts-2.0",
           });
+          const body = JSON.parse(String(init?.body));
+          expect(body.req_params.speaker).toBe("voice-a");
           return new Response(
-            JSON.stringify({
-              code: 20000000,
-              data: {
-                task_id: "task-1",
-                task_status: 1,
-              },
-            }),
+            `${JSON.stringify({
+              code: 0,
+              data: Buffer.from("RI", "utf8").toString("base64"),
+            })}${JSON.stringify({
+              code: 0,
+              data: Buffer.from("FF", "utf8").toString("base64"),
+            })}`,
             { status: 200 },
           );
-        }
-        if (url.includes("/api/v3/tts/query")) {
-          return new Response(
-            JSON.stringify({
-              code: 20000000,
-              data: {
-                task_id: "task-1",
-                task_status: 2,
-                audio_url: "https://audio.example.com/task-1.wav",
-              },
-            }),
-            { status: 200 },
-          );
-        }
-        if (url.includes("https://audio.example.com/task-1.wav")) {
-          return new Response(Buffer.from("RIFF", "utf8"), {
-            status: 200,
-            headers: {
-              "content-type": "audio/wav",
-            },
-          });
         }
         throw new Error(`Unexpected fetch url: ${url}`);
       });
@@ -441,7 +422,82 @@ describe("Voice Secretary routes", () => {
       Buffer.from("RIFF", "utf8").toString("base64"),
     );
     expect(startSession).toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a direct unidirectional error when TTS v3 rejects the voice-resource pairing", async () => {
+    const startSession = vi.fn(async () => ({
+      id: "process-1",
+      sessionId: "codex-session-1",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes("/recognize/flash")) {
+        return new Response(
+          JSON.stringify({
+            result: {
+              text: "What should this project do next?",
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "X-Api-Status-Code": "20000000",
+            },
+          },
+        );
+      }
+      if (url.includes("/api/v3/tts/unidirectional")) {
+        expect(init?.headers).toMatchObject({
+          "X-Api-Resource-Id": "seed-tts-2.0",
+        });
+        return new Response(
+          JSON.stringify({
+            code: 55000000,
+            message: "resource ID is mismatched with speaker related resource",
+          }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`Unexpected fetch url: ${url}`);
+    });
+
+    const routes = createVoiceSecretaryRoutes({
+      supervisor: { startSession } as unknown as Supervisor,
+      providerCatalog,
+      serverSettingsService: {
+        getSettings: () => ({
+          phoneVolcengineAsrAppId: "asr-app",
+          phoneVolcengineAsrAccessToken: "asr-token",
+          phoneVolcengineTtsAppId: "tts-app",
+          phoneVolcengineTtsAccessToken: "tts-token",
+          phoneVolcengineTtsVoiceType: "voice-a",
+          phoneVolcengineTtsEndpoint:
+            "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
+        }),
+      } as never,
+    });
+
+    const formData = new FormData();
+    formData.set("projectPath", projectPath);
+    formData.set(
+      "audio",
+      new File([new Uint8Array([1, 2, 3])], "turn.wav", { type: "audio/wav" }),
+    );
+
+    const response = await routes.request("/calls/audio", {
+      method: "POST",
+      body: formData,
+      headers: { "X-AgentLine-Request": "true" },
+    });
+
+    expect(response.status).toBe(500);
+    const json = await response.json();
+    expect(json.error).toContain("resource ID is mismatched");
   });
 
   it("retries Volcengine ASR with X-Api-Key auth when legacy auth fails", async () => {

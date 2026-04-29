@@ -27,6 +27,45 @@ export interface TranscriptTurn {
   confidence?: number;
 }
 
+export interface TalkerContextTurn {
+  speaker: "user" | "talker";
+  text: string;
+  at: string;
+}
+
+export interface ProjectKnowledgeIndex {
+  indexVersion: number;
+  projectName: string;
+  projectPath: string;
+  generatedAt: string;
+  projectPositioning: string;
+  currentCapabilities: string[];
+  voiceSecretaryStatus: string[];
+  coreModules: string[];
+  recentFocus: string[];
+  knownNextSteps: string[];
+  topLevelEntries: string[];
+  notableFiles: string[];
+  summary: string;
+}
+
+export interface TalkerProjectMemory {
+  projectPath: string;
+  updatedAt: string;
+  memoryFilePath: string;
+  recentTurns: TalkerContextTurn[];
+  summaryNotes: string[];
+  latestWorkerMessage?: string;
+}
+
+export interface TalkerContextFrame {
+  projectIndex?: ProjectKnowledgeIndex;
+  projectMemory?: TalkerProjectMemory;
+  recentTurns: TalkerContextTurn[];
+  latestWorkerMessage?: string;
+  workerStatus?: VoiceWorkerStatus;
+}
+
 export interface CallSession {
   id: string;
   voiceSessionId?: string;
@@ -71,6 +110,9 @@ export interface PlannerRequest {
   workerSessionId?: string;
   workerProvider?: ProviderName;
   workerStatus?: VoiceWorkerStatus;
+  projectIndex?: ProjectKnowledgeIndex;
+  recentTurns?: TalkerContextTurn[];
+  latestWorkerMessage?: string;
   userIntent: string;
   conversationSummary: string;
   knownConstraints: string[];
@@ -206,6 +248,7 @@ export interface VoiceSessionSnapshot {
   workerStatus: VoiceWorkerStatus;
   speakerProjectSummary?: string;
   latestWorkerMessage?: string;
+  projectIndexSummary?: string;
 }
 
 export interface SimulatedCallResult {

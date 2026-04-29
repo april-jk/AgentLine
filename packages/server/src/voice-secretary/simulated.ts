@@ -3,6 +3,13 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { getAllProviders } from "../sdk/providers/index.js";
 import { CodexEphemeralTalker } from "./codex-ephemeral.js";
+import {
+  buildDeterministicFinalBrief,
+  buildDeterministicOpeningLine,
+  buildDeterministicPlannerBrief,
+  buildProjectKnowledgeSummary,
+} from "./deterministic-brief.js";
+import { VoiceSecretaryKnowledgeStore } from "./knowledge-store.js";
 import { VoiceSecretaryRuntimeManager } from "./runtime.js";
 import {
   VoiceSecretaryTalkerLlm,
@@ -20,9 +27,11 @@ import type {
   InstructionReference,
   PlannerRequest,
   PlannerResult,
+  ProjectKnowledgeIndex,
   SimulatedCallInput,
   SimulatedCallResult,
   TalkerBrief,
+  TalkerContextFrame,
   TranscriptTurn,
   VoiceProviderCatalog,
   VoiceSessionHookEvent,
@@ -171,6 +180,13 @@ function summarizeProviderCatalog(providers: AvailableVoiceProvider[]): string {
   return `当前可用 provider：${providers.map((provider) => provider.displayName).join("、")}。`;
 }
 
+function summarizeProjectIndexForSpeech(
+  projectIndex: ProjectKnowledgeIndex | undefined,
+): string {
+  if (!projectIndex) return "";
+  return buildDeterministicOpeningLine(projectIndex);
+}
+
 async function listAvailableProviders(): Promise<AvailableVoiceProvider[]> {
   const providers = await Promise.all(
     getAllProviders().map(async (provider) => {
@@ -223,15 +239,18 @@ export class VoiceSecretaryTalker {
   constructor(
     private readonly codexTalker: Pick<
       CodexEphemeralTalker,
-      "createOpeningText" | "createFinalBrief"
+      "createOpeningText" | "createFinalBrief" | "createPlannerBrief"
     > = new CodexEphemeralTalker(),
     private readonly llm: Pick<
       VoiceSecretaryTalkerLlm,
-      "createOpeningText" | "createFinalBrief"
+      "createOpeningText" | "createFinalBrief" | "createPlannerBrief"
     > = new VoiceSecretaryTalkerLlm(getVoiceSecretaryLlmConfig()),
   ) {}
 
-  async createOpeningTurn(input: SimulatedCallInput): Promise<TranscriptTurn> {
+  async createOpeningTurn(
+    input: SimulatedCallInput,
+    context?: TalkerContextFrame,
+  ): Promise<TranscriptTurn> {
     const projectName = basename(input.projectPath);
     const workerContextLabel =
       input.conversationSessionId !== undefined
@@ -240,14 +259,14 @@ export class VoiceSecretaryTalker {
     const codexOpening = await this.codexTalker.createOpeningText(
       input,
       workerContextLabel,
+      context,
     );
     const llmOpening = codexOpening
       ? codexOpening
-      : await this.llm.createOpeningText(input, workerContextLabel);
+      : await this.llm.createOpeningText(input, workerContextLabel, context);
     return createTranscriptTurn(
       "talker",
-      llmOpening ??
-        `收到。我先快速记录你的需求，然后以 ${workerContextLabel} 作为 Worker 上下文，稍后给你一个简短结论。`,
+      llmOpening ?? summarizeProjectIndexForSpeech(context?.projectIndex),
       "tts",
     );
   }
@@ -285,53 +304,46 @@ export class VoiceSecretaryTalker {
   async createFinalBrief(
     plannerResult: PlannerResult,
     executorReport: ExecutorReport,
+    context?: TalkerContextFrame,
     pendingHook?: VoiceSessionHookEvent,
   ): Promise<TalkerBrief> {
+    const deterministicBrief = buildDeterministicFinalBrief({
+      plannerSuggestedNextUtterance:
+        plannerResult.talkerBrief.questionsToAsk[0] ??
+        "要我继续把这个任务交给正式执行会话吗？",
+      projectIndex: context?.projectIndex,
+      context,
+      executorReport,
+      pendingHook,
+    });
     const codexBrief = await this.codexTalker.createFinalBrief(
       plannerResult,
       executorReport,
+      context,
     );
     const llmBrief = codexBrief
       ? codexBrief
-      : await this.llm.createFinalBrief(plannerResult, executorReport);
+      : await this.llm.createFinalBrief(plannerResult, executorReport, context);
     if (llmBrief) {
       return {
         ...llmBrief,
+        spokenSummary: deterministicBrief.spokenSummary,
+        suggestedNextUtterance:
+          llmBrief.suggestedNextUtterance ||
+          deterministicBrief.suggestedNextUtterance,
         factsToAvoidOverstating: [
+          ...deterministicBrief.factsToAvoidOverstating,
           ...llmBrief.factsToAvoidOverstating,
           "Speaker 只能把 Worker 的状态说成排队、处理中或已完成，不能把排队说成已经改完。",
         ],
-        spokenSummary: pendingHook
-          ? `${llmBrief.spokenSummary} ${pendingHook.text}`.trim()
-          : llmBrief.spokenSummary,
+        questionsToAsk:
+          llmBrief.questionsToAsk.length > 0
+            ? llmBrief.questionsToAsk
+            : deterministicBrief.questionsToAsk,
       };
     }
 
-    const firstQuestion =
-      plannerResult.talkerBrief.questionsToAsk[0] ??
-      "要我继续把这个任务交给正式执行会话吗？";
-
-    const backgroundLine =
-      plannerResult.recommendedAction === "consult_worker"
-        ? "我已经把更深入的问题继续交给项目专家处理，有新结果我会接着告诉你。"
-        : "";
-    const hookLine = pendingHook?.text ?? "";
-
-    return {
-      spokenSummary: [
-        plannerResult.talkerBrief.spokenSummary,
-        backgroundLine,
-        hookLine,
-      ]
-        .filter(Boolean)
-        .join(" "),
-      suggestedNextUtterance: firstQuestion,
-      factsToAvoidOverstating: [
-        ...plannerResult.talkerBrief.factsToAvoidOverstating,
-        "Worker 的任务包可能还在处理中，不代表已经完成代码修改。",
-      ],
-      questionsToAsk: [firstQuestion],
-    };
+    return deterministicBrief;
   }
 }
 
@@ -358,8 +370,9 @@ export class ProjectPlanner {
       listTopLevelEntries(request.projectPath),
       this.providerCatalog.listAvailableProviders(),
     ]);
-    const projectSummary =
-      topLevelEntries.length > 0
+    const projectSummary = request.projectIndex
+      ? buildProjectKnowledgeSummary(request.projectIndex)
+      : topLevelEntries.length > 0
         ? `项目 ${basename(request.projectPath)} 顶层包含：${topLevelEntries.join(", ")}。`
         : `项目 ${basename(request.projectPath)} 可访问，但未读取到顶层目录列表。`;
     const contextSummary = request.workerSessionId
@@ -386,11 +399,18 @@ export class ProjectPlanner {
     const instructionPaths = instructions.map(
       (instruction) => instruction.path,
     );
+    const context: TalkerContextFrame = {
+      projectIndex: request.projectIndex,
+      recentTurns: request.recentTurns ?? [],
+      latestWorkerMessage: request.latestWorkerMessage,
+      workerStatus: request.workerStatus,
+    };
     const codexBrief = await this.codexTalker.createPlannerBrief(
       request,
       contextSummary,
       providerSummary,
       instructionPaths,
+      context,
     );
     const llmBrief = codexBrief
       ? codexBrief
@@ -399,6 +419,7 @@ export class ProjectPlanner {
           contextSummary,
           providerSummary,
           instructionPaths,
+          context,
         );
     const defaultSuggestedNext =
       "下一步你想让我创建正式执行会话，还是先把计划读给你听？";
@@ -409,17 +430,18 @@ export class ProjectPlanner {
       projectSummary: `${contextSummary} ${providerSummary}`,
       relevantInstructions: instructions,
       recommendedAction: consultWorker ? "consult_worker" : "answer_directly",
-      talkerBrief: llmBrief ?? {
-        spokenSummary: consultWorker
-          ? "我先根据当前项目说明给你一个基础判断，同时把更深入的项目细节继续交给项目专家处理。"
-          : "我已经根据当前项目说明整理出基础上下文，我们可以先直接讨论，不需要每次都新建项目专家会话。",
-        suggestedNextUtterance: defaultSuggestedNext,
-        factsToAvoidOverstating: [
-          "ProjectPlanner 没有修改文件。",
-          "Speaker 的基础回答来自项目说明和当前会话，而不是完整代码审计。",
-        ],
-        questionsToAsk: [defaultSuggestedNext],
-      },
+      talkerBrief: llmBrief ??
+        buildDeterministicPlannerBrief(request, providerSummary) ?? {
+          spokenSummary: consultWorker
+            ? "我先根据当前项目说明给你一个基础判断，同时把更深入的项目细节继续交给项目专家处理。"
+            : "我已经根据当前项目说明整理出基础上下文，我们可以先直接讨论，不需要每次都新建项目专家会话。",
+          suggestedNextUtterance: defaultSuggestedNext,
+          factsToAvoidOverstating: [
+            "ProjectPlanner 没有修改文件。",
+            "Speaker 的基础回答来自项目说明和当前会话，而不是完整代码审计。",
+          ],
+          questionsToAsk: [defaultSuggestedNext],
+        },
       executionTask,
       callbackDecision,
     };
@@ -529,6 +551,7 @@ export class FakeExecutorAgentAdapter implements ExecutorAgentAdapter {
 
 export class SimulatedCallLoop {
   private readonly runtimeManager: VoiceSecretaryRuntimeManager;
+  private readonly knowledgeStore: VoiceSecretaryKnowledgeStore;
 
   constructor(
     private readonly talker = new SimulatedTalker(),
@@ -538,19 +561,29 @@ export class SimulatedCallLoop {
       channel?: CallChannel;
       userTurnSource?: TranscriptTurn["source"];
       runtimeManager?: VoiceSecretaryRuntimeManager;
+      knowledgeStore?: VoiceSecretaryKnowledgeStore;
     } = {},
   ) {
+    this.knowledgeStore =
+      this.options.knowledgeStore ?? new VoiceSecretaryKnowledgeStore();
     this.runtimeManager =
-      this.options.runtimeManager ?? new VoiceSecretaryRuntimeManager();
+      this.options.runtimeManager ??
+      new VoiceSecretaryRuntimeManager(this.knowledgeStore);
   }
 
   async run(input: SimulatedCallInput): Promise<SimulatedCallResult> {
+    const knowledge = await this.knowledgeStore.ensureProjectArtifacts(
+      input.projectPath,
+    );
     const runtime = this.runtimeManager.getOrCreateSession({
       voiceSessionId: input.voiceSessionId,
       projectPath: input.projectPath,
       conversationSessionId: input.conversationSessionId,
       conversationProvider: input.conversationProvider,
+      projectMemory: knowledge.memory,
     });
+    this.runtimeManager.setProjectMemory(runtime, knowledge.memory);
+    this.runtimeManager.setProjectIndex(runtime, knowledge.index);
     const pendingHook = this.runtimeManager.consumePendingHook(
       runtime.snapshot.id,
     );
@@ -560,14 +593,18 @@ export class SimulatedCallLoop {
       this.options.userTurnSource ?? "typed",
     );
     this.runtimeManager.addTranscriptTurn(runtime, userTurn);
+    const talkerContext = this.runtimeManager.buildTalkerContext(runtime);
     const isFirstTurn = runtime.transcript.length === 1;
     if (isFirstTurn) {
       this.runtimeManager.addTranscriptTurn(
         runtime,
-        await this.talker.createOpeningTurn({
-          ...input,
-          voiceSessionId: runtime.snapshot.id,
-        }),
+        await this.talker.createOpeningTurn(
+          {
+            ...input,
+            voiceSessionId: runtime.snapshot.id,
+          },
+          talkerContext,
+        ),
       );
     }
 
@@ -580,6 +617,9 @@ export class SimulatedCallLoop {
       callSessionBase,
       input,
     );
+    plannerRequest.projectIndex = knowledge.index;
+    plannerRequest.recentTurns = talkerContext.recentTurns;
+    plannerRequest.latestWorkerMessage = talkerContext.latestWorkerMessage;
     const plannerResult = await this.planner.plan(plannerRequest);
     this.runtimeManager.setSpeakerProjectSummary(
       runtime,
@@ -620,11 +660,28 @@ export class SimulatedCallLoop {
     const finalBrief = await this.talker.createFinalBrief(
       plannerResult,
       executorReport,
+      this.runtimeManager.buildTalkerContext(runtime),
       pendingHook?.hook,
     );
     this.runtimeManager.addTranscriptTurn(
       runtime,
       createTranscriptTurn("talker", finalBrief.spokenSummary, "tts"),
+    );
+    await this.knowledgeStore.recordTalkerTurn(
+      input.projectPath,
+      [
+        {
+          speaker: "user",
+          text: input.utterance,
+          at: userTurn.at,
+        },
+        {
+          speaker: "talker",
+          text: finalBrief.spokenSummary,
+          at: nowIso(),
+        },
+      ],
+      `用户：${input.utterance} | Talker：${finalBrief.spokenSummary}`,
     );
 
     if (plannerResult.callbackDecision.required) {
@@ -661,6 +718,7 @@ export class VoiceSecretaryCallLoop extends SimulatedCallLoop {
       talker?: VoiceSecretaryTalker;
       planner?: ProjectPlanner;
       runtimeManager?: VoiceSecretaryRuntimeManager;
+      knowledgeStore?: VoiceSecretaryKnowledgeStore;
     } = {},
   ) {
     const talker = options.talker ?? new VoiceSecretaryTalker();
@@ -670,6 +728,7 @@ export class VoiceSecretaryCallLoop extends SimulatedCallLoop {
       channel: "web-voice",
       userTurnSource: "asr",
       runtimeManager: options.runtimeManager,
+      knowledgeStore: options.knowledgeStore,
     });
   }
 }

@@ -26,6 +26,9 @@ describe("SimulatedCallLoop", () => {
     await mkdir(join(projectPath, "docs", "features", "voice-secretary"), {
       recursive: true,
     });
+    await mkdir(join(projectPath, "docs", "roadmap"), {
+      recursive: true,
+    });
     await writeFile(
       join(projectPath, "AGENTS.md"),
       [
@@ -40,7 +43,36 @@ describe("SimulatedCallLoop", () => {
     );
     await writeFile(
       join(projectPath, "README.md"),
-      "# Example Project\nA test fixture for voice secretary.\n",
+      [
+        "# Example Project",
+        "",
+        "A mobile-first supervisor for AI coding agents.",
+        "",
+        "## Features",
+        "- Mobile supervision",
+        "- Multi-session dashboard",
+        "- Voice input",
+      ].join("\n"),
+    );
+    await writeFile(
+      join(projectPath, "docs", "roadmap", "README.md"),
+      [
+        "# Roadmap",
+        "",
+        "### Voice Secretary",
+        "### Git Worktrees",
+        "### Basic Git Operations",
+      ].join("\n"),
+    );
+    await writeFile(
+      join(projectPath, "docs", "features", "voice-secretary", "README.md"),
+      [
+        "# Voice Secretary",
+        "",
+        "## First Milestone",
+        "- Browser microphone input is transcribed by ASR.",
+        "- Talker responds quickly through TTS.",
+      ].join("\n"),
     );
   });
 
@@ -59,7 +91,7 @@ describe("SimulatedCallLoop", () => {
       utterance: "Help me understand what this project should do next.",
     });
 
-    expect(result.callSession.status).toBe("completed");
+    expect(result.callSession.status).toBe("waiting_for_user");
     expect(result.callSession.transcript[0]).toMatchObject({
       speaker: "user",
       source: "typed",
@@ -68,14 +100,12 @@ describe("SimulatedCallLoop", () => {
       speaker: "talker",
       source: "tts",
     });
-    expect(result.callSession.transcript).toHaveLength(2);
+    expect(result.callSession.transcript).toHaveLength(3);
     expect(
       result.callSession.transcript.filter((turn) => turn.speaker === "talker"),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(result.plannerRequest.projectPath).toBe(projectPath);
-    expect(result.plannerResult.recommendedAction).toBe(
-      "create_executor_session",
-    );
+    expect(result.plannerResult.recommendedAction).toBe("consult_worker");
     expect(result.plannerResult.executionTask).toMatchObject({
       provider: "codex",
       mode: "read_only",
@@ -84,6 +114,12 @@ describe("SimulatedCallLoop", () => {
     expect(result.executorReport.status).toBe("completed");
     expect(result.executorReport.changedFiles).toEqual([]);
     expect(result.finalBrief.questionsToAsk).toHaveLength(1);
+    expect(result.voiceSession.projectIndexSummary).toContain("项目定位");
+    expect(result.finalBrief.spokenSummary).toContain(
+      "A mobile-first supervisor for AI coding agents",
+    );
+    expect(result.finalBrief.spokenSummary).toContain("Mobile supervision");
+    expect(result.finalBrief.spokenSummary).not.toContain("顶层主要是");
   });
 
   it("keeps ProjectPlanner read-only while collecting project instructions", async () => {

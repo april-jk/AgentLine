@@ -2,15 +2,29 @@ import { randomUUID } from "node:crypto";
 import type { ProviderName } from "@agentline/shared";
 import type { SDKMessage } from "../sdk/types.js";
 import type { ProcessEvent } from "../supervisor/types.js";
+import type { VoiceSecretaryKnowledgeStore } from "./knowledge-store.js";
 import type {
   CallSession,
   CallbackRequest,
   PlannerRunRef,
+  ProjectKnowledgeIndex,
+  TalkerContextFrame,
+  TalkerContextTurn,
+  TalkerProjectMemory,
   TranscriptTurn,
   VoiceSessionHookEvent,
   VoiceSessionSnapshot,
   VoiceWorkerStatus,
 } from "./types.js";
+
+const MAX_RECENT_TURNS = 8;
+
+interface ProjectTalkerMemory {
+  projectIndex?: ProjectKnowledgeIndex;
+  recentTurns: TalkerContextTurn[];
+  latestWorkerMessage?: string;
+  updatedAt: string;
+}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -45,6 +59,8 @@ interface VoiceSessionRuntimeRecord {
   transcript: TranscriptTurn[];
   plannerRuns: PlannerRunRef[];
   callbackRequests: CallbackRequest[];
+  talkerContext: TalkerContextTurn[];
+  projectMemory?: TalkerProjectMemory;
   pendingHook?: VoiceSessionHookEvent;
   workerUnsubscribe?: () => void;
   boundWorkerProcessId?: string;
@@ -52,12 +68,16 @@ interface VoiceSessionRuntimeRecord {
 
 export class VoiceSecretaryRuntimeManager {
   private readonly sessions = new Map<string, VoiceSessionRuntimeRecord>();
+  private readonly projectMemories = new Map<string, ProjectTalkerMemory>();
+
+  constructor(private readonly knowledgeStore?: VoiceSecretaryKnowledgeStore) {}
 
   getOrCreateSession(input: {
     voiceSessionId?: string;
     projectPath: string;
     conversationSessionId?: string;
     conversationProvider?: ProviderName;
+    projectMemory?: TalkerProjectMemory;
   }): VoiceSessionRuntimeRecord {
     const id = input.voiceSessionId ?? randomUUID();
     const existing = this.sessions.get(id);
@@ -75,6 +95,9 @@ export class VoiceSecretaryRuntimeManager {
       return existing;
     }
 
+    const projectMemory =
+      input.projectMemory ?? this.projectMemories.get(input.projectPath);
+
     const record: VoiceSessionRuntimeRecord = {
       snapshot: {
         id,
@@ -84,11 +107,17 @@ export class VoiceSecretaryRuntimeManager {
         conversationSessionId: input.conversationSessionId,
         workerSessionId: input.conversationSessionId,
         workerProvider: input.conversationProvider,
-        workerStatus: input.conversationSessionId ? "idle" : "idle",
+        workerStatus: "idle",
+        latestWorkerMessage: projectMemory?.latestWorkerMessage,
       },
       transcript: [],
       plannerRuns: [],
       callbackRequests: [],
+      talkerContext: projectMemory ? [...projectMemory.recentTurns] : [],
+      projectMemory:
+        projectMemory && "memoryFilePath" in projectMemory
+          ? projectMemory
+          : undefined,
     };
     this.sessions.set(id, record);
     return record;
@@ -99,6 +128,15 @@ export class VoiceSecretaryRuntimeManager {
     turn: TranscriptTurn,
   ): void {
     record.transcript.push(turn);
+    if (turn.speaker === "user" || turn.speaker === "talker") {
+      record.talkerContext.push({
+        speaker: turn.speaker,
+        text: turn.text,
+        at: turn.at,
+      });
+      record.talkerContext = record.talkerContext.slice(-MAX_RECENT_TURNS);
+      this.syncProjectMemory(record);
+    }
     record.snapshot.updatedAt = nowIso();
   }
 
@@ -138,6 +176,45 @@ export class VoiceSecretaryRuntimeManager {
     record.snapshot.workerProvider = binding.workerProvider;
     record.snapshot.workerStatus = binding.workerStatus;
     record.snapshot.updatedAt = nowIso();
+  }
+
+  setProjectIndex(
+    record: VoiceSessionRuntimeRecord,
+    projectIndex: ProjectKnowledgeIndex,
+  ): void {
+    record.snapshot.projectIndexSummary = projectIndex.summary;
+    this.syncProjectMemory(record, {
+      projectIndex,
+    });
+    record.snapshot.updatedAt = nowIso();
+  }
+
+  setProjectMemory(
+    record: VoiceSessionRuntimeRecord,
+    memory: TalkerProjectMemory,
+  ): void {
+    record.projectMemory = memory;
+    record.talkerContext = [...memory.recentTurns];
+    this.projectMemories.set(record.snapshot.projectPath, {
+      projectIndex: this.projectMemories.get(record.snapshot.projectPath)
+        ?.projectIndex,
+      recentTurns: [...memory.recentTurns],
+      latestWorkerMessage: memory.latestWorkerMessage,
+      updatedAt: memory.updatedAt,
+    });
+    record.snapshot.latestWorkerMessage = memory.latestWorkerMessage;
+    record.snapshot.updatedAt = nowIso();
+  }
+
+  buildTalkerContext(record: VoiceSessionRuntimeRecord): TalkerContextFrame {
+    return {
+      projectIndex: this.projectMemories.get(record.snapshot.projectPath)
+        ?.projectIndex,
+      projectMemory: record.projectMemory,
+      recentTurns: [...record.talkerContext],
+      latestWorkerMessage: record.snapshot.latestWorkerMessage,
+      workerStatus: record.snapshot.workerStatus,
+    };
   }
 
   bindWorkerProcess(
@@ -200,6 +277,11 @@ export class VoiceSecretaryRuntimeManager {
       const text = extractAssistantText(event.message);
       if (text) {
         record.snapshot.latestWorkerMessage = text;
+        this.syncProjectMemory(record, { latestWorkerMessage: text });
+        void this.knowledgeStore?.recordWorkerUpdate(
+          record.snapshot.projectPath,
+          text,
+        );
         record.snapshot.updatedAt = nowIso();
       }
       return;
@@ -229,5 +311,21 @@ export class VoiceSecretaryRuntimeManager {
         text: "项目专家这边刚才中断了，我可以继续帮你整理目前已知的信息。",
       };
     }
+  }
+
+  private syncProjectMemory(
+    record: VoiceSessionRuntimeRecord,
+    overrides: Partial<ProjectTalkerMemory> = {},
+  ): void {
+    const current = this.projectMemories.get(record.snapshot.projectPath);
+    this.projectMemories.set(record.snapshot.projectPath, {
+      projectIndex: overrides.projectIndex ?? current?.projectIndex,
+      recentTurns: [...record.talkerContext],
+      latestWorkerMessage:
+        overrides.latestWorkerMessage ??
+        record.snapshot.latestWorkerMessage ??
+        current?.latestWorkerMessage,
+      updatedAt: nowIso(),
+    });
   }
 }
