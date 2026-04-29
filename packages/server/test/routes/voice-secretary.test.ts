@@ -46,10 +46,11 @@ describe("Voice Secretary routes", () => {
 
     expect(response.status).toBe(200);
     const json = await response.json();
-    expect(json.result.callSession.status).toBe("completed");
-    expect(json.result.callSession.transcript).toHaveLength(2);
+    expect(json.result.callSession.status).toBe("waiting_for_user");
+    expect(json.result.callSession.transcript).toHaveLength(3);
     expect(json.result.plannerResult.executionTask.mode).toBe("read_only");
     expect(json.result.executorReport.changedFiles).toEqual([]);
+    expect(json.result.voiceSession.workerSessionId).toBeTruthy();
   });
 
   it("can hand off the simulated task packet to a formal AgentLine executor session", async () => {
@@ -121,14 +122,15 @@ describe("Voice Secretary routes", () => {
     const json = await response.json();
     expect(json.result.callSession).toMatchObject({
       channel: "web-voice",
-      status: "completed",
+      status: "waiting_for_user",
     });
-    expect(json.result.callSession.transcript).toHaveLength(2);
+    expect(json.result.callSession.transcript).toHaveLength(3);
     expect(json.result.callSession.transcript[0]).toMatchObject({
       speaker: "user",
       source: "asr",
     });
     expect(json.result.executorReport.status).toBe("started");
+    expect(json.result.voiceSession.workerSessionId).toBe("codex-session-1");
     expect(startSession).toHaveBeenCalledWith(
       projectPath,
       expect.objectContaining({
@@ -139,6 +141,121 @@ describe("Voice Secretary routes", () => {
       "plan",
       { providerName: "codex" },
     );
+  });
+
+  it("reuses the same worker session for follow-up turns in one voice session", async () => {
+    const startSession = vi.fn(async () => ({
+      id: "process-1",
+      sessionId: "codex-session-1",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+    const resumeSession = vi.fn(async () => ({
+      id: "process-2",
+      sessionId: "codex-session-1",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+    const routes = createVoiceSecretaryRoutes({
+      supervisor: { startSession, resumeSession } as unknown as Supervisor,
+      providerCatalog,
+    });
+
+    const first = await routes.request("/calls", {
+      method: "POST",
+      body: JSON.stringify({
+        voiceSessionId: "voice-1",
+        projectPath,
+        utterance: "What is this project about?",
+      }),
+      headers: { "content-type": "application/json" },
+    });
+    expect(first.status).toBe(200);
+
+    const second = await routes.request("/calls", {
+      method: "POST",
+      body: JSON.stringify({
+        voiceSessionId: "voice-1",
+        projectPath,
+        utterance: "Please inspect the implementation details next.",
+      }),
+      headers: { "content-type": "application/json" },
+    });
+    expect(second.status).toBe(200);
+
+    expect(startSession).toHaveBeenCalledTimes(1);
+    expect(resumeSession).toHaveBeenCalledTimes(1);
+    expect(resumeSession).toHaveBeenCalledWith(
+      "codex-session-1",
+      projectPath,
+      expect.objectContaining({
+        text: expect.stringContaining("implementation details"),
+      }),
+      "plan",
+      { providerName: "codex" },
+    );
+  });
+
+  it("publishes a speaker hook after the worker completes", async () => {
+    let listener:
+      | ((event: {
+          type: "message" | "complete";
+          message?: {
+            type: string;
+            message?: { content: string; role: string };
+          };
+        }) => void)
+      | undefined;
+    const process = {
+      subscribe: vi.fn((next) => {
+        listener = next;
+        return () => undefined;
+      }),
+    };
+    const startSession = vi.fn(async () => ({
+      id: "process-1",
+      sessionId: "codex-session-1",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+    const routes = createVoiceSecretaryRoutes({
+      supervisor: {
+        startSession,
+        getProcess: vi.fn(() => process),
+      } as unknown as Supervisor,
+      providerCatalog,
+    });
+
+    const response = await routes.request("/calls", {
+      method: "POST",
+      body: JSON.stringify({
+        voiceSessionId: "voice-hook",
+        projectPath,
+        utterance: "Give me the project overview.",
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    expect(response.status).toBe(200);
+    listener?.({
+      type: "message",
+      message: {
+        type: "assistant",
+        message: { content: "Worker found more details.", role: "assistant" },
+      },
+    });
+    listener?.({ type: "complete" });
+
+    const statusResponse = await routes.request("/calls/voice-hook");
+    expect(statusResponse.status).toBe(200);
+    const json = await statusResponse.json();
+    expect(json.snapshot.latestWorkerMessage).toBe(
+      "Worker found more details.",
+    );
+    expect(json.hook.text).toContain("项目专家");
   });
 
   it("runs an audio call through Volcengine ASR and TTS", async () => {
@@ -214,6 +331,7 @@ describe("Voice Secretary routes", () => {
     );
     expect(json.audioBase64).toBe("SUQz");
     expect(json.result.callSession.channel).toBe("web-voice");
+    expect(json.result.callSession.status).toBe("waiting_for_user");
     expect(startSession).toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -443,7 +561,7 @@ describe("Voice Secretary routes", () => {
         projectPath,
         conversationSessionId: "existing-codex-session",
         conversationProvider: "claude",
-        utterance: "Use this conversation to prepare the next handoff.",
+        utterance: "Use this conversation to fix the next bug.",
       }),
       headers: { "content-type": "application/json" },
     });
@@ -461,11 +579,9 @@ describe("Voice Secretary routes", () => {
       "existing-codex-session",
       projectPath,
       expect.objectContaining({
-        text: expect.stringContaining(
-          "continuing the user-selected existing conversation",
-        ),
+        text: expect.stringContaining("already-bound Worker for this speaker"),
       }),
-      "plan",
+      "default",
       { providerName: "claude" },
     );
     expect(setProvider).toHaveBeenCalledWith(

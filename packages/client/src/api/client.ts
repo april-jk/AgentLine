@@ -135,6 +135,7 @@ export interface VoiceSecretaryTranscriptTurn {
 
 export interface VoiceSecretaryCallSession {
   id: string;
+  voiceSessionId?: string;
   channel: "web-voice" | "phone" | "telegram" | "feishu" | "simulated";
   status:
     | "active"
@@ -148,6 +149,8 @@ export interface VoiceSecretaryCallSession {
   endedAt?: string;
   projectPath?: string;
   conversationSessionId?: string;
+  workerSessionId?: string;
+  workerStatus?: "idle" | "running" | "completed" | "failed";
   transcript: VoiceSecretaryTranscriptTurn[];
   plannerRuns: Array<{
     id: string;
@@ -176,6 +179,18 @@ export interface VoiceSecretaryExecutionTask {
 
 export interface VoiceSecretaryResult {
   callSession: VoiceSecretaryCallSession;
+  voiceSession: {
+    id: string;
+    startedAt: string;
+    updatedAt: string;
+    projectPath: string;
+    conversationSessionId?: string;
+    workerSessionId?: string;
+    workerProvider?: ProviderName;
+    workerStatus: "idle" | "running" | "completed" | "failed";
+    speakerProjectSummary?: string;
+    latestWorkerMessage?: string;
+  };
   plannerRequest: {
     id: string;
     userIntent: string;
@@ -227,6 +242,17 @@ export interface VoiceSecretaryAudioTurnResponse {
   audioBase64: string;
   audioContentType: string;
   result: VoiceSecretaryResult;
+}
+
+export interface VoiceSecretarySessionStatusResponse {
+  snapshot: VoiceSecretaryResult["voiceSession"];
+  hook?: {
+    id: string;
+    voiceSessionId: string;
+    createdAt: string;
+    text: string;
+    reason: "worker_completed" | "worker_failed";
+  };
 }
 
 export type { UploadedFile } from "@agentline/shared";
@@ -508,6 +534,7 @@ export const api = {
     }),
 
   startVoiceSecretaryCall: (request: {
+    voiceSessionId?: string;
     projectPath: string;
     conversationSessionId?: string;
     conversationProvider?: ProviderName;
@@ -519,6 +546,7 @@ export const api = {
     }),
 
   startVoiceSecretaryAudioCall: async (request: {
+    voiceSessionId?: string;
     projectPath: string;
     conversationSessionId?: string;
     conversationProvider?: ProviderName;
@@ -526,6 +554,9 @@ export const api = {
     fileName?: string;
   }) => {
     const body = new FormData();
+    if (request.voiceSessionId) {
+      body.append("voiceSessionId", request.voiceSessionId);
+    }
     body.append("projectPath", request.projectPath);
     if (request.conversationSessionId) {
       body.append("conversationSessionId", request.conversationSessionId);
@@ -561,6 +592,11 @@ export const api = {
 
     return (await response.json()) as VoiceSecretaryAudioTurnResponse;
   },
+
+  getVoiceSecretarySessionStatus: (voiceSessionId: string) =>
+    fetchJSON<VoiceSecretarySessionStatusResponse>(
+      `/voice-secretary/calls/${voiceSessionId}`,
+    ),
 
   getProject: (projectId: string) =>
     fetchJSON<{ project: Project }>(`/projects/${projectId}`),

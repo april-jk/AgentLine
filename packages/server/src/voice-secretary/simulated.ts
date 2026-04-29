@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { getAllProviders } from "../sdk/providers/index.js";
 import { CodexEphemeralTalker } from "./codex-ephemeral.js";
+import { VoiceSecretaryRuntimeManager } from "./runtime.js";
 import {
   VoiceSecretaryTalkerLlm,
   getVoiceSecretaryLlmConfig,
@@ -24,6 +25,7 @@ import type {
   TalkerBrief,
   TranscriptTurn,
   VoiceProviderCatalog,
+  VoiceSessionHookEvent,
 } from "./types.js";
 
 const MAX_INSTRUCTION_CHARS = 900;
@@ -150,6 +152,18 @@ function chooseExecutionMode(
   }
 }
 
+function shouldConsultWorker(request: PlannerRequest): boolean {
+  if (!request.workerSessionId) {
+    return true;
+  }
+  if (request.requestedOutcome !== "answer") {
+    return true;
+  }
+  return /状态|进展|细节|架构|代码|文件|status|detail|architecture|code|file/i.test(
+    request.userIntent,
+  );
+}
+
 function summarizeProviderCatalog(providers: AvailableVoiceProvider[]): string {
   if (providers.length === 0) {
     return "当前没有检测到可立即复用的正式 provider，会默认回退到 Codex。";
@@ -245,17 +259,21 @@ export class VoiceSecretaryTalker {
     return {
       id: randomUUID(),
       callSessionId: callSession.id,
+      voiceSessionId: input.voiceSessionId,
       projectPath: input.projectPath,
       conversationSessionId: input.conversationSessionId,
       conversationProvider: input.conversationProvider,
+      workerSessionId: callSession.workerSessionId,
+      workerStatus: callSession.workerStatus,
       userIntent: input.utterance,
       conversationSummary: `用户通过模拟通话提出需求：${input.utterance}`,
       knownConstraints: [
-        "Talker 只负责低延迟对话，不读取完整项目或修改文件。",
-        "ProjectPlanner 只能做只读项目理解和任务下发。",
+        "Talker 本身具备项目基础了解和低延迟对话能力，不读取完整项目或修改文件。",
+        "Worker 是 Voice Secretary 会话里唯一的项目专家，需要稳定复用。",
+        "ProjectPlanner 只能做只读项目理解、Speaker/Worker 分工判断和任务下发。",
         input.conversationSessionId
           ? "Worker 必须复用用户选择的既有对话上下文。"
-          : "缺省时 Worker 挂载到项目并创建新的正式执行会话。",
+          : "如果尚未绑定 Worker，首次需要时才创建一个正式执行会话；后续必须复用。",
         "真实修改必须交给 ExecutorAgentSession。",
       ],
       missingInformation: [],
@@ -267,6 +285,7 @@ export class VoiceSecretaryTalker {
   async createFinalBrief(
     plannerResult: PlannerResult,
     executorReport: ExecutorReport,
+    pendingHook?: VoiceSessionHookEvent,
   ): Promise<TalkerBrief> {
     const codexBrief = await this.codexTalker.createFinalBrief(
       plannerResult,
@@ -280,8 +299,11 @@ export class VoiceSecretaryTalker {
         ...llmBrief,
         factsToAvoidOverstating: [
           ...llmBrief.factsToAvoidOverstating,
-          "Worker 的本轮任务包和正式执行会话是分开的，不能把排队或启动说成已经改完。",
+          "Speaker 只能把 Worker 的状态说成排队、处理中或已完成，不能把排队说成已经改完。",
         ],
+        spokenSummary: pendingHook
+          ? `${llmBrief.spokenSummary} ${pendingHook.text}`.trim()
+          : llmBrief.spokenSummary,
       };
     }
 
@@ -289,12 +311,24 @@ export class VoiceSecretaryTalker {
       plannerResult.talkerBrief.questionsToAsk[0] ??
       "要我继续把这个任务交给正式执行会话吗？";
 
+    const backgroundLine =
+      plannerResult.recommendedAction === "consult_worker"
+        ? "我已经把更深入的问题继续交给项目专家处理，有新结果我会接着告诉你。"
+        : "";
+    const hookLine = pendingHook?.text ?? "";
+
     return {
-      spokenSummary: `${plannerResult.talkerBrief.spokenSummary} ${executorReport.summary}`,
+      spokenSummary: [
+        plannerResult.talkerBrief.spokenSummary,
+        backgroundLine,
+        hookLine,
+      ]
+        .filter(Boolean)
+        .join(" "),
       suggestedNextUtterance: firstQuestion,
       factsToAvoidOverstating: [
         ...plannerResult.talkerBrief.factsToAvoidOverstating,
-        "Worker 的本轮任务包是只读理解，不代表已经完成代码修改。",
+        "Worker 的任务包可能还在处理中，不代表已经完成代码修改。",
       ],
       questionsToAsk: [firstQuestion],
     };
@@ -328,25 +362,27 @@ export class ProjectPlanner {
       topLevelEntries.length > 0
         ? `项目 ${basename(request.projectPath)} 顶层包含：${topLevelEntries.join(", ")}。`
         : `项目 ${basename(request.projectPath)} 可访问，但未读取到顶层目录列表。`;
-    const contextSummary = request.conversationSessionId
-      ? `${projectSummary} 本次电话将复用对话 ${request.conversationSessionId} 作为 Worker 上下文。`
-      : `${projectSummary} 本次电话缺省挂载到项目，并由 Worker 创建新的执行上下文。`;
+    const contextSummary = request.workerSessionId
+      ? `${projectSummary} 当前 Voice Secretary 已经绑定 Worker ${request.workerSessionId}，后续深度问题会继续复用这个项目专家。`
+      : request.conversationSessionId
+        ? `${projectSummary} 本次电话将复用对话 ${request.conversationSessionId} 作为唯一 Worker 上下文。`
+        : `${projectSummary} Speaker 已掌握基础项目上下文；如需深度项目细节，会创建并绑定一个唯一 Worker。`;
     const providerSummary = request.conversationProvider
       ? `当前已选对话 provider：${request.conversationProvider}，本次会复用该 provider。`
       : summarizeProviderCatalog(providers);
 
-    const executionTask = this.createExecutionTask(
-      request,
-      instructions,
-      providers,
-    );
-    const callbackDecision: CallbackDecision = {
-      required: true,
-      reason: "scheduled_update",
-      priority: "normal",
-      script:
-        "我已经完成只读项目理解，可以继续创建正式执行会话，或先回答你的补充问题。",
-    };
+    const consultWorker = shouldConsultWorker(request);
+    const executionTask = consultWorker
+      ? this.createExecutionTask(request, instructions, providers)
+      : undefined;
+    const callbackDecision: CallbackDecision = consultWorker
+      ? {
+          required: true,
+          reason: "scheduled_update",
+          priority: "normal",
+          script: "项目专家有了新结果后，我会回来补充项目细节。",
+        }
+      : { required: false };
     const instructionPaths = instructions.map(
       (instruction) => instruction.path,
     );
@@ -372,14 +408,15 @@ export class ProjectPlanner {
       requestId: request.id,
       projectSummary: `${contextSummary} ${providerSummary}`,
       relevantInstructions: instructions,
-      recommendedAction: "create_executor_session",
+      recommendedAction: consultWorker ? "consult_worker" : "answer_directly",
       talkerBrief: llmBrief ?? {
-        spokenSummary:
-          "我已经只读检查了项目说明，并准备好一个正式执行会话可以使用的任务包。",
+        spokenSummary: consultWorker
+          ? "我先根据当前项目说明给你一个基础判断，同时把更深入的项目细节继续交给项目专家处理。"
+          : "我已经根据当前项目说明整理出基础上下文，我们可以先直接讨论，不需要每次都新建项目专家会话。",
         suggestedNextUtterance: defaultSuggestedNext,
         factsToAvoidOverstating: [
           "ProjectPlanner 没有修改文件。",
-          "Worker 接到的是只读任务包，真实修改需要后续明确执行任务。",
+          "Speaker 的基础回答来自项目说明和当前会话，而不是完整代码审计。",
         ],
         questionsToAsk: [defaultSuggestedNext],
       },
@@ -413,9 +450,11 @@ export class ProjectPlanner {
       prompt: [
         "You are the formal AgentLine executor session for a voice-originated request.",
         "Do not assume the Talker or ProjectPlanner modified code.",
-        request.conversationSessionId
-          ? "You are continuing the user-selected existing conversation as the Worker context."
-          : "No existing conversation was selected, so this Worker context is project-scoped.",
+        request.workerSessionId
+          ? "You are the already-bound Worker for this speaker. Reuse the same session and continue the project discussion."
+          : request.conversationSessionId
+            ? "You are continuing the user-selected existing conversation as the unique Worker context for this speaker."
+            : "No Worker exists yet. Create exactly one project-scoped Worker session for this speaker and reuse it later.",
         "",
         `User intent: ${request.userIntent}`,
         `Requested outcome: ${request.requestedOutcome}`,
@@ -427,10 +466,12 @@ export class ProjectPlanner {
         "Return a concise project-grounded next-step recommendation.",
       ].join("\n"),
       acceptanceCriteria: [
-        "Executor session receives a structured task packet.",
-        request.conversationSessionId
-          ? "The selected existing conversation receives the Worker handoff."
-          : "A new project-scoped executor session receives the Worker handoff.",
+        "Worker receives a structured task packet.",
+        request.workerSessionId
+          ? "The already-bound Worker session is reused."
+          : request.conversationSessionId
+            ? "The selected existing conversation becomes the unique Worker."
+            : "Exactly one project-scoped Worker session is created for this speaker.",
         "No file modifications are made by ProjectPlanner.",
         "Result can be summarized back to the caller.",
       ],
@@ -487,6 +528,8 @@ export class FakeExecutorAgentAdapter implements ExecutorAgentAdapter {
 }
 
 export class SimulatedCallLoop {
+  private readonly runtimeManager: VoiceSecretaryRuntimeManager;
+
   constructor(
     private readonly talker = new SimulatedTalker(),
     private readonly planner = new ProjectPlanner(),
@@ -494,55 +537,98 @@ export class SimulatedCallLoop {
     private readonly options: {
       channel?: CallChannel;
       userTurnSource?: TranscriptTurn["source"];
+      runtimeManager?: VoiceSecretaryRuntimeManager;
     } = {},
-  ) {}
+  ) {
+    this.runtimeManager =
+      this.options.runtimeManager ?? new VoiceSecretaryRuntimeManager();
+  }
 
   async run(input: SimulatedCallInput): Promise<SimulatedCallResult> {
-    const startedAt = nowIso();
-    const callSession: CallSession = {
-      id: randomUUID(),
-      channel: this.options.channel ?? "simulated",
-      status: "active",
-      startedAt,
+    const runtime = this.runtimeManager.getOrCreateSession({
+      voiceSessionId: input.voiceSessionId,
       projectPath: input.projectPath,
       conversationSessionId: input.conversationSessionId,
-      transcript: [
-        createTranscriptTurn(
-          "user",
-          input.utterance,
-          this.options.userTurnSource ?? "typed",
-        ),
-        await this.talker.createOpeningTurn(input),
-      ],
-      plannerRuns: [],
-      callbackRequests: [],
-    };
+      conversationProvider: input.conversationProvider,
+    });
+    const pendingHook = this.runtimeManager.consumePendingHook(
+      runtime.snapshot.id,
+    );
+    const userTurn = createTranscriptTurn(
+      "user",
+      input.utterance,
+      this.options.userTurnSource ?? "typed",
+    );
+    this.runtimeManager.addTranscriptTurn(runtime, userTurn);
+    const isFirstTurn = runtime.transcript.length === 1;
+    if (isFirstTurn) {
+      this.runtimeManager.addTranscriptTurn(
+        runtime,
+        await this.talker.createOpeningTurn({
+          ...input,
+          voiceSessionId: runtime.snapshot.id,
+        }),
+      );
+    }
 
-    callSession.status = "waiting_for_planner";
-    const plannerRequest = this.talker.createPlannerRequest(callSession, input);
+    const callSessionBase = this.runtimeManager.buildCallSession(
+      runtime,
+      "waiting_for_planner",
+      this.options.channel ?? "simulated",
+    );
+    const plannerRequest = this.talker.createPlannerRequest(
+      callSessionBase,
+      input,
+    );
     const plannerResult = await this.planner.plan(plannerRequest);
-    callSession.plannerRuns.push({
+    this.runtimeManager.setSpeakerProjectSummary(
+      runtime,
+      plannerResult.projectSummary,
+    );
+    this.runtimeManager.addPlannerRun(runtime, {
       id: plannerResult.id,
       requestId: plannerRequest.id,
       status: "completed",
     });
+    const task = plannerResult.executionTask
+      ? {
+          ...plannerResult.executionTask,
+          conversationSessionId:
+            runtime.snapshot.workerSessionId ??
+            plannerResult.executionTask.conversationSessionId,
+        }
+      : undefined;
 
-    if (!plannerResult.executionTask) {
-      throw new Error("Simulated planner did not produce an execution task");
+    let executorReport: ExecutorReport = {
+      executionTaskId: task?.id ?? "speaker-direct",
+      providerSessionId: runtime.snapshot.workerSessionId ?? "speaker-direct",
+      status: "completed",
+      summary:
+        "Speaker 直接基于项目基础上下文回答本轮问题，未向 Worker 派发新任务。",
+      changedFiles: [],
+      verification: ["No Worker handoff was required for this turn."],
+    };
+    if (task) {
+      const executorSession = await this.executor.createSession(task);
+      this.runtimeManager.setWorkerBinding(runtime, {
+        workerSessionId: executorSession.id,
+        workerProvider: executorSession.provider,
+        workerStatus: "running",
+      });
+      executorReport = await this.executor.getReport(executorSession.id);
     }
-
-    callSession.status = "waiting_for_executor";
-    const executorSession = await this.executor.createSession(
-      plannerResult.executionTask,
-    );
-    const executorReport = await this.executor.getReport(executorSession.id);
     const finalBrief = await this.talker.createFinalBrief(
       plannerResult,
       executorReport,
+      pendingHook?.hook,
+    );
+    this.runtimeManager.addTranscriptTurn(
+      runtime,
+      createTranscriptTurn("talker", finalBrief.spokenSummary, "tts"),
     );
 
     if (plannerResult.callbackDecision.required) {
-      callSession.callbackRequests.push({
+      this.runtimeManager.addCallbackRequest(runtime, {
         id: randomUUID(),
         reason: plannerResult.callbackDecision.reason ?? "scheduled_update",
         priority: plannerResult.callbackDecision.priority ?? "normal",
@@ -550,11 +636,15 @@ export class SimulatedCallLoop {
           plannerResult.callbackDecision.script ?? finalBrief.spokenSummary,
       });
     }
-    callSession.status = "completed";
-    callSession.endedAt = nowIso();
+    const callSession = this.runtimeManager.buildCallSession(
+      runtime,
+      "waiting_for_user",
+      this.options.channel ?? "simulated",
+    );
 
     return {
       callSession,
+      voiceSession: runtime.snapshot,
       plannerRequest,
       plannerResult,
       executorReport,
@@ -570,6 +660,7 @@ export class VoiceSecretaryCallLoop extends SimulatedCallLoop {
       providerCatalog?: VoiceProviderCatalog;
       talker?: VoiceSecretaryTalker;
       planner?: ProjectPlanner;
+      runtimeManager?: VoiceSecretaryRuntimeManager;
     } = {},
   ) {
     const talker = options.talker ?? new VoiceSecretaryTalker();
@@ -578,6 +669,7 @@ export class VoiceSecretaryCallLoop extends SimulatedCallLoop {
     super(talker, planner, executor, {
       channel: "web-voice",
       userTurnSource: "asr",
+      runtimeManager: options.runtimeManager,
     });
   }
 }

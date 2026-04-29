@@ -10,4 +10,5 @@ export {
   VoiceSecretaryCallLoop,
   VoiceSecretaryTalker,
 } from "./simulated.js";
+export { VoiceSecretaryRuntimeManager } from "./runtime.js";
 export type * from "./types.js";

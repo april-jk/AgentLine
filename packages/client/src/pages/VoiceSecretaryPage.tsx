@@ -139,27 +139,25 @@ function VoiceSecretaryResultView({
   const basePath = useRemoteBasePath();
   const sessionLink = result.executorReport.links?.[0]?.href;
   const task = result.plannerResult.executionTask;
-  const contextLabel = result.callSession.conversationSessionId
-    ? "Conversation"
-    : "Project";
+  const voiceSession = result.voiceSession;
   const turns = buildResultConversationTurns(result);
 
   return (
     <div className="voice-results">
       <div className="voice-result-summary">
         <div>
-          <span className="voice-kicker">Talker</span>
-          <strong>{result.callSession.id}</strong>
+          <span className="voice-kicker">Voice session</span>
+          <strong>{voiceSession.id}</strong>
         </div>
         <div>
-          <span className="voice-kicker">Worker context</span>
-          <strong>{contextLabel}</strong>
+          <span className="voice-kicker">Project expert</span>
+          <strong>{voiceSession.workerSessionId ?? "Not bound yet"}</strong>
         </div>
         <div>
-          <span className="voice-kicker">Worker action</span>
-          <strong>{result.plannerResult.recommendedAction}</strong>
+          <span className="voice-kicker">Worker provider</span>
+          <strong>{voiceSession.workerProvider ?? "None"}</strong>
         </div>
-        <StatusBadge status={result.callSession.status} />
+        <StatusBadge status={voiceSession.workerStatus} />
       </div>
 
       <ResultSection title="Talker">
@@ -168,13 +166,16 @@ function VoiceSecretaryResultView({
 
       <ResultSection title="Worker">
         <div className="voice-worker-block">
-          <span className="voice-kicker">Project context</span>
-          <p>{result.plannerResult.projectSummary}</p>
+          <span className="voice-kicker">Speaker context</span>
+          <p>
+            {voiceSession.speakerProjectSummary ??
+              result.plannerResult.projectSummary}
+          </p>
         </div>
 
         <div className="voice-grid">
           <div>
-            <span className="voice-kicker">Task</span>
+            <span className="voice-kicker">Plan action</span>
             <strong>{task?.mode ?? "none"}</strong>
           </div>
           <div>
@@ -192,16 +193,17 @@ function VoiceSecretaryResultView({
           <p>{result.executorReport.summary}</p>
           <div className="voice-grid voice-grid-compact">
             <div>
-              <span className="voice-kicker">
-                {result.callSession.conversationSessionId
-                  ? "Selected conversation"
-                  : "Session"}
-              </span>
-              <strong>{result.executorReport.providerSessionId}</strong>
+              <span className="voice-kicker">Bound worker</span>
+              <strong>
+                {voiceSession.workerSessionId ??
+                  result.executorReport.providerSessionId}
+              </strong>
             </div>
             <div>
-              <span className="voice-kicker">Changed files</span>
-              <strong>{result.executorReport.changedFiles?.length ?? 0}</strong>
+              <span className="voice-kicker">Latest worker message</span>
+              <strong>
+                {voiceSession.latestWorkerMessage ? "Available" : "None yet"}
+              </strong>
             </div>
           </div>
           {sessionLink ? (
@@ -301,6 +303,7 @@ export function VoiceSecretaryPage() {
   );
   const [liveTurns, setLiveTurns] = useState<LiveTurn[]>([]);
   const [result, setResult] = useState<VoiceSecretaryResult | null>(null);
+  const [voiceSessionId, setVoiceSessionId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [callPhase, setCallPhase] = useState<CallPhase>(
     recorder.isSupported ? "idle" : "unsupported",
@@ -412,6 +415,30 @@ export function VoiceSecretaryPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isCallActive || !voiceSessionId) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const status = await api.getVoiceSecretarySessionStatus(voiceSessionId);
+        if (cancelled) return;
+        if (status.hook) {
+          appendLiveTurn(toLiveTurn("talker", status.hook.text));
+        }
+      } catch {
+        // Ignore ephemeral polling errors; the main turn path already surfaces hard failures.
+      }
+    };
+    const handle = window.setInterval(() => {
+      void poll();
+    }, 3000);
+    void poll();
+    return () => {
+      cancelled = true;
+      window.clearInterval(handle);
+    };
+  }, [appendLiveTurn, isCallActive, voiceSessionId]);
+
   const playAudioReply = useCallback(
     async (audioBase64: string, contentType: string) => {
       const binary = Uint8Array.from(atob(audioBase64), (char) =>
@@ -437,6 +464,10 @@ export function VoiceSecretaryPage() {
   const submitRecordedAudio = useCallback(
     async (audio: Blob) => {
       if (!projectPath.trim()) return;
+      const sessionId = voiceSessionId || makeId();
+      if (!voiceSessionId) {
+        setVoiceSessionId(sessionId);
+      }
 
       recorder.setProcessing(true);
       setIsSubmitting(true);
@@ -445,6 +476,7 @@ export function VoiceSecretaryPage() {
 
       try {
         const response = await api.startVoiceSecretaryAudioCall({
+          voiceSessionId: sessionId,
           projectPath: projectPath.trim(),
           conversationSessionId: conversationSessionId.trim() || undefined,
           conversationProvider: selectedConversation?.provider,
@@ -456,6 +488,7 @@ export function VoiceSecretaryPage() {
         appendLiveTurn(toLiveTurn("user", response.transcript));
         appendLiveTurn(toLiveTurn("talker", response.talkerText));
         setResult(response.result);
+        setVoiceSessionId(response.result.voiceSession.id);
 
         setCallPhase("playing");
         await playAudioReply(response.audioBase64, response.audioContentType);
@@ -479,17 +512,20 @@ export function VoiceSecretaryPage() {
       projectPath,
       recorder,
       selectedConversation?.provider,
+      voiceSessionId,
     ],
   );
 
   const startCall = useCallback(() => {
     setError(null);
     setIsCallActive(true);
+    setVoiceSessionId((current) => current || makeId());
     setCallPhase(recorder.isSupported ? "ready" : "unsupported");
   }, [recorder.isSupported]);
 
   const endCall = useCallback(() => {
     setIsCallActive(false);
+    setVoiceSessionId("");
     setCallPhase(recorder.isSupported ? "idle" : "unsupported");
     if (audioRef.current) {
       audioRef.current.pause();
@@ -517,6 +553,10 @@ export function VoiceSecretaryPage() {
     async (event: React.FormEvent) => {
       event.preventDefault();
       if (!projectPath.trim() || !utterance.trim()) return;
+      const sessionId = voiceSessionId || makeId();
+      if (!voiceSessionId) {
+        setVoiceSessionId(sessionId);
+      }
 
       setIsSubmitting(true);
       setError(null);
@@ -524,6 +564,7 @@ export function VoiceSecretaryPage() {
 
       try {
         const response = await api.startVoiceSecretaryCall({
+          voiceSessionId: sessionId,
           projectPath: projectPath.trim(),
           conversationSessionId: conversationSessionId.trim() || undefined,
           conversationProvider: selectedConversation?.provider,
@@ -535,6 +576,7 @@ export function VoiceSecretaryPage() {
           toLiveTurn("talker", response.result.finalBrief.spokenSummary),
         );
         setResult(response.result);
+        setVoiceSessionId(response.result.voiceSession.id);
         setCallPhase(isCallActive ? "ready" : "idle");
       } catch (turnError) {
         const message =
@@ -553,6 +595,7 @@ export function VoiceSecretaryPage() {
       projectPath,
       selectedConversation?.provider,
       utterance,
+      voiceSessionId,
     ],
   );
 

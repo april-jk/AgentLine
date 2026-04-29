@@ -16,6 +16,8 @@ export type CallSessionStatus =
   | "completed"
   | "failed";
 
+export type VoiceWorkerStatus = "idle" | "running" | "completed" | "failed";
+
 export interface TranscriptTurn {
   id: string;
   at: string;
@@ -27,12 +29,15 @@ export interface TranscriptTurn {
 
 export interface CallSession {
   id: string;
+  voiceSessionId?: string;
   channel: CallChannel;
   status: CallSessionStatus;
   startedAt: string;
   endedAt?: string;
   projectPath?: string;
   conversationSessionId?: string;
+  workerSessionId?: string;
+  workerStatus?: VoiceWorkerStatus;
   transcript: TranscriptTurn[];
   plannerRuns: PlannerRunRef[];
   callbackRequests: CallbackRequest[];
@@ -59,9 +64,13 @@ export interface CallbackRequest {
 export interface PlannerRequest {
   id: string;
   callSessionId: string;
+  voiceSessionId?: string;
   projectPath: string;
   conversationSessionId?: string;
   conversationProvider?: ProviderName;
+  workerSessionId?: string;
+  workerProvider?: ProviderName;
+  workerStatus?: VoiceWorkerStatus;
   userIntent: string;
   conversationSummary: string;
   knownConstraints: string[];
@@ -97,7 +106,7 @@ export interface PlannerResult {
   requestId: string;
   projectSummary: string;
   relevantInstructions: InstructionReference[];
-  recommendedAction: "ask_user" | "create_executor_session" | "answer_directly";
+  recommendedAction: "ask_user" | "consult_worker" | "answer_directly";
   talkerBrief: TalkerBrief;
   executionTask?: ExecutionTask;
   callbackDecision: CallbackDecision;
@@ -171,14 +180,37 @@ export interface ExecutorSessionRef {
 }
 
 export interface SimulatedCallInput {
+  voiceSessionId?: string;
   projectPath: string;
   conversationSessionId?: string;
   conversationProvider?: ProviderName;
   utterance: string;
 }
 
+export interface VoiceSessionHookEvent {
+  id: string;
+  voiceSessionId: string;
+  createdAt: string;
+  text: string;
+  reason: "worker_completed" | "worker_failed";
+}
+
+export interface VoiceSessionSnapshot {
+  id: string;
+  startedAt: string;
+  updatedAt: string;
+  projectPath: string;
+  conversationSessionId?: string;
+  workerSessionId?: string;
+  workerProvider?: ProviderName;
+  workerStatus: VoiceWorkerStatus;
+  speakerProjectSummary?: string;
+  latestWorkerMessage?: string;
+}
+
 export interface SimulatedCallResult {
   callSession: CallSession;
+  voiceSession: VoiceSessionSnapshot;
   plannerRequest: PlannerRequest;
   plannerResult: PlannerResult;
   executorReport: ExecutorReport;

@@ -18,6 +18,9 @@ import type {
 export interface AgentLineExecutorAgentAdapterOptions {
   supervisor: Supervisor;
   sessionMetadataService?: SessionMetadataService;
+  onSessionCreated?: (
+    session: AgentLineExecutorSessionRef,
+  ) => void | Promise<void>;
 }
 
 interface AgentLineExecutorSessionRef extends ExecutorSessionRef {
@@ -83,11 +86,13 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
         verification: [],
       };
       this.reports.set(report.providerSessionId, report);
-      return {
+      const sessionRef = {
         id: report.providerSessionId,
         provider: task.provider,
         taskId: task.id,
       };
+      await this.options.onSessionCreated?.(sessionRef);
+      return sessionRef;
     }
 
     if (isQueuedResponse(result)) {
@@ -101,7 +106,7 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
         verification: ["AgentLine accepted the execution task into its queue."],
       };
       this.reports.set(sessionId, report);
-      return {
+      const sessionRef = {
         id: sessionId,
         provider: task.provider,
         taskId: task.id,
@@ -109,6 +114,8 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
         queueId: result.queueId,
         position: result.position,
       };
+      await this.options.onSessionCreated?.(sessionRef);
+      return sessionRef;
     }
 
     if (this.options.sessionMetadataService) {
@@ -146,12 +153,14 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
     };
     this.reports.set(providerSessionId, report);
 
-    return {
+    const sessionRef = {
       id: providerSessionId,
       provider: task.provider,
       taskId: task.id,
       processId: result.id,
     };
+    await this.options.onSessionCreated?.(sessionRef);
+    return sessionRef;
   }
 
   async getReport(sessionId: string): Promise<ExecutorReport> {

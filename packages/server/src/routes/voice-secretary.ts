@@ -9,6 +9,7 @@ import {
   ProjectPlanner,
   SimulatedCallLoop,
   VoiceSecretaryCallLoop,
+  VoiceSecretaryRuntimeManager,
   VoiceSecretaryTalker,
 } from "../voice-secretary/index.js";
 import {
@@ -30,6 +31,7 @@ export interface VoiceSecretaryRoutesDeps {
 }
 
 interface SimulateBody {
+  voiceSessionId?: unknown;
   projectPath?: unknown;
   conversationSessionId?: unknown;
   conversationProvider?: unknown;
@@ -38,6 +40,7 @@ interface SimulateBody {
 }
 
 interface CallBody {
+  voiceSessionId?: unknown;
   projectPath?: unknown;
   conversationSessionId?: unknown;
   conversationProvider?: unknown;
@@ -64,6 +67,12 @@ function parseConversationProvider(
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value !== "string" || !value.trim()) return null;
   return value.trim() as ProviderName;
+}
+
+function parseVoiceSessionId(value: unknown): string | undefined | null {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || !value.trim()) return null;
+  return value.trim();
 }
 
 function getPhoneTalkerConfig(serverSettingsService?: ServerSettingsService): {
@@ -100,6 +109,34 @@ export function createVoiceSecretaryRoutes(
   deps: VoiceSecretaryRoutesDeps = {},
 ): Hono {
   const routes = new Hono();
+  const runtimeManager = new VoiceSecretaryRuntimeManager();
+
+  const bindVoiceWorker = (
+    voiceSessionId: string | undefined,
+    session: { id: string; provider: ProviderName; processId?: string },
+  ) => {
+    if (!voiceSessionId) return;
+    const snapshot = runtimeManager.getSnapshot(voiceSessionId);
+    if (!snapshot) return;
+    const runtime = runtimeManager.getOrCreateSession({
+      voiceSessionId,
+      projectPath: snapshot.projectPath,
+      conversationSessionId: snapshot.conversationSessionId,
+      conversationProvider: snapshot.workerProvider,
+    });
+    runtimeManager.setWorkerBinding(runtime, {
+      workerSessionId: session.id,
+      workerProvider: session.provider,
+      workerStatus: "running",
+    });
+    if (!session.processId || !deps.supervisor) return;
+    const process = deps.supervisor.getProcess?.(session.processId);
+    runtimeManager.bindWorkerProcess(
+      runtime,
+      session.processId,
+      process?.subscribe.bind(process),
+    );
+  };
 
   routes.post("/calls", async (c) => {
     const body = await c.req.json<CallBody>().catch(() => null);
@@ -125,6 +162,10 @@ export function createVoiceSecretaryRoutes(
     if (conversationProvider === null) {
       return c.json({ error: "conversationProvider must be a string" }, 400);
     }
+    const voiceSessionId = parseVoiceSessionId(body.voiceSessionId);
+    if (voiceSessionId === null) {
+      return c.json({ error: "voiceSessionId must be a string" }, 400);
+    }
     if (!deps.supervisor) {
       return c.json({ error: "AgentLine executor is unavailable" }, 503);
     }
@@ -132,6 +173,7 @@ export function createVoiceSecretaryRoutes(
     const executor = new AgentLineExecutorAgentAdapter({
       supervisor: deps.supervisor,
       sessionMetadataService: deps.sessionMetadataService,
+      onSessionCreated: (session) => bindVoiceWorker(voiceSessionId, session),
     });
     const codexTalker = new CodexEphemeralTalker({
       getRuntimeConfig: () => getPhoneTalkerConfig(deps.serverSettingsService),
@@ -143,8 +185,10 @@ export function createVoiceSecretaryRoutes(
       providerCatalog: deps.providerCatalog,
       talker,
       planner,
+      runtimeManager,
     });
     const result = await loop.run({
+      voiceSessionId,
       projectPath: body.projectPath,
       conversationSessionId,
       conversationProvider,
@@ -182,6 +226,12 @@ export function createVoiceSecretaryRoutes(
       if (conversationProvider === null) {
         return c.json({ error: "conversationProvider must be a string" }, 400);
       }
+      const voiceSessionId = parseVoiceSessionId(
+        formData.get("voiceSessionId"),
+      );
+      if (voiceSessionId === null) {
+        return c.json({ error: "voiceSessionId must be a string" }, 400);
+      }
 
       const audioFile = formData.get("audio");
       if (!(audioFile instanceof File) || audioFile.size === 0) {
@@ -196,6 +246,7 @@ export function createVoiceSecretaryRoutes(
       const executor = new AgentLineExecutorAgentAdapter({
         supervisor: deps.supervisor,
         sessionMetadataService: deps.sessionMetadataService,
+        onSessionCreated: (session) => bindVoiceWorker(voiceSessionId, session),
       });
       const codexTalker = new CodexEphemeralTalker({
         getRuntimeConfig: () =>
@@ -212,6 +263,7 @@ export function createVoiceSecretaryRoutes(
         providerCatalog: deps.providerCatalog,
         talker,
         planner,
+        runtimeManager,
       });
 
       const transcript = await speech.transcribeAudio(
@@ -222,6 +274,7 @@ export function createVoiceSecretaryRoutes(
       }
 
       const result = await loop.run({
+        voiceSessionId,
         projectPath: projectPathValue.trim(),
         conversationSessionId,
         conversationProvider,
@@ -259,6 +312,15 @@ export function createVoiceSecretaryRoutes(
     }
   });
 
+  routes.get("/calls/:voiceSessionId", async (c) => {
+    const voiceSessionId = c.req.param("voiceSessionId");
+    const status = runtimeManager.consumePendingHook(voiceSessionId);
+    if (!status) {
+      return c.json({ error: "Voice session not found" }, 404);
+    }
+    return c.json(status);
+  });
+
   routes.post("/simulate", async (c) => {
     const body = await c.req.json<SimulateBody>().catch(() => null);
     if (!body || typeof body !== "object") {
@@ -282,6 +344,10 @@ export function createVoiceSecretaryRoutes(
     );
     if (conversationProvider === null) {
       return c.json({ error: "conversationProvider must be a string" }, 400);
+    }
+    const voiceSessionId = parseVoiceSessionId(body.voiceSessionId);
+    if (voiceSessionId === null) {
+      return c.json({ error: "voiceSessionId must be a string" }, 400);
     }
 
     const executorMode =
@@ -310,8 +376,11 @@ export function createVoiceSecretaryRoutes(
     const llm = createTalkerLlm(deps.serverSettingsService);
     const talker = new VoiceSecretaryTalker(codexTalker, llm);
     const planner = new ProjectPlanner(deps.providerCatalog, codexTalker, llm);
-    const loop = new SimulatedCallLoop(talker, planner, executor);
+    const loop = new SimulatedCallLoop(talker, planner, executor, {
+      runtimeManager,
+    });
     const result = await loop.run({
+      voiceSessionId,
       projectPath: body.projectPath,
       conversationSessionId,
       conversationProvider,

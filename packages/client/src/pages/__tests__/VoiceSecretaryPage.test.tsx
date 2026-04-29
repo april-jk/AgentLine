@@ -40,6 +40,7 @@ const mocks = vi.hoisted(() => ({
     getProjectSessions: vi.fn(),
     startVoiceSecretaryAudioCall: vi.fn(),
     startVoiceSecretaryCall: vi.fn(),
+    getVoiceSecretarySessionStatus: vi.fn(),
   },
 }));
 
@@ -86,6 +87,7 @@ describe("VoiceSecretaryPage", () => {
     mocks.api.getProjectSessions.mockReset();
     mocks.api.startVoiceSecretaryAudioCall.mockReset();
     mocks.api.startVoiceSecretaryCall.mockReset();
+    mocks.api.getVoiceSecretarySessionStatus.mockReset();
     mocks.recorder.startRecording.mockReset();
     mocks.recorder.stopRecording.mockReset();
     mocks.recorder.setProcessing.mockReset();
@@ -101,12 +103,25 @@ describe("VoiceSecretaryPage", () => {
       result: {
         callSession: {
           id: "call-1",
+          voiceSessionId: "voice-1",
           channel: "web-voice",
-          status: "completed",
+          status: "waiting_for_user",
           startedAt: "2026-04-28T00:00:00.000Z",
+          workerSessionId: "session-1",
+          workerStatus: "running",
           transcript: [],
           plannerRuns: [],
           callbackRequests: [],
+        },
+        voiceSession: {
+          id: "voice-1",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          updatedAt: "2026-04-28T00:00:00.000Z",
+          projectPath: "/tmp/agentline",
+          workerSessionId: "session-1",
+          workerProvider: "codex",
+          workerStatus: "running",
+          speakerProjectSummary: "Project summary",
         },
         plannerRequest: {
           id: "planner-request-1",
@@ -151,6 +166,17 @@ describe("VoiceSecretaryPage", () => {
           factsToAvoidOverstating: [],
           questionsToAsk: ["Ask next"],
         },
+      },
+    });
+    mocks.api.getVoiceSecretarySessionStatus.mockResolvedValue({
+      snapshot: {
+        id: "voice-1",
+        startedAt: "2026-04-28T00:00:00.000Z",
+        updatedAt: "2026-04-28T00:00:00.000Z",
+        projectPath: "/tmp/agentline",
+        workerSessionId: "session-1",
+        workerProvider: "codex",
+        workerStatus: "running",
       },
     });
 
@@ -198,6 +224,7 @@ describe("VoiceSecretaryPage", () => {
 
     await waitFor(() => {
       expect(mocks.api.startVoiceSecretaryAudioCall).toHaveBeenCalledWith({
+        voiceSessionId: expect.any(String),
         projectPath: "/tmp/agentline",
         conversationSessionId: undefined,
         conversationProvider: undefined,
