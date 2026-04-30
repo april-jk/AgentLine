@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 import type { ServerSettings } from "../services/ServerSettingsService.js";
+import { oralizeTalkerText, shapeTalkerBrief } from "./response-shaper.js";
 import type {
   ExecutorReport,
   PlannerRequest,
@@ -74,24 +75,6 @@ function sanitizeStringList(value: unknown): string[] {
   return value
     .map((item) => (typeof item === "string" ? oralizeTalkerText(item) : ""))
     .filter((item) => item.length > 0);
-}
-
-function oralizeTalkerText(value: string): string {
-  return value
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/^#+\s*/gm, "")
-    .replace(/^\s*[-*]\s+/gm, "")
-    .replace(/\/api\/voice-secretary/gi, "语音秘书接口")
-    .replace(/packages\/client/gi, "客户端")
-    .replace(/packages\/server/gi, "服务端")
-    .replace(/packages\/relay/gi, "中继服务")
-    .replace(/docs\/[^\s，。；,]*/gi, "项目文档")
-    .replace(/[A-Za-z0-9._-]*\/[A-Za-z0-9._/-]+/g, "相关模块")
-    .replace(/\s+/g, " ")
-    .replace(/\s*([，。！？；：,.!?;:])\s*/g, "$1")
-    .trim();
 }
 
 function extractJsonObject(text: string): string | null {
@@ -296,6 +279,7 @@ export class VoiceSecretaryTalkerLlm {
   ): Promise<string | null> {
     if (!this.config) return null;
 
+    const memoryPacket = context?.selectedMemory;
     const payload = await requestJson<{ openingText?: string }>(this.config, [
       {
         role: "system",
@@ -308,11 +292,46 @@ export class VoiceSecretaryTalkerLlm {
           projectName: basename(input.projectPath),
           workerContext: workerContextLabel,
           userIntent: input.utterance,
-          projectIndexSummary: context?.projectIndex?.summary ?? "",
+          assistantStyleHints:
+            memoryPacket?.assistantStyleHints ??
+            context?.assistantMemory?.spokenStyleHints ??
+            [],
+          assistantConversationDigest:
+            memoryPacket?.assistantConversationDigest ??
+            context?.assistantMemory?.recentConversationDigest ??
+            [],
+          projectIndexSummary:
+            memoryPacket?.projectBrief ?? context?.projectIndex?.summary ?? "",
           memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
           memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
-          recentTurns: context?.recentTurns ?? [],
-          latestWorkerMessage: context?.latestWorkerMessage ?? "",
+          projectStableFacts:
+            memoryPacket?.relevantStableFacts ??
+            context?.projectMemory?.stableFacts ??
+            [],
+          projectRecentChanges:
+            memoryPacket?.relevantRecentChanges ??
+            context?.projectMemory?.recentChangesDigest ??
+            [],
+          projectOpenQuestions:
+            memoryPacket?.relevantOpenQuestions ??
+            context?.projectMemory?.openQuestions ??
+            [],
+          projectWorkerFindings:
+            memoryPacket?.relevantWorkerFindings ??
+            context?.projectMemory?.workerFindings?.map((finding) => ({
+              topic: finding.topic,
+              summary: finding.summary,
+            })) ??
+            [],
+          projectSpokenHints:
+            memoryPacket?.spokenHints ??
+            context?.projectMemory?.spokenHints ??
+            [],
+          recentTurns: memoryPacket?.recentTurns ?? context?.recentTurns ?? [],
+          latestWorkerMessage:
+            memoryPacket?.latestWorkerMessage ??
+            context?.latestWorkerMessage ??
+            "",
         }),
       },
     ]);
@@ -329,6 +348,7 @@ export class VoiceSecretaryTalkerLlm {
   ): Promise<TalkerBrief | null> {
     if (!this.config) return null;
 
+    const memoryPacket = context?.selectedMemory;
     const payload = await requestJson<{
       spokenSummary?: string;
       suggestedNextUtterance?: string;
@@ -350,11 +370,46 @@ export class VoiceSecretaryTalkerLlm {
           conversationScope: request.conversationSessionId
             ? "conversation"
             : "project",
-          projectIndexSummary: context?.projectIndex?.summary ?? "",
+          assistantStyleHints:
+            memoryPacket?.assistantStyleHints ??
+            context?.assistantMemory?.spokenStyleHints ??
+            [],
+          assistantConversationDigest:
+            memoryPacket?.assistantConversationDigest ??
+            context?.assistantMemory?.recentConversationDigest ??
+            [],
+          projectIndexSummary:
+            memoryPacket?.projectBrief ?? context?.projectIndex?.summary ?? "",
           memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
           memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
-          recentTurns: context?.recentTurns ?? [],
-          latestWorkerMessage: context?.latestWorkerMessage ?? "",
+          projectStableFacts:
+            memoryPacket?.relevantStableFacts ??
+            context?.projectMemory?.stableFacts ??
+            [],
+          projectRecentChanges:
+            memoryPacket?.relevantRecentChanges ??
+            context?.projectMemory?.recentChangesDigest ??
+            [],
+          projectOpenQuestions:
+            memoryPacket?.relevantOpenQuestions ??
+            context?.projectMemory?.openQuestions ??
+            [],
+          projectWorkerFindings:
+            memoryPacket?.relevantWorkerFindings ??
+            context?.projectMemory?.workerFindings?.map((finding) => ({
+              topic: finding.topic,
+              summary: finding.summary,
+            })) ??
+            [],
+          projectSpokenHints:
+            memoryPacket?.spokenHints ??
+            context?.projectMemory?.spokenHints ??
+            [],
+          recentTurns: memoryPacket?.recentTurns ?? context?.recentTurns ?? [],
+          latestWorkerMessage:
+            memoryPacket?.latestWorkerMessage ??
+            context?.latestWorkerMessage ??
+            "",
         }),
       },
     ]);
@@ -366,7 +421,7 @@ export class VoiceSecretaryTalkerLlm {
       "下一步你想让我继续交给正式执行会话，还是先把计划读给你听？",
     );
 
-    return {
+    return shapeTalkerBrief({
       spokenSummary: sanitizeText(
         payload.spokenSummary,
         "我已经读了项目说明，并整理好了可以交给正式执行会话的任务包。",
@@ -378,7 +433,7 @@ export class VoiceSecretaryTalkerLlm {
       questionsToAsk: sanitizeStringList(payload.questionsToAsk).concat(
         suggestedNextUtterance,
       ),
-    };
+    });
   }
 
   async createFinalBrief(
@@ -388,6 +443,7 @@ export class VoiceSecretaryTalkerLlm {
   ): Promise<TalkerBrief | null> {
     if (!this.config) return null;
 
+    const memoryPacket = context?.selectedMemory;
     const payload = await requestJson<{
       spokenSummary?: string;
       suggestedNextUtterance?: string;
@@ -408,12 +464,48 @@ export class VoiceSecretaryTalkerLlm {
           executorSummary: executorReport.summary,
           verification: executorReport.verification ?? [],
           changedFiles: executorReport.changedFiles ?? [],
-          projectIndexSummary: context?.projectIndex?.summary ?? "",
+          assistantStyleHints:
+            memoryPacket?.assistantStyleHints ??
+            context?.assistantMemory?.spokenStyleHints ??
+            [],
+          assistantConversationDigest:
+            memoryPacket?.assistantConversationDigest ??
+            context?.assistantMemory?.recentConversationDigest ??
+            [],
+          projectIndexSummary:
+            memoryPacket?.projectBrief ?? context?.projectIndex?.summary ?? "",
           memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
           memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
-          recentTurns: context?.recentTurns ?? [],
-          latestWorkerMessage: context?.latestWorkerMessage ?? "",
-          workerStatus: context?.workerStatus ?? "",
+          projectStableFacts:
+            memoryPacket?.relevantStableFacts ??
+            context?.projectMemory?.stableFacts ??
+            [],
+          projectRecentChanges:
+            memoryPacket?.relevantRecentChanges ??
+            context?.projectMemory?.recentChangesDigest ??
+            [],
+          projectOpenQuestions:
+            memoryPacket?.relevantOpenQuestions ??
+            context?.projectMemory?.openQuestions ??
+            [],
+          projectWorkerFindings:
+            memoryPacket?.relevantWorkerFindings ??
+            context?.projectMemory?.workerFindings?.map((finding) => ({
+              topic: finding.topic,
+              summary: finding.summary,
+            })) ??
+            [],
+          projectSpokenHints:
+            memoryPacket?.spokenHints ??
+            context?.projectMemory?.spokenHints ??
+            [],
+          recentTurns: memoryPacket?.recentTurns ?? context?.recentTurns ?? [],
+          latestWorkerMessage:
+            memoryPacket?.latestWorkerMessage ??
+            context?.latestWorkerMessage ??
+            "",
+          workerStatus:
+            memoryPacket?.workerStatus ?? context?.workerStatus ?? "",
         }),
       },
     ]);
@@ -425,7 +517,7 @@ export class VoiceSecretaryTalkerLlm {
       "要我继续跟进这项工作，还是先停在这里？",
     );
 
-    return {
+    return shapeTalkerBrief({
       spokenSummary: sanitizeText(
         payload.spokenSummary,
         executorReport.summary,
@@ -437,6 +529,6 @@ export class VoiceSecretaryTalkerLlm {
       questionsToAsk: sanitizeStringList(payload.questionsToAsk).concat(
         suggestedNextUtterance,
       ),
-    };
+    });
   }
 }

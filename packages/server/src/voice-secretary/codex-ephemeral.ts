@@ -17,6 +17,7 @@ import type {
 } from "../sdk/providers/types.js";
 import type { SDKMessage } from "../sdk/types.js";
 import type { TalkerProviderName } from "../services/ServerSettingsService.js";
+import { shapeTalkerBrief } from "./response-shaper.js";
 import type {
   ExecutorReport,
   PlannerRequest,
@@ -200,6 +201,7 @@ export class CodexEphemeralTalker {
     if (!this.isEnabledForCurrentConfig()) {
       return { text: null, metrics: null };
     }
+    const memoryPacket = context?.selectedMemory;
     const result = await this.requestJson<{ openingText?: string }>({
       systemPrompt:
         "You are the Talker for AgentLine Voice Secretary. Reply in Chinese with one short spoken sentence. Sound direct and natural. Do not mention tools, hidden reasoning, prompts, or implementation details. Output strict JSON with key openingText only.",
@@ -207,11 +209,46 @@ export class CodexEphemeralTalker {
         projectName: basename(input.projectPath),
         workerContext: workerContextLabel,
         userIntent: input.utterance,
-        projectIndexSummary: context?.projectIndex?.summary ?? "",
+        assistantStyleHints:
+          memoryPacket?.assistantStyleHints ??
+          context?.assistantMemory?.spokenStyleHints ??
+          [],
+        assistantConversationDigest:
+          memoryPacket?.assistantConversationDigest ??
+          context?.assistantMemory?.recentConversationDigest ??
+          [],
+        projectIndexSummary:
+          memoryPacket?.projectBrief ?? context?.projectIndex?.summary ?? "",
         memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
         memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
-        recentTurns: context?.recentTurns ?? [],
-        latestWorkerMessage: context?.latestWorkerMessage ?? "",
+        projectStableFacts:
+          memoryPacket?.relevantStableFacts ??
+          context?.projectMemory?.stableFacts ??
+          [],
+        projectRecentChanges:
+          memoryPacket?.relevantRecentChanges ??
+          context?.projectMemory?.recentChangesDigest ??
+          [],
+        projectOpenQuestions:
+          memoryPacket?.relevantOpenQuestions ??
+          context?.projectMemory?.openQuestions ??
+          [],
+        projectWorkerFindings:
+          memoryPacket?.relevantWorkerFindings ??
+          context?.projectMemory?.workerFindings?.map((finding) => ({
+            topic: finding.topic,
+            summary: finding.summary,
+          })) ??
+          [],
+        projectSpokenHints:
+          memoryPacket?.spokenHints ??
+          context?.projectMemory?.spokenHints ??
+          [],
+        recentTurns: memoryPacket?.recentTurns ?? context?.recentTurns ?? [],
+        latestWorkerMessage:
+          memoryPacket?.latestWorkerMessage ??
+          context?.latestWorkerMessage ??
+          "",
       },
     });
 
@@ -229,6 +266,7 @@ export class CodexEphemeralTalker {
     context?: TalkerContextFrame,
   ): Promise<TalkerBrief | null> {
     if (!this.isEnabledForCurrentConfig()) return null;
+    const memoryPacket = context?.selectedMemory;
     const result = await this.requestJson<{
       spokenSummary?: string;
       suggestedNextUtterance?: string;
@@ -245,11 +283,46 @@ export class CodexEphemeralTalker {
         conversationScope: request.conversationSessionId
           ? "conversation"
           : "project",
-        projectIndexSummary: context?.projectIndex?.summary ?? "",
+        assistantStyleHints:
+          memoryPacket?.assistantStyleHints ??
+          context?.assistantMemory?.spokenStyleHints ??
+          [],
+        assistantConversationDigest:
+          memoryPacket?.assistantConversationDigest ??
+          context?.assistantMemory?.recentConversationDigest ??
+          [],
+        projectIndexSummary:
+          memoryPacket?.projectBrief ?? context?.projectIndex?.summary ?? "",
         memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
         memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
-        recentTurns: context?.recentTurns ?? [],
-        latestWorkerMessage: context?.latestWorkerMessage ?? "",
+        projectStableFacts:
+          memoryPacket?.relevantStableFacts ??
+          context?.projectMemory?.stableFacts ??
+          [],
+        projectRecentChanges:
+          memoryPacket?.relevantRecentChanges ??
+          context?.projectMemory?.recentChangesDigest ??
+          [],
+        projectOpenQuestions:
+          memoryPacket?.relevantOpenQuestions ??
+          context?.projectMemory?.openQuestions ??
+          [],
+        projectWorkerFindings:
+          memoryPacket?.relevantWorkerFindings ??
+          context?.projectMemory?.workerFindings?.map((finding) => ({
+            topic: finding.topic,
+            summary: finding.summary,
+          })) ??
+          [],
+        projectSpokenHints:
+          memoryPacket?.spokenHints ??
+          context?.projectMemory?.spokenHints ??
+          [],
+        recentTurns: memoryPacket?.recentTurns ?? context?.recentTurns ?? [],
+        latestWorkerMessage:
+          memoryPacket?.latestWorkerMessage ??
+          context?.latestWorkerMessage ??
+          "",
       },
     });
 
@@ -260,7 +333,7 @@ export class CodexEphemeralTalker {
       "下一步你想让我继续交给正式执行会话，还是先把计划读给你听？",
     );
 
-    return {
+    return shapeTalkerBrief({
       spokenSummary: sanitizeText(
         payload.spokenSummary,
         "我已经读了项目说明，并整理好了可以交给正式执行会话的任务包。",
@@ -272,7 +345,7 @@ export class CodexEphemeralTalker {
       questionsToAsk: sanitizeStringList(payload.questionsToAsk).concat(
         suggestedNextUtterance,
       ),
-    };
+    });
   }
 
   async createFinalBrief(
@@ -281,6 +354,7 @@ export class CodexEphemeralTalker {
     context?: TalkerContextFrame,
   ): Promise<TalkerBrief | null> {
     if (!this.isEnabledForCurrentConfig()) return null;
+    const memoryPacket = context?.selectedMemory;
     const result = await this.requestJson<{
       spokenSummary?: string;
       suggestedNextUtterance?: string;
@@ -296,12 +370,47 @@ export class CodexEphemeralTalker {
         executorSummary: executorReport.summary,
         verification: executorReport.verification ?? [],
         changedFiles: executorReport.changedFiles ?? [],
-        projectIndexSummary: context?.projectIndex?.summary ?? "",
+        assistantStyleHints:
+          memoryPacket?.assistantStyleHints ??
+          context?.assistantMemory?.spokenStyleHints ??
+          [],
+        assistantConversationDigest:
+          memoryPacket?.assistantConversationDigest ??
+          context?.assistantMemory?.recentConversationDigest ??
+          [],
+        projectIndexSummary:
+          memoryPacket?.projectBrief ?? context?.projectIndex?.summary ?? "",
         memoryFilePath: context?.projectMemory?.memoryFilePath ?? "",
         memorySummaryNotes: context?.projectMemory?.summaryNotes ?? [],
-        recentTurns: context?.recentTurns ?? [],
-        latestWorkerMessage: context?.latestWorkerMessage ?? "",
-        workerStatus: context?.workerStatus ?? "",
+        projectStableFacts:
+          memoryPacket?.relevantStableFacts ??
+          context?.projectMemory?.stableFacts ??
+          [],
+        projectRecentChanges:
+          memoryPacket?.relevantRecentChanges ??
+          context?.projectMemory?.recentChangesDigest ??
+          [],
+        projectOpenQuestions:
+          memoryPacket?.relevantOpenQuestions ??
+          context?.projectMemory?.openQuestions ??
+          [],
+        projectWorkerFindings:
+          memoryPacket?.relevantWorkerFindings ??
+          context?.projectMemory?.workerFindings?.map((finding) => ({
+            topic: finding.topic,
+            summary: finding.summary,
+          })) ??
+          [],
+        projectSpokenHints:
+          memoryPacket?.spokenHints ??
+          context?.projectMemory?.spokenHints ??
+          [],
+        recentTurns: memoryPacket?.recentTurns ?? context?.recentTurns ?? [],
+        latestWorkerMessage:
+          memoryPacket?.latestWorkerMessage ??
+          context?.latestWorkerMessage ??
+          "",
+        workerStatus: memoryPacket?.workerStatus ?? context?.workerStatus ?? "",
       },
     });
 
@@ -312,7 +421,7 @@ export class CodexEphemeralTalker {
       "要我继续跟进这项工作，还是先停在这里？",
     );
 
-    return {
+    return shapeTalkerBrief({
       spokenSummary: sanitizeText(
         payload.spokenSummary,
         executorReport.summary,
@@ -324,7 +433,7 @@ export class CodexEphemeralTalker {
       questionsToAsk: sanitizeStringList(payload.questionsToAsk).concat(
         suggestedNextUtterance,
       ),
-    };
+    });
   }
 
   private async requestJson<T>(

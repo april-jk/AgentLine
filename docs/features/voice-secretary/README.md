@@ -76,6 +76,8 @@ Only this layer can:
 
 - [architecture.md](./architecture.md) defines the runtime architecture and data flow.
 - [contracts.md](./contracts.md) defines the core data structures and adapter contracts.
+- [memory-system.md](./memory-system.md) defines the local persistent memory model for Talker, Worker write-back, and project initialization.
+- [memory-implementation-plan.md](./memory-implementation-plan.md) maps the memory design into concrete files, stages, interfaces, and verification steps.
 - [mvp-plan.md](./mvp-plan.md) defines the first buildable milestone.
 - [safety-boundaries.md](./safety-boundaries.md) defines permission and audit rules.
 - [volcengine-speech.md](./volcengine-speech.md) defines the ASR and TTS provider

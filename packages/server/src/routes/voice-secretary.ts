@@ -158,7 +158,12 @@ export function createVoiceSecretaryRoutes(
 
   const bindVoiceWorker = (
     voiceSessionId: string | undefined,
-    session: { id: string; provider: ProviderName; processId?: string },
+    session: {
+      id: string;
+      provider: ProviderName;
+      processId?: string;
+      purpose?: "user-request" | "project-initialization";
+    },
   ) => {
     if (!voiceSessionId) return;
     const snapshot = runtimeManager.getSnapshot(voiceSessionId);
@@ -173,6 +178,7 @@ export function createVoiceSecretaryRoutes(
       workerSessionId: session.id,
       workerProvider: session.provider,
       workerStatus: "running",
+      workerPurpose: session.purpose,
     });
     if (!session.processId || !deps.supervisor) return;
     const process = deps.supervisor.getProcess?.(session.processId);

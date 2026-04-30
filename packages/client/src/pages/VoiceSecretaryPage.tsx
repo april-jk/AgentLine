@@ -116,6 +116,41 @@ function choosePrimaryTalkerReply(result: VoiceSecretaryResult): string {
   return "我已经整理好了这轮项目对话的结果。";
 }
 
+function summarizeWorkerLiveUpdate(
+  message: string,
+  workerStatus: VoiceSecretaryResult["voiceSession"]["workerStatus"],
+): string {
+  const normalized = message
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\/api\/voice-secretary/gi, "语音秘书接口")
+    .replace(/packages\/client/gi, "前端页面")
+    .replace(/packages\/server/gi, "服务端")
+    .replace(/packages\/relay/gi, "中继服务")
+    .replace(/\bASR\b/gi, "语音识别")
+    .replace(/\bTTS\b/gi, "语音合成")
+    .replace(/[A-Za-z0-9._-]*\/[A-Za-z0-9._/-]+/g, "相关模块")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const spoken = (normalized.match(/[^。！？!?]+[。！？!?]?/g) ?? [normalized])
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("");
+
+  if (!spoken) {
+    return workerStatus === "completed"
+      ? "项目专家已经补充完了，我们可以继续往下聊。"
+      : "项目专家刚补了一点细节，我继续帮你盯着。";
+  }
+
+  return workerStatus === "completed"
+    ? spoken
+    : `${spoken.replace(/[。！？!?]+$/u, "")}，我继续帮你盯着。`;
+}
+
 function ConversationBubbles({
   turns,
 }: {
@@ -338,6 +373,7 @@ export function VoiceSecretaryPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const activeUserTurnIdRef = useRef<string | null>(null);
   const activeTalkerTurnIdRef = useRef<string | null>(null);
+  const lastWorkerUpdateKeyRef = useRef("");
   const liveTranscriptRef = useRef("");
   const visibleTalkerTextRef = useRef("");
   const pendingTalkerTextRef = useRef("");
@@ -593,9 +629,46 @@ export function VoiceSecretaryPage() {
       try {
         const status = await api.getVoiceSecretarySessionStatus(voiceSessionId);
         if (cancelled) return;
+        setResult((current) =>
+          current && current.voiceSession.id === status.snapshot.id
+            ? {
+                ...current,
+                voiceSession: {
+                  ...current.voiceSession,
+                  ...status.snapshot,
+                },
+              }
+            : current,
+        );
         if (status.hook) {
           appendLiveTurn(toLiveTurn("talker", status.hook.text));
+          lastWorkerUpdateKeyRef.current = `${status.hook.id}:${status.hook.text}`;
+          return;
         }
+        if (
+          !status.snapshot.workerSessionId ||
+          status.snapshot.workerStatus === "idle"
+        ) {
+          return;
+        }
+        const latestWorkerMessage = status.snapshot.latestWorkerMessage?.trim();
+        if (!latestWorkerMessage) {
+          return;
+        }
+        const updateKey = `${status.snapshot.updatedAt}:${latestWorkerMessage}`;
+        if (updateKey === lastWorkerUpdateKeyRef.current) {
+          return;
+        }
+        lastWorkerUpdateKeyRef.current = updateKey;
+        appendLiveTurn(
+          toLiveTurn(
+            "talker",
+            summarizeWorkerLiveUpdate(
+              latestWorkerMessage,
+              status.snapshot.workerStatus,
+            ),
+          ),
+        );
       } catch {
         // Ignore ephemeral polling errors; the main turn path already surfaces hard failures.
       }
@@ -677,6 +750,7 @@ export function VoiceSecretaryPage() {
         setResult(response.result);
         setVoiceSessionId(response.result.voiceSession.id);
         setHasServerVoiceSession(true);
+        lastWorkerUpdateKeyRef.current = "";
         setCallPhase("playing");
         if (response.audioBase64 && response.audioContentType) {
           await playAudioReply(response.audioBase64, response.audioContentType);
@@ -702,6 +776,7 @@ export function VoiceSecretaryPage() {
         visibleTalkerTextRef.current = "";
         pendingTalkerTextRef.current = "";
         stopTalkerTextPump();
+        lastWorkerUpdateKeyRef.current = "";
         activeUserTurnIdRef.current = null;
         activeTalkerTurnIdRef.current = null;
         recorder.setProcessing(false);
@@ -758,6 +833,7 @@ export function VoiceSecretaryPage() {
     visibleTalkerTextRef.current = "";
     pendingTalkerTextRef.current = "";
     stopTalkerTextPump();
+    lastWorkerUpdateKeyRef.current = "";
     activeUserTurnIdRef.current = null;
     activeTalkerTurnIdRef.current = null;
   }, [
@@ -826,6 +902,7 @@ export function VoiceSecretaryPage() {
         setResult(response.result);
         setVoiceSessionId(response.result.voiceSession.id);
         setHasServerVoiceSession(true);
+        lastWorkerUpdateKeyRef.current = "";
         setCallPhase(isCallActive ? "ready" : "idle");
       } catch (turnError) {
         const message =

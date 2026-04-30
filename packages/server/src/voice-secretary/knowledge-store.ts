@@ -5,14 +5,22 @@ import * as path from "node:path";
 import { promisify } from "node:util";
 import { getDataDir } from "../config.js";
 import { encodeProjectId } from "../projects/paths.js";
+import { applyTranscriptEventToMemory } from "./transcript-digestor.js";
 import type {
+  AssistantMemory,
   ProjectKnowledgeIndex,
+  ProjectTranscriptEvent,
+  ProjectWorkerFinding,
   TalkerContextTurn,
   TalkerProjectMemory,
 } from "./types.js";
 
+const ASSISTANT_MEMORY_VERSION = 1;
 const MAX_RECENT_TURNS = 12;
 const MAX_SUMMARY_NOTES = 16;
+const MAX_STABLE_FACTS = 12;
+const MAX_WORKER_FINDINGS = 12;
+const MAX_DIGEST_ITEMS = 10;
 const MAX_TOP_LEVEL_ENTRIES = 12;
 const MAX_NOTABLE_FILES = 10;
 const MAX_SNIPPET_CHARS = 320;
@@ -247,8 +255,7 @@ async function readLatestCommit(projectPath: string): Promise<{
       return { files };
     }
 
-    const fileSummary = files.length > 0 ? `，涉及 ${files.join("、")}` : "";
-    const summary = `最近一次提交是 ${hash}（${date || "日期未知"}），主题是“${subject}”${fileSummary}。`;
+    const summary = `最近一次提交是 ${hash}（${date || "日期未知"}），主题是“${subject}”。`;
     return { summary, files };
   } catch {
     return { files: [] };
@@ -260,6 +267,9 @@ interface TalkerKnowledgeArtifacts {
   projectDir: string;
   indexPath: string;
   memoryPath: string;
+  transcriptPath: string;
+  assistantMemoryPath: string;
+  assistantMemory: AssistantMemory;
   index: ProjectKnowledgeIndex;
   memory: TalkerProjectMemory;
 }
@@ -288,40 +298,115 @@ function isProjectKnowledgeIndex(
   );
 }
 
+function isAssistantMemory(
+  value: AssistantMemory | null,
+): value is AssistantMemory {
+  return Boolean(
+    value &&
+      value.version === ASSISTANT_MEMORY_VERSION &&
+      typeof value.updatedAt === "string" &&
+      typeof value.memoryFilePath === "string" &&
+      typeof value.userProfile?.language === "string" &&
+      Array.isArray(value.userProfile?.style) &&
+      Array.isArray(value.relationshipSummary) &&
+      Array.isArray(value.recentConversationDigest) &&
+      Array.isArray(value.spokenStyleHints),
+  );
+}
+
+function isProjectMemory(
+  value: TalkerProjectMemory | null,
+): value is TalkerProjectMemory {
+  return Boolean(
+    value &&
+      typeof value.projectPath === "string" &&
+      typeof value.updatedAt === "string" &&
+      typeof value.memoryFilePath === "string" &&
+      Array.isArray(value.recentTurns) &&
+      Array.isArray(value.summaryNotes) &&
+      (value.latestWorkerMessage === undefined ||
+        typeof value.latestWorkerMessage === "string"),
+  );
+}
+
+function inferWorkerFindingTopic(message: string): string {
+  const normalized = cleanMarkdown(message);
+  if (/提交|commit/i.test(normalized)) return "最近提交";
+  if (/语音|asr|tts/i.test(normalized)) return "语音链路";
+  if (/项目.*(进展|现状|状态)/.test(normalized)) return "项目进展";
+  if (/worker|项目专家/.test(normalized)) return "项目专家补充";
+  return "项目细节";
+}
+
 export class VoiceSecretaryKnowledgeStore {
   private readonly rootDir: string;
+  private readonly projectsRootDir: string;
 
-  constructor(dataDir = getDataDir()) {
-    const resolvedDataDir = process.env.VITEST
-      ? path.join(tmpdir(), "agentline-voice-secretary-test")
-      : dataDir;
+  constructor(dataDir?: string) {
+    const resolvedDataDir =
+      dataDir ??
+      (process.env.VITEST
+        ? path.join(tmpdir(), "agentline-voice-secretary-test")
+        : getDataDir());
     this.rootDir = path.join(resolvedDataDir, "voice-secretary");
+    this.projectsRootDir = path.join(this.rootDir, "projects");
+  }
+
+  async ensureAssistantMemory(): Promise<AssistantMemory> {
+    await fs.mkdir(this.rootDir, { recursive: true });
+    const memoryPath = path.join(this.rootDir, "assistant-memory.json");
+    const cachedMemory = await this.readJson<AssistantMemory>(memoryPath);
+    const memory = isAssistantMemory(cachedMemory)
+      ? cachedMemory
+      : this.createAssistantMemory(memoryPath);
+    await this.writeJson(memoryPath, memory);
+    return memory;
   }
 
   async ensureProjectArtifacts(
     projectPath: string,
   ): Promise<TalkerKnowledgeArtifacts> {
+    const assistantMemoryPath = path.join(
+      this.rootDir,
+      "assistant-memory.json",
+    );
+    const assistantMemory = await this.ensureAssistantMemory();
     const projectId = encodeProjectId(projectPath);
-    const projectDir = path.join(this.rootDir, projectId);
+    const projectDir = await this.resolveProjectDir(projectId);
     const indexPath = path.join(projectDir, "talker-index.json");
     const memoryPath = path.join(projectDir, "talker-memory.json");
+    const transcriptPath = path.join(projectDir, "project-transcript.jsonl");
 
     await fs.mkdir(projectDir, { recursive: true });
 
     const cachedIndex = await this.readJson<ProjectKnowledgeIndex>(indexPath);
     const index = isProjectKnowledgeIndex(cachedIndex)
-      ? cachedIndex
+      ? await this.refreshProjectIndex(projectPath, cachedIndex)
       : await this.buildProjectIndex(projectPath);
-    const memory =
-      (await this.readJson<TalkerProjectMemory>(memoryPath)) ??
-      this.createEmptyMemory(projectPath, memoryPath);
+    const cachedMemory = await this.readJson<TalkerProjectMemory>(memoryPath);
+    const memory = this.normalizeProjectMemory(
+      cachedMemory,
+      projectPath,
+      memoryPath,
+      index,
+    );
 
     await Promise.all([
       this.writeJson(indexPath, index),
       this.writeJson(memoryPath, memory),
     ]);
 
-    return { projectId, projectDir, indexPath, memoryPath, index, memory };
+    return {
+      projectId,
+      projectDir,
+      indexPath,
+      memoryPath,
+      transcriptPath,
+      assistantMemoryPath,
+      assistantMemory,
+      index,
+      memory,
+    };
   }
 
   async recordTalkerTurn(
@@ -334,35 +419,110 @@ export class VoiceSecretaryKnowledgeStore {
       .concat(turns)
       .slice(-MAX_RECENT_TURNS);
     const summaryNotes = [...artifacts.memory.summaryNotes];
-    if (note?.trim()) {
-      summaryNotes.push(note.trim());
+    const trimmedNote = note?.trim();
+    if (trimmedNote) {
+      summaryNotes.push(trimmedNote);
     }
-    const memory: TalkerProjectMemory = {
+    const latestDigest = trimmedNote ?? this.buildTurnDigest(turns);
+    let memory: TalkerProjectMemory = {
       ...artifacts.memory,
       updatedAt: nowIso(),
       recentTurns: mergedTurns,
       summaryNotes: summaryNotes.slice(-MAX_SUMMARY_NOTES),
     };
+    const assistantMemory = this.appendAssistantDigest(
+      artifacts.assistantMemory,
+      latestDigest,
+    );
+    const digestEvent = {
+      at: nowIso(),
+      source: "system",
+      kind: "memory_note",
+      text: latestDigest,
+    } as const;
+    memory = applyTranscriptEventToMemory(memory, digestEvent);
+    await this.appendTranscriptEvent(artifacts.transcriptPath, digestEvent);
+    for (const turn of turns) {
+      await this.appendTranscriptEvent(artifacts.transcriptPath, {
+        at: turn.at,
+        source: turn.speaker,
+        kind: "turn",
+        text: turn.text,
+      });
+      memory = applyTranscriptEventToMemory(memory, {
+        at: turn.at,
+        source: turn.speaker,
+        kind: "turn",
+        text: turn.text,
+      });
+    }
     await this.writeJson(artifacts.memoryPath, memory);
+    await this.writeJson(artifacts.assistantMemoryPath, assistantMemory);
     return memory;
   }
 
   async recordWorkerUpdate(
     projectPath: string,
     message: string,
+    options: {
+      source?: "worker" | "initializer" | "system";
+      topic?: string;
+      confidence?: "low" | "medium" | "high";
+      promoteToStableFacts?: boolean;
+    } = {},
   ): Promise<TalkerProjectMemory> {
     const artifacts = await this.ensureProjectArtifacts(projectPath);
     const note = `Worker补充：${message}`.trim();
-    const memory: TalkerProjectMemory = {
+    const finding: ProjectWorkerFinding = {
+      at: nowIso(),
+      topic: options.topic ?? inferWorkerFindingTopic(message),
+      summary: cleanMarkdown(message),
+      confidence: options.confidence ?? "high",
+      source: options.source ?? "worker",
+      promotable: options.promoteToStableFacts ?? true,
+    };
+    let memory: TalkerProjectMemory = {
       ...artifacts.memory,
       updatedAt: nowIso(),
       latestWorkerMessage: message,
+      stableFacts: finding.promotable
+        ? uniqueItems(
+            [finding.summary, ...artifacts.memory.stableFacts],
+            MAX_STABLE_FACTS,
+          )
+        : artifacts.memory.stableFacts,
+      workerFindings: artifacts.memory.workerFindings
+        .concat(finding)
+        .slice(-MAX_WORKER_FINDINGS),
+      recentChangesDigest: uniqueItems(
+        [cleanMarkdown(message), ...artifacts.memory.recentChangesDigest],
+        MAX_DIGEST_ITEMS,
+      ),
       summaryNotes: artifacts.memory.summaryNotes
         .concat(note)
         .slice(-MAX_SUMMARY_NOTES),
     };
+    const transcriptEvent = {
+      at: finding.at,
+      source: finding.source,
+      kind: "worker_message",
+      text: finding.summary,
+      topic: finding.topic,
+    } as const;
+    memory = applyTranscriptEventToMemory(memory, transcriptEvent);
+    await this.appendTranscriptEvent(artifacts.transcriptPath, transcriptEvent);
     await this.writeJson(artifacts.memoryPath, memory);
     return memory;
+  }
+
+  async appendProjectTranscriptEvent(
+    projectPath: string,
+    event: ProjectTranscriptEvent,
+  ): Promise<void> {
+    const artifacts = await this.ensureProjectArtifacts(projectPath);
+    await this.appendTranscriptEvent(artifacts.transcriptPath, event);
+    const memory = applyTranscriptEventToMemory(artifacts.memory, event);
+    await this.writeJson(artifacts.memoryPath, memory);
   }
 
   private async buildProjectIndex(
@@ -524,16 +684,173 @@ export class VoiceSecretaryKnowledgeStore {
   private createEmptyMemory(
     projectPath: string,
     memoryFilePath: string,
+    index: ProjectKnowledgeIndex,
   ): TalkerProjectMemory {
+    const stableFacts = uniqueItems(
+      [
+        index.projectPositioning,
+        ...index.currentCapabilities,
+        ...index.voiceSecretaryStatus,
+      ],
+      MAX_STABLE_FACTS,
+    );
     return {
       projectPath,
       updatedAt: nowIso(),
       memoryFilePath,
+      stableFacts,
+      workerFindings: [],
+      recentChangesDigest: uniqueItems(
+        [
+          index.latestCommitSummary ?? "",
+          ...index.recentFocus,
+          ...index.knownNextSteps,
+        ],
+        MAX_DIGEST_ITEMS,
+      ),
+      openQuestions: [],
+      spokenHints: [
+        "像秘书一样先说结论，再补背景。",
+        "避免念文件路径、markdown、代码块和长英文列表。",
+        "不确定的信息要明确说成还在确认。",
+      ],
       recentTurns: [],
       summaryNotes: [
         "Talker记忆已初始化，可以持续积累项目背景、最近对话和Worker补充信息。",
       ],
     };
+  }
+
+  private createAssistantMemory(memoryFilePath: string): AssistantMemory {
+    return {
+      version: ASSISTANT_MEMORY_VERSION,
+      updatedAt: nowIso(),
+      memoryFilePath,
+      userProfile: {
+        language: "zh-CN",
+        style: ["口语化", "简洁", "不要markdown", "避免长路径"],
+      },
+      relationshipSummary: [
+        "用户把 Talker 当作语音秘书，希望先直接回答，再按需找项目专家补细节。",
+        "Talker 应该保持中文、自然、简短，不要像在念日志或代码。",
+      ],
+      recentConversationDigest: [],
+      spokenStyleHints: [
+        "先给结论，再补一句背景。",
+        "尽量用口语，不要列路径或接口名。",
+        "如果还在等 Worker，就直说正在补充，不要装作已经完成。",
+      ],
+    };
+  }
+
+  private normalizeProjectMemory(
+    value: TalkerProjectMemory | null,
+    projectPath: string,
+    memoryFilePath: string,
+    index: ProjectKnowledgeIndex,
+  ): TalkerProjectMemory {
+    if (!isProjectMemory(value)) {
+      return this.createEmptyMemory(projectPath, memoryFilePath, index);
+    }
+
+    return {
+      projectPath,
+      updatedAt: value.updatedAt || nowIso(),
+      memoryFilePath,
+      recentTurns: Array.isArray(value.recentTurns) ? value.recentTurns : [],
+      stableFacts: uniqueItems(
+        [
+          ...(Array.isArray(value.stableFacts) ? value.stableFacts : []),
+          index.projectPositioning,
+          ...index.currentCapabilities,
+        ],
+        MAX_STABLE_FACTS,
+      ),
+      workerFindings: Array.isArray(value.workerFindings)
+        ? value.workerFindings
+            .filter(
+              (finding) =>
+                typeof finding?.at === "string" &&
+                typeof finding?.topic === "string" &&
+                typeof finding?.summary === "string",
+            )
+            .slice(-MAX_WORKER_FINDINGS)
+        : [],
+      recentChangesDigest: uniqueItems(
+        [
+          ...(Array.isArray(value.recentChangesDigest)
+            ? value.recentChangesDigest
+            : []),
+          index.latestCommitSummary ?? "",
+        ],
+        MAX_DIGEST_ITEMS,
+      ),
+      openQuestions: uniqueItems(
+        Array.isArray(value.openQuestions) ? value.openQuestions : [],
+        MAX_DIGEST_ITEMS,
+      ),
+      spokenHints: uniqueItems(
+        [
+          ...(Array.isArray(value.spokenHints) ? value.spokenHints : []),
+          "像秘书一样先说结论，再补背景。",
+          "避免念文件路径、markdown、代码块和长英文列表。",
+        ],
+        MAX_LIST_ITEMS,
+      ),
+      summaryNotes: Array.isArray(value.summaryNotes)
+        ? value.summaryNotes.slice(-MAX_SUMMARY_NOTES)
+        : [],
+      latestWorkerMessage:
+        typeof value.latestWorkerMessage === "string"
+          ? value.latestWorkerMessage
+          : undefined,
+    };
+  }
+
+  private appendAssistantDigest(
+    memory: AssistantMemory,
+    digest: string,
+  ): AssistantMemory {
+    const trimmedDigest = cleanMarkdown(digest);
+    if (!trimmedDigest) {
+      return memory;
+    }
+    return {
+      ...memory,
+      updatedAt: nowIso(),
+      recentConversationDigest: uniqueItems(
+        [...memory.recentConversationDigest, trimmedDigest],
+        MAX_DIGEST_ITEMS,
+      ),
+    };
+  }
+
+  private buildTurnDigest(turns: TalkerContextTurn[]): string {
+    const userTurn = [...turns]
+      .reverse()
+      .find((turn: TalkerContextTurn) => turn.speaker === "user")?.text;
+    const talkerTurn = [...turns]
+      .reverse()
+      .find((turn: TalkerContextTurn) => turn.speaker === "talker")?.text;
+    return [
+      userTurn ? `用户问了：${userTurn}` : "",
+      talkerTurn ? `Talker回答：${talkerTurn}` : "",
+    ]
+      .filter(Boolean)
+      .join("；");
+  }
+
+  private async resolveProjectDir(projectId: string): Promise<string> {
+    await fs.mkdir(this.projectsRootDir, { recursive: true });
+    const projectDir = path.join(this.projectsRootDir, projectId);
+    const legacyProjectDir = path.join(this.rootDir, projectId);
+    if (
+      !(await fileExists(projectDir)) &&
+      (await fileExists(legacyProjectDir))
+    ) {
+      await fs.rename(legacyProjectDir, projectDir);
+    }
+    return projectDir;
   }
 
   private async readJson<T>(filePath: string): Promise<T | null> {
@@ -547,5 +864,44 @@ export class VoiceSecretaryKnowledgeStore {
 
   private async writeJson(filePath: string, value: unknown): Promise<void> {
     await fs.writeFile(filePath, JSON.stringify(value, null, 2), "utf-8");
+  }
+
+  private async appendTranscriptEvent(
+    transcriptPath: string,
+    event: ProjectTranscriptEvent,
+  ): Promise<void> {
+    await fs.appendFile(transcriptPath, `${JSON.stringify(event)}\n`, "utf-8");
+  }
+
+  private async refreshProjectIndex(
+    projectPath: string,
+    index: ProjectKnowledgeIndex,
+  ): Promise<ProjectKnowledgeIndex> {
+    const latestCommit = await readLatestCommit(projectPath);
+    const nextSummary = latestCommit.summary;
+    const nextFiles = latestCommit.files;
+    const summaryMatches = index.latestCommitSummary === nextSummary;
+    const filesMatch =
+      JSON.stringify(index.latestCommitFiles ?? []) ===
+      JSON.stringify(nextFiles);
+    if (summaryMatches && filesMatch) {
+      return index;
+    }
+
+    const summaryLines = index.summary
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("最近提交："));
+    if (nextSummary) {
+      summaryLines.push(`最近提交：${nextSummary}`);
+    }
+
+    return {
+      ...index,
+      generatedAt: nowIso(),
+      latestCommitSummary: nextSummary,
+      latestCommitFiles: nextFiles,
+      summary: summaryLines.join("\n"),
+    };
   }
 }

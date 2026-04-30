@@ -492,4 +492,211 @@ describe("VoiceSecretaryPage", () => {
       }),
     ).toBeNull();
   });
+
+  it("surfaces worker progress updates back into the live conversation", async () => {
+    mocks.api.startVoiceSecretaryCall.mockResolvedValueOnce({
+      result: {
+        callSession: {
+          id: "call-typed-worker",
+          voiceSessionId: "voice-typed-worker",
+          channel: "web-voice",
+          status: "waiting_for_user",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          workerSessionId: "session-worker",
+          workerStatus: "running",
+          transcript: [],
+          plannerRuns: [],
+          callbackRequests: [],
+        },
+        voiceSession: {
+          id: "voice-typed-worker",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          updatedAt: "2026-04-28T00:00:00.000Z",
+          projectPath: "/tmp/agentline",
+          workerSessionId: "session-worker",
+          workerProvider: "codex",
+          workerStatus: "running",
+        },
+        plannerRequest: {
+          id: "planner-request-worker",
+          userIntent: "语音识别是怎么实现的？",
+          knownConstraints: [],
+          missingInformation: [],
+          requestedOutcome: "answer",
+        },
+        plannerResult: {
+          id: "planner-result-worker",
+          projectSummary: "Project summary",
+          relevantInstructions: [],
+          recommendedAction: "consult_worker",
+          executionTask: {
+            id: "task-worker",
+            projectPath: "/tmp/agentline",
+            provider: "codex",
+            mode: "read_only",
+            prompt: "prompt",
+            acceptanceCriteria: [],
+            riskNotes: [],
+            requiredVerification: [],
+          },
+          talkerBrief: {
+            spokenSummary: "语音识别现在有两层。",
+            suggestedNextUtterance: "要我继续拆这一块吗？",
+            factsToAvoidOverstating: [],
+            questionsToAsk: [],
+          },
+        },
+        executorReport: {
+          executionTaskId: "task-worker",
+          providerSessionId: "session-worker",
+          status: "started",
+          summary: "Worker is running",
+          changedFiles: [],
+          verification: [],
+        },
+        finalBrief: {
+          spokenSummary: "语音识别现在有两层。",
+          suggestedNextUtterance: "要我继续拆这一块吗？",
+          factsToAvoidOverstating: [],
+          questionsToAsk: [],
+        },
+      },
+    });
+
+    mocks.api.getVoiceSecretarySessionStatus.mockResolvedValueOnce({
+      snapshot: {
+        id: "voice-typed-worker",
+        startedAt: "2026-04-28T00:00:00.000Z",
+        updatedAt: "2026-04-28T00:00:03.000Z",
+        projectPath: "/tmp/agentline",
+        workerSessionId: "session-worker",
+        workerProvider: "codex",
+        workerStatus: "running",
+        latestWorkerMessage:
+          "现在这块是双层实现。前端实时字幕用 Web Speech API 预览，正式转写走服务端火山 ASR。",
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <VoiceSecretaryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mocks.api.getProjectSessions).toHaveBeenCalledWith("project-1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Start live call" }));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "语音识别是怎么实现的？" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send typed turn" }));
+
+    await waitFor(() => {
+      expect(mocks.api.startVoiceSecretaryCall).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /前端实时字幕用 Web Speech API 预览，正式转写走服务端火山 语音识别，我继续帮你盯着/,
+        ),
+      ).toBeTruthy();
+    });
+  });
+
+  it("does not append stale worker updates when the current turn has no bound worker", async () => {
+    mocks.api.startVoiceSecretaryCall.mockResolvedValueOnce({
+      result: {
+        callSession: {
+          id: "call-typed-direct",
+          voiceSessionId: "voice-typed-direct",
+          channel: "web-voice",
+          status: "waiting_for_user",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          workerSessionId: undefined,
+          workerStatus: "idle",
+          transcript: [],
+          plannerRuns: [],
+          callbackRequests: [],
+        },
+        voiceSession: {
+          id: "voice-typed-direct",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          updatedAt: "2026-04-28T00:00:00.000Z",
+          projectPath: "/tmp/agentline",
+          workerStatus: "idle",
+        },
+        plannerRequest: {
+          id: "planner-request-direct",
+          userIntent: "给我介绍一下项目现在的信息。",
+          knownConstraints: [],
+          missingInformation: [],
+          requestedOutcome: "answer",
+        },
+        plannerResult: {
+          id: "planner-result-direct",
+          projectSummary: "Project summary",
+          relevantInstructions: [],
+          recommendedAction: "answer_directly",
+          talkerBrief: {
+            spokenSummary: "这是项目的基础介绍。",
+            suggestedNextUtterance: "要我继续讲下一步吗？",
+            factsToAvoidOverstating: [],
+            questionsToAsk: [],
+          },
+        },
+        executorReport: {
+          executionTaskId: "speaker-direct",
+          providerSessionId: "speaker-direct",
+          status: "completed",
+          summary: "Speaker 直接回答了当前问题。",
+          changedFiles: [],
+          verification: ["No worker handoff"],
+        },
+        finalBrief: {
+          spokenSummary: "这是项目的基础介绍。",
+          suggestedNextUtterance: "要我继续讲下一步吗？",
+          factsToAvoidOverstating: [],
+          questionsToAsk: [],
+        },
+      },
+    });
+
+    mocks.api.getVoiceSecretarySessionStatus.mockResolvedValueOnce({
+      snapshot: {
+        id: "voice-typed-direct",
+        startedAt: "2026-04-28T00:00:00.000Z",
+        updatedAt: "2026-04-28T00:00:03.000Z",
+        projectPath: "/tmp/agentline",
+        workerStatus: "idle",
+        latestWorkerMessage:
+          "现在这块是双层实现。前端实时字幕用 Web Speech API 预览，正式转写走服务端火山 ASR。",
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <VoiceSecretaryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mocks.api.getProjectSessions).toHaveBeenCalledWith("project-1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Start live call" }));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "给我介绍一下项目现在的信息。" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send typed turn" }));
+
+    await waitFor(() => {
+      expect(mocks.api.startVoiceSecretaryCall).toHaveBeenCalled();
+    });
+
+    expect(screen.getAllByText("这是项目的基础介绍。")).toHaveLength(1);
+    expect(screen.queryByText(/前端实时字幕用 Web Speech API 预览/)).toBeNull();
+  });
 });

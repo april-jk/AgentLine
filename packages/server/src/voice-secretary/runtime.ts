@@ -4,6 +4,7 @@ import type { SDKMessage } from "../sdk/types.js";
 import type { ProcessEvent } from "../supervisor/types.js";
 import type { VoiceSecretaryKnowledgeStore } from "./knowledge-store.js";
 import type {
+  AssistantMemory,
   CallSession,
   CallbackRequest,
   PlannerRunRef,
@@ -21,6 +22,7 @@ const MAX_RECENT_TURNS = 8;
 
 interface ProjectTalkerMemory {
   projectIndex?: ProjectKnowledgeIndex;
+  projectMemory?: TalkerProjectMemory;
   recentTurns: TalkerContextTurn[];
   latestWorkerMessage?: string;
   updatedAt: string;
@@ -72,11 +74,13 @@ interface VoiceSessionRuntimeRecord {
   pendingHook?: VoiceSessionHookEvent;
   workerUnsubscribe?: () => void;
   boundWorkerProcessId?: string;
+  workerPurpose?: "user-request" | "project-initialization";
 }
 
 export class VoiceSecretaryRuntimeManager {
   private readonly sessions = new Map<string, VoiceSessionRuntimeRecord>();
   private readonly projectMemories = new Map<string, ProjectTalkerMemory>();
+  private assistantMemory?: AssistantMemory;
 
   constructor(private readonly knowledgeStore?: VoiceSecretaryKnowledgeStore) {}
 
@@ -86,8 +90,12 @@ export class VoiceSecretaryRuntimeManager {
     conversationSessionId?: string;
     conversationProvider?: ProviderName;
     projectMemory?: TalkerProjectMemory;
+    assistantMemory?: AssistantMemory;
   }): VoiceSessionRuntimeRecord {
     const id = input.voiceSessionId ?? randomUUID();
+    if (input.assistantMemory) {
+      this.assistantMemory = input.assistantMemory;
+    }
     const existing = this.sessions.get(id);
     if (existing) {
       existing.snapshot.updatedAt = nowIso();
@@ -103,8 +111,9 @@ export class VoiceSecretaryRuntimeManager {
       return existing;
     }
 
+    const cachedProjectMemory = this.projectMemories.get(input.projectPath);
     const projectMemory =
-      input.projectMemory ?? this.projectMemories.get(input.projectPath);
+      input.projectMemory ?? cachedProjectMemory?.projectMemory;
 
     const record: VoiceSessionRuntimeRecord = {
       snapshot: {
@@ -121,7 +130,9 @@ export class VoiceSecretaryRuntimeManager {
       transcript: [],
       plannerRuns: [],
       callbackRequests: [],
-      talkerContext: projectMemory ? [...projectMemory.recentTurns] : [],
+      talkerContext: projectMemory
+        ? [...projectMemory.recentTurns]
+        : [...(cachedProjectMemory?.recentTurns ?? [])],
       projectMemory:
         projectMemory && "memoryFilePath" in projectMemory
           ? projectMemory
@@ -178,11 +189,13 @@ export class VoiceSecretaryRuntimeManager {
       workerSessionId: string;
       workerProvider: ProviderName;
       workerStatus: VoiceWorkerStatus;
+      workerPurpose?: "user-request" | "project-initialization";
     },
   ): void {
     record.snapshot.workerSessionId = binding.workerSessionId;
     record.snapshot.workerProvider = binding.workerProvider;
     record.snapshot.workerStatus = binding.workerStatus;
+    record.workerPurpose = binding.workerPurpose;
     record.snapshot.updatedAt = nowIso();
   }
 
@@ -206,6 +219,7 @@ export class VoiceSecretaryRuntimeManager {
     this.projectMemories.set(record.snapshot.projectPath, {
       projectIndex: this.projectMemories.get(record.snapshot.projectPath)
         ?.projectIndex,
+      projectMemory: memory,
       recentTurns: [...memory.recentTurns],
       latestWorkerMessage: memory.latestWorkerMessage,
       updatedAt: memory.updatedAt,
@@ -214,11 +228,18 @@ export class VoiceSecretaryRuntimeManager {
     record.snapshot.updatedAt = nowIso();
   }
 
+  setAssistantMemory(memory: AssistantMemory): void {
+    this.assistantMemory = memory;
+  }
+
   buildTalkerContext(record: VoiceSessionRuntimeRecord): TalkerContextFrame {
+    const projectMemoryState = this.projectMemories.get(
+      record.snapshot.projectPath,
+    );
     return {
-      projectIndex: this.projectMemories.get(record.snapshot.projectPath)
-        ?.projectIndex,
-      projectMemory: record.projectMemory,
+      assistantMemory: this.assistantMemory,
+      projectIndex: projectMemoryState?.projectIndex,
+      projectMemory: record.projectMemory ?? projectMemoryState?.projectMemory,
       recentTurns: [...record.talkerContext],
       latestWorkerMessage: record.snapshot.latestWorkerMessage,
       workerStatus: record.snapshot.workerStatus,
@@ -289,6 +310,18 @@ export class VoiceSecretaryRuntimeManager {
         void this.knowledgeStore?.recordWorkerUpdate(
           record.snapshot.projectPath,
           text,
+          {
+            source:
+              record.workerPurpose === "project-initialization"
+                ? "initializer"
+                : "worker",
+            topic:
+              record.workerPurpose === "project-initialization"
+                ? "项目初始化"
+                : undefined,
+            promoteToStableFacts:
+              record.workerPurpose === "project-initialization",
+          },
         );
         record.snapshot.updatedAt = nowIso();
       }
@@ -298,6 +331,18 @@ export class VoiceSecretaryRuntimeManager {
     if (event.type === "complete") {
       record.snapshot.workerStatus = "completed";
       record.snapshot.updatedAt = nowIso();
+      void this.knowledgeStore?.appendProjectTranscriptEvent(
+        record.snapshot.projectPath,
+        {
+          at: nowIso(),
+          source:
+            record.workerPurpose === "project-initialization"
+              ? "initializer"
+              : "worker",
+          kind: "worker_complete",
+          text: record.snapshot.latestWorkerMessage ?? "Worker completed.",
+        },
+      );
       record.pendingHook = {
         id: randomUUID(),
         voiceSessionId: record.snapshot.id,
@@ -311,6 +356,18 @@ export class VoiceSecretaryRuntimeManager {
     if (event.type === "terminated") {
       record.snapshot.workerStatus = "failed";
       record.snapshot.updatedAt = nowIso();
+      void this.knowledgeStore?.appendProjectTranscriptEvent(
+        record.snapshot.projectPath,
+        {
+          at: nowIso(),
+          source:
+            record.workerPurpose === "project-initialization"
+              ? "initializer"
+              : "worker",
+          kind: "worker_failed",
+          text: "Worker terminated before finishing the current project task.",
+        },
+      );
       record.pendingHook = {
         id: randomUUID(),
         voiceSessionId: record.snapshot.id,
@@ -323,11 +380,19 @@ export class VoiceSecretaryRuntimeManager {
 
   private syncProjectMemory(
     record: VoiceSessionRuntimeRecord,
-    overrides: Partial<ProjectTalkerMemory> = {},
+    overrides: {
+      projectIndex?: ProjectKnowledgeIndex;
+      projectMemory?: TalkerProjectMemory;
+      latestWorkerMessage?: string;
+    } = {},
   ): void {
     const current = this.projectMemories.get(record.snapshot.projectPath);
     this.projectMemories.set(record.snapshot.projectPath, {
       projectIndex: overrides.projectIndex ?? current?.projectIndex,
+      projectMemory:
+        overrides.projectMemory ??
+        record.projectMemory ??
+        current?.projectMemory,
       recentTurns: [...record.talkerContext],
       latestWorkerMessage:
         overrides.latestWorkerMessage ??

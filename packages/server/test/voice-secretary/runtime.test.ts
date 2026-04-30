@@ -7,6 +7,18 @@ describe("VoiceSecretaryRuntimeManager", () => {
     const first = runtime.getOrCreateSession({
       voiceSessionId: "voice-1",
       projectPath: "/tmp/project-a",
+      assistantMemory: {
+        version: 1,
+        updatedAt: "2026-04-30T00:00:00.000Z",
+        memoryFilePath: "/tmp/assistant-memory.json",
+        userProfile: {
+          language: "zh-CN",
+          style: ["口语化"],
+        },
+        relationshipSummary: ["用户希望像秘书一样直接回答。"],
+        recentConversationDigest: ["最近一直在修 Voice Secretary。"],
+        spokenStyleHints: ["先说结论。"],
+      },
     });
 
     runtime.addTranscriptTurn(first, {
@@ -30,6 +42,7 @@ describe("VoiceSecretaryRuntimeManager", () => {
     });
     const context = runtime.buildTalkerContext(second);
 
+    expect(context.assistantMemory?.spokenStyleHints).toEqual(["先说结论。"]);
     expect(context.recentTurns).toEqual([
       {
         speaker: "user",

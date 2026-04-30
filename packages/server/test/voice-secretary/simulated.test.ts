@@ -13,6 +13,7 @@ import type {
   CallSession,
   PlannerRequest,
 } from "../../src/voice-secretary/index.js";
+import { VoiceSecretaryKnowledgeStore } from "../../src/voice-secretary/knowledge-store.js";
 
 describe("SimulatedCallLoop", () => {
   let projectPath: string;
@@ -130,8 +131,8 @@ describe("SimulatedCallLoop", () => {
     expect(result.finalBrief.spokenSummary).toContain(
       "A mobile-first supervisor for AI coding agents",
     );
-    expect(result.finalBrief.spokenSummary).toContain("Mobile supervision");
     expect(result.finalBrief.spokenSummary).not.toContain("顶层主要是");
+    expect(result.finalBrief.spokenSummary.length).toBeLessThanOrEqual(145);
   });
 
   it("keeps ProjectPlanner read-only while collecting project instructions", async () => {
@@ -219,6 +220,26 @@ describe("SimulatedCallLoop", () => {
     expect(result.finalBrief.spokenSummary).toContain("主要动的是");
     expect(result.finalBrief.spokenSummary).not.toContain("docs/");
     expect(result.finalBrief.spokenSummary).not.toContain("packages/");
+    expect(result.finalBrief.spokenSummary).not.toContain("前端页面相关模块");
+  });
+
+  it("starts a background project initializer when the first direct-answer turn has no worker yet", async () => {
+    const loop = new SimulatedCallLoop(
+      new SimulatedTalker(nullCodexTalker),
+      new ProjectPlanner(undefined, nullCodexTalker),
+    );
+
+    const result = await loop.run({
+      projectPath,
+      utterance: "给我介绍一下这个项目的背景信息。",
+    });
+
+    expect(result.plannerResult.recommendedAction).toBe("answer_directly");
+    expect(result.voiceSession.workerSessionId).toMatch(/^fake-executor-/);
+    expect(result.voiceSession.workerStatus).toBe("running");
+    expect(result.callSession.callbackRequests.at(-1)?.script).toContain(
+      "项目初始化背景",
+    );
   });
 
   it("answers speech-stack questions in a short spoken style", async () => {
@@ -232,10 +253,45 @@ describe("SimulatedCallLoop", () => {
       utterance: "嗯，你看一下现在这个语音识别模块用的是什么实现的？",
     });
 
-    expect(result.finalBrief.spokenSummary).toContain("识别和合成都走火山引擎");
+    expect(result.plannerResult.recommendedAction).toBe("answer_directly");
+    expect(result.plannerResult.executionTask).toBeUndefined();
+    expect(result.finalBrief.spokenSummary).toContain("Web Speech API");
+    expect(result.finalBrief.spokenSummary).toContain("火山语音识别");
     expect(result.finalBrief.spokenSummary).not.toContain("packages/");
     expect(result.finalBrief.spokenSummary).not.toContain(
       "/api/voice-secretary",
     );
+  });
+
+  it("keeps speech-stack answers complete even when project memory already has a long worker note", async () => {
+    const knowledgeStore = new VoiceSecretaryKnowledgeStore(
+      join(projectPath, ".voice-memory"),
+    );
+    await knowledgeStore.recordWorkerUpdate(
+      projectPath,
+      [
+        "现在这块是双层实现，不是单一路径。",
+        "前端这一层主要负责实时字幕预览，会启用浏览器的 Web Speech API。",
+        "服务端这一层才是正式转写，录音结束后会走火山语音识别。",
+        "服务端同时兼容 HTTP 和 WebSocket 两种识别模式。",
+      ].join(" "),
+    );
+
+    const loop = new SimulatedCallLoop(
+      new SimulatedTalker(nullCodexTalker),
+      new ProjectPlanner(undefined, nullCodexTalker),
+      undefined,
+      { knowledgeStore },
+    );
+
+    const result = await loop.run({
+      projectPath,
+      utterance: "那语音识别这一块现在具体是怎么实现的？",
+    });
+
+    expect(result.finalBrief.spokenSummary).toContain("Web Speech API");
+    expect(result.finalBrief.spokenSummary).toContain("火山语音识别");
+    expect(result.finalBrief.spokenSummary).not.toContain("packages/");
+    expect(result.finalBrief.spokenSummary).not.toContain("/calls/audio");
   });
 });

@@ -1,3 +1,9 @@
+import {
+  oralizeTalkerText,
+  shapeSpokenSummary,
+  shapeSuggestedNextUtterance,
+  shapeTalkerBrief,
+} from "./response-shaper.js";
 import type {
   ExecutorReport,
   PlannerRequest,
@@ -8,18 +14,7 @@ import type {
 } from "./types.js";
 
 function cleanForSpeech(text: string): string {
-  return text
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/\/api\/voice-secretary/gi, "语音秘书接口")
-    .replace(/packages\/client/gi, "客户端")
-    .replace(/packages\/server/gi, "服务端")
-    .replace(/packages\/relay/gi, "中继服务")
-    .replace(/docs\/[^\s，。；,]*/gi, "项目文档")
-    .replace(/[A-Za-z0-9._-]*\/[A-Za-z0-9._/-]+/g, "相关模块")
-    .replace(/\s+/g, " ")
-    .trim();
+  return oralizeTalkerText(text);
 }
 
 function humanizePositioning(text: string): string {
@@ -124,6 +119,32 @@ function isVoiceStackQuestion(text: string): boolean {
   return /语音识别|语音合成|asr|tts|火山|字节|speech/i.test(text);
 }
 
+function summarizeVoiceStackAnswer(
+  latestWorkerMessage: string | undefined,
+): string {
+  const normalized = latestWorkerMessage?.trim() ?? "";
+  const hasPreviewLayer = /Web Speech API|浏览器自带|实时字幕预览/i.test(
+    normalized,
+  );
+  const hasServerLayer =
+    /火山|Volcengine|正式转写|transcribeAudio|\/calls\/audio/i.test(normalized);
+  const hasDualMode = /WebSocket|HTTP|flash 识别接口|WS 协议/i.test(normalized);
+
+  if (hasPreviewLayer || hasServerLayer) {
+    const parts = [
+      "现在是双层实现。",
+      hasServerLayer
+        ? "页面实时字幕先用浏览器自带的 Web Speech API 预览，正式转写再走服务端火山语音识别。"
+        : "页面实时字幕先用浏览器自带的 Web Speech API 预览。",
+      hasDualMode ? "服务端这边同时兼容 HTTP 和 WebSocket 两种识别模式。" : "",
+    ].filter(Boolean);
+    return shapeSpokenSummary(parts.join(" "));
+  }
+  return shapeSpokenSummary(
+    "现在是双层实现。页面实时字幕先用浏览器自带的 Web Speech API 预览，正式转写再走服务端火山语音识别，后面的语音秘书和项目专家都吃这份正式文本。",
+  );
+}
+
 export function buildProjectKnowledgeSummary(
   projectIndex: ProjectKnowledgeIndex | undefined,
 ): string {
@@ -158,9 +179,13 @@ export function buildDeterministicOpeningLine(
 
   const capability = normalizeItems(projectIndex.currentCapabilities, 1)[0];
   if (capability) {
-    return `我已经有 ${projectIndex.projectName} 的基础资料了，它现在重点在${cleanForSpeech(capability)}，你可以直接问我现状、能力或者下一步。`;
+    return shapeSpokenSummary(
+      `我已经有 ${projectIndex.projectName} 的基础资料了，它现在重点在${cleanForSpeech(capability)}，你可以直接问我现状、能力或者下一步。`,
+    );
   }
-  return `我已经有 ${projectIndex.projectName} 的基础项目资料了，你可以直接问我项目现状、能力或者下一步。`;
+  return shapeSpokenSummary(
+    `我已经有 ${projectIndex.projectName} 的基础项目资料了，你可以直接问我项目现状、能力或者下一步。`,
+  );
 }
 
 export function buildDeterministicPlannerBrief(
@@ -178,7 +203,7 @@ export function buildDeterministicPlannerBrief(
     const commitSummary = cleanForSpeech(
       request.projectIndex.latestCommitSummary,
     );
-    return {
+    return shapeTalkerBrief({
       spokenSummary: commitAreas
         ? `${commitSummary} 主要动的是${commitAreas}这几块。`
         : commitSummary,
@@ -190,33 +215,30 @@ export function buildDeterministicPlannerBrief(
       questionsToAsk: [
         "你要我继续展开这次提交具体改了哪些文件，还是直接看下一步重点？",
       ],
-    };
+    });
   }
 
   const projectSummary = buildProjectKnowledgeSummary(request.projectIndex);
   if (isVoiceStackQuestion(userIntent)) {
-    return {
-      spokenSummary:
-        "现在这套语音链路，识别和合成都走火山引擎，服务端有专门的 ASR 和 TTS 适配层。页面这边主要负责录音、展示对话，再把结果接回来。",
+    return shapeTalkerBrief({
+      spokenSummary: summarizeVoiceStackAnswer(request.latestWorkerMessage),
       suggestedNextUtterance:
-        "你要我继续展开前端页面、服务端路由，还是语音秘书运行时这一层？",
+        "你要我继续讲实时字幕这一层，还是正式转写这一层？",
       factsToAvoidOverstating: [
         "只陈述当前索引和已知代码结构，不把未验证的链路说成已经稳定可用。",
       ],
-      questionsToAsk: [
-        "你要我继续展开前端页面、服务端路由，还是语音秘书运行时这一层？",
-      ],
-    };
+      questionsToAsk: ["你要我继续讲实时字幕这一层，还是正式转写这一层？"],
+    });
   }
   if (isProjectOverviewQuestion(userIntent)) {
-    return {
+    return shapeTalkerBrief({
       spokenSummary: projectSummary,
       suggestedNextUtterance: "你想继续追项目现状，还是让我展开某个具体模块？",
       factsToAvoidOverstating: [
         "当前回答基于项目索引和项目记忆，不代表已经做了完整代码审计。",
       ],
       questionsToAsk: ["你想继续追项目现状，还是让我展开某个具体模块？"],
-    };
+    });
   }
 
   const latestWorker = request.latestWorkerMessage?.trim();
@@ -231,7 +253,7 @@ export function buildDeterministicPlannerBrief(
       ? "你想先听项目现状，还是继续让我追问更深的实现细节？"
       : "你想让我先继续追项目专家的细节，还是先把当前判断讲清楚？";
 
-  return {
+  return shapeTalkerBrief({
     spokenSummary: `${projectSummary} ${workerLine} ${providerSummary}`.trim(),
     suggestedNextUtterance: firstQuestion,
     factsToAvoidOverstating: [
@@ -239,7 +261,7 @@ export function buildDeterministicPlannerBrief(
       "只有项目专家和正式执行会话才能继续做深度查阅或修改。",
     ],
     questionsToAsk: [firstQuestion],
-  };
+  });
 }
 
 export function buildDeterministicFinalBrief(args: {
@@ -256,7 +278,7 @@ export function buildDeterministicFinalBrief(args: {
       args.projectIndex.latestCommitFiles,
     );
     const commitSummary = cleanForSpeech(args.projectIndex.latestCommitSummary);
-    return {
+    return shapeTalkerBrief({
       spokenSummary: commitAreas
         ? `${commitSummary} 主要动的是${commitAreas}这几块。`
         : commitSummary,
@@ -270,26 +292,27 @@ export function buildDeterministicFinalBrief(args: {
         args.plannerSuggestedNextUtterance ??
           "你要我继续展开这次提交改了哪些文件吗？",
       ],
-    };
+    });
   }
 
   const projectSummary = buildProjectKnowledgeSummary(args.projectIndex);
   if (isVoiceStackQuestion(userIntent)) {
-    return {
-      spokenSummary:
-        "现在这套语音链路，识别和合成都走火山引擎，服务端有专门的 ASR 和 TTS 适配层。页面这边负责录音、展示对话，再把结果接回来。",
+    return shapeTalkerBrief({
+      spokenSummary: summarizeVoiceStackAnswer(
+        args.context?.latestWorkerMessage,
+      ),
       suggestedNextUtterance:
         args.plannerSuggestedNextUtterance ??
-        "你要我继续拆前端页面、服务端路由，还是运行时这一层？",
+        "你要我继续讲实时字幕这一层，还是正式转写这一层？",
       factsToAvoidOverstating: ["当前回答只基于现有代码结构和已知状态。"],
       questionsToAsk: [
         args.plannerSuggestedNextUtterance ??
-          "你要我继续拆前端页面、服务端路由，还是运行时这一层？",
+          "你要我继续讲实时字幕这一层，还是正式转写这一层？",
       ],
-    };
+    });
   }
   if (isProjectOverviewQuestion(userIntent)) {
-    return {
+    return shapeTalkerBrief({
       spokenSummary: projectSummary,
       suggestedNextUtterance:
         args.plannerSuggestedNextUtterance ??
@@ -301,7 +324,7 @@ export function buildDeterministicFinalBrief(args: {
         args.plannerSuggestedNextUtterance ??
           "你想让我继续展开某个模块，还是追最近一次提交？",
       ],
-    };
+    });
   }
 
   const latestWorker = stripTerminalPunctuation(
@@ -328,13 +351,13 @@ export function buildDeterministicFinalBrief(args: {
     args.plannerSuggestedNextUtterance ??
     "你想继续聊项目现状，还是让我追一个更具体的模块？";
 
-  return {
+  return shapeTalkerBrief({
     spokenSummary: parts.join(" "),
-    suggestedNextUtterance: fallbackQuestion,
+    suggestedNextUtterance: shapeSuggestedNextUtterance(fallbackQuestion),
     factsToAvoidOverstating: [
       "Talker 只应陈述项目索引、项目记忆和项目专家已返回的信息。",
       "如果项目专家还没完成，不要把排队中的任务说成已经改完。",
     ],
     questionsToAsk: [fallbackQuestion],
-  };
+  });
 }

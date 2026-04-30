@@ -10,6 +10,12 @@ import {
   buildProjectKnowledgeSummary,
 } from "./deterministic-brief.js";
 import { VoiceSecretaryKnowledgeStore } from "./knowledge-store.js";
+import { selectTalkerMemory } from "./memory-selector.js";
+import {
+  buildProjectInitializationTask,
+  needsProjectInitialization,
+} from "./project-memory-initializer.js";
+import { shapeSpokenSummary, shapeTalkerBrief } from "./response-shaper.js";
 import { VoiceSecretaryRuntimeManager } from "./runtime.js";
 import {
   VoiceSecretaryTalkerLlm,
@@ -36,6 +42,16 @@ import type {
   VoiceProviderCatalog,
   VoiceSessionHookEvent,
 } from "./types.js";
+
+function withSelectedMemory(
+  userIntent: string,
+  context: TalkerContextFrame,
+): TalkerContextFrame {
+  return {
+    ...context,
+    selectedMemory: selectTalkerMemory(userIntent, context),
+  };
+}
 
 const MAX_INSTRUCTION_CHARS = 900;
 const MAX_PROJECT_SUMMARY_FILES = 8;
@@ -161,6 +177,16 @@ function chooseExecutionMode(
   }
 }
 
+function chooseInitializationProvider(
+  input: SimulatedCallInput,
+): ExecutionTask["provider"] {
+  return input.conversationProvider ?? "codex";
+}
+
+function isVoiceStackQuestion(intent: string): boolean {
+  return /语音识别|语音合成|asr|tts|火山|字节|speech/i.test(intent);
+}
+
 function canAnswerFromProjectIndex(
   intent: string,
   projectIndex?: ProjectKnowledgeIndex,
@@ -171,12 +197,18 @@ function canAnswerFromProjectIndex(
   if (/最近.*提交|最新.*提交|代码提交|commit/i.test(intent)) {
     return Boolean(projectIndex.latestCommitSummary);
   }
+  if (isVoiceStackQuestion(intent)) {
+    return true;
+  }
   return /项目.*(怎么样|现状|进展|能力|功能|背景|介绍)|介绍.*项目|status|progress|capabilit/i.test(
     intent,
   );
 }
 
 function shouldConsultWorker(request: PlannerRequest): boolean {
+  if (isVoiceStackQuestion(request.userIntent)) {
+    return false;
+  }
   if (canAnswerFromProjectIndex(request.userIntent, request.projectIndex)) {
     return false;
   }
@@ -294,7 +326,9 @@ export class VoiceSecretaryTalker {
     );
     return createTranscriptTurn(
       "talker",
-      openingText ?? summarizeProjectIndexForSpeech(context?.projectIndex),
+      shapeSpokenSummary(
+        openingText ?? summarizeProjectIndexForSpeech(context?.projectIndex),
+      ),
       "tts",
     );
   }
@@ -359,7 +393,7 @@ export class VoiceSecretaryTalker {
       () => this.llm.createFinalBrief(plannerResult, executorReport, context),
     );
     if (generatedBrief) {
-      return {
+      return shapeTalkerBrief({
         ...generatedBrief,
         spokenSummary:
           generatedBrief.spokenSummary || deterministicBrief.spokenSummary,
@@ -375,7 +409,7 @@ export class VoiceSecretaryTalker {
           generatedBrief.questionsToAsk.length > 0
             ? generatedBrief.questionsToAsk
             : deterministicBrief.questionsToAsk,
-      };
+      });
     }
 
     return deterministicBrief;
@@ -453,6 +487,7 @@ export class ProjectPlanner {
       latestWorkerMessage: request.latestWorkerMessage,
       workerStatus: request.workerStatus,
     };
+    const selectedContext = withSelectedMemory(request.userIntent, context);
     const llmBrief = canAnswerFromProjectIndex(
       request.userIntent,
       request.projectIndex,
@@ -465,7 +500,7 @@ export class ProjectPlanner {
               contextSummary,
               providerSummary,
               instructionPaths,
-              context,
+              selectedContext,
             ),
           () =>
             this.llm.createPlannerBrief(
@@ -473,7 +508,7 @@ export class ProjectPlanner {
               contextSummary,
               providerSummary,
               instructionPaths,
-              context,
+              selectedContext,
             ),
         );
     const defaultSuggestedNext =
@@ -636,9 +671,12 @@ export class SimulatedCallLoop {
       conversationSessionId: input.conversationSessionId,
       conversationProvider: input.conversationProvider,
       projectMemory: knowledge.memory,
+      assistantMemory: knowledge.assistantMemory,
     });
+    this.runtimeManager.setAssistantMemory(knowledge.assistantMemory);
     this.runtimeManager.setProjectMemory(runtime, knowledge.memory);
     this.runtimeManager.setProjectIndex(runtime, knowledge.index);
+    const needsInitialization = needsProjectInitialization(knowledge.memory);
     const pendingHook = this.runtimeManager.consumePendingHook(
       runtime.snapshot.id,
     );
@@ -648,7 +686,10 @@ export class SimulatedCallLoop {
       this.options.userTurnSource ?? "typed",
     );
     this.runtimeManager.addTranscriptTurn(runtime, userTurn);
-    const talkerContext = this.runtimeManager.buildTalkerContext(runtime);
+    const talkerContext = withSelectedMemory(
+      input.utterance,
+      this.runtimeManager.buildTalkerContext(runtime),
+    );
     const isFirstTurn = runtime.transcript.length === 1;
     if (isFirstTurn) {
       this.runtimeManager.addTranscriptTurn(
@@ -688,6 +729,7 @@ export class SimulatedCallLoop {
     const task = plannerResult.executionTask
       ? {
           ...plannerResult.executionTask,
+          purpose: "user-request" as const,
           conversationSessionId:
             runtime.snapshot.workerSessionId ??
             plannerResult.executionTask.conversationSessionId,
@@ -709,13 +751,17 @@ export class SimulatedCallLoop {
         workerSessionId: executorSession.id,
         workerProvider: executorSession.provider,
         workerStatus: "running",
+        workerPurpose: task.purpose,
       });
       executorReport = await this.executor.getReport(executorSession.id);
     }
     const finalBrief = await this.talker.createFinalBrief(
       plannerResult,
       executorReport,
-      this.runtimeManager.buildTalkerContext(runtime),
+      withSelectedMemory(
+        plannerRequest.userIntent,
+        this.runtimeManager.buildTalkerContext(runtime),
+      ),
       pendingHook?.hook,
       plannerRequest.userIntent,
     );
@@ -749,6 +795,35 @@ export class SimulatedCallLoop {
           plannerResult.callbackDecision.script ?? finalBrief.spokenSummary,
       });
     }
+
+    if (
+      needsInitialization &&
+      !runtime.snapshot.workerSessionId &&
+      !task &&
+      this.options.channel !== "phone"
+    ) {
+      const initializationTask = buildProjectInitializationTask({
+        projectPath: input.projectPath,
+        projectIndex: knowledge.index,
+        conversationSessionId: input.conversationSessionId,
+        provider: chooseInitializationProvider(input),
+      });
+      const initializationSession =
+        await this.executor.createSession(initializationTask);
+      this.runtimeManager.setWorkerBinding(runtime, {
+        workerSessionId: initializationSession.id,
+        workerProvider: initializationSession.provider,
+        workerStatus: "running",
+        workerPurpose: "project-initialization",
+      });
+      this.runtimeManager.addCallbackRequest(runtime, {
+        id: randomUUID(),
+        reason: "scheduled_update",
+        priority: "normal",
+        script: "我已经让项目专家先补一轮项目初始化背景，后面回答会越来越准。",
+      });
+    }
+
     const callSession = this.runtimeManager.buildCallSession(
       runtime,
       "waiting_for_user",

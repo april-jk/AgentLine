@@ -28,6 +28,7 @@ interface AgentLineExecutorSessionRef extends ExecutorSessionRef {
   queued?: boolean;
   queueId?: string;
   position?: number;
+  purpose?: "user-request" | "project-initialization";
 }
 
 function isQueuedResponse(
@@ -90,6 +91,7 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
         id: report.providerSessionId,
         provider: task.provider,
         taskId: task.id,
+        purpose: task.purpose,
       };
       await this.options.onSessionCreated?.(sessionRef);
       return sessionRef;
@@ -110,6 +112,7 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
         id: sessionId,
         provider: task.provider,
         taskId: task.id,
+        purpose: task.purpose,
         queued: true,
         queueId: result.queueId,
         position: result.position,
@@ -158,6 +161,7 @@ export class AgentLineExecutorAgentAdapter implements ExecutorAgentAdapter {
       provider: task.provider,
       taskId: task.id,
       processId: result.id,
+      purpose: task.purpose,
     };
     await this.options.onSessionCreated?.(sessionRef);
     return sessionRef;

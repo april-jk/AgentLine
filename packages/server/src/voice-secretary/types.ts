@@ -51,18 +51,77 @@ export interface ProjectKnowledgeIndex {
   summary: string;
 }
 
+export interface AssistantMemory {
+  version: number;
+  updatedAt: string;
+  memoryFilePath: string;
+  userProfile: {
+    language: string;
+    style: string[];
+  };
+  relationshipSummary: string[];
+  recentConversationDigest: string[];
+  spokenStyleHints: string[];
+}
+
+export interface ProjectWorkerFinding {
+  at: string;
+  topic: string;
+  summary: string;
+  confidence: "low" | "medium" | "high";
+  source: "worker" | "initializer" | "system";
+  promotable: boolean;
+}
+
+export interface ProjectTranscriptEvent {
+  at: string;
+  source: "user" | "talker" | "worker" | "initializer" | "system";
+  kind:
+    | "turn"
+    | "worker_message"
+    | "worker_complete"
+    | "worker_failed"
+    | "memory_note";
+  text: string;
+  topic?: string;
+}
+
 export interface TalkerProjectMemory {
   projectPath: string;
   updatedAt: string;
   memoryFilePath: string;
   recentTurns: TalkerContextTurn[];
+  stableFacts: string[];
+  workerFindings: ProjectWorkerFinding[];
+  recentChangesDigest: string[];
+  openQuestions: string[];
+  spokenHints: string[];
   summaryNotes: string[];
   latestWorkerMessage?: string;
 }
 
+export interface TalkerMemoryPacket {
+  assistantStyleHints: string[];
+  assistantConversationDigest: string[];
+  projectBrief: string;
+  relevantStableFacts: string[];
+  relevantRecentChanges: string[];
+  relevantOpenQuestions: string[];
+  relevantWorkerFindings: Array<{
+    topic: string;
+    summary: string;
+  }>;
+  spokenHints: string[];
+  recentTurns: TalkerContextTurn[];
+  latestWorkerMessage?: string;
+  workerStatus?: VoiceWorkerStatus;
+}
+
 export interface TalkerContextFrame {
+  assistantMemory?: AssistantMemory;
   projectIndex?: ProjectKnowledgeIndex;
   projectMemory?: TalkerProjectMemory;
+  selectedMemory?: TalkerMemoryPacket;
   recentTurns: TalkerContextTurn[];
   latestWorkerMessage?: string;
   workerStatus?: VoiceWorkerStatus;
@@ -163,6 +222,7 @@ export interface ExecutionTask {
   projectPath: string;
   conversationSessionId?: string;
   provider: ExecutorProvider;
+  purpose?: "user-request" | "project-initialization";
   mode: "read_only" | "implementation" | "test" | "review";
   prompt: string;
   acceptanceCriteria: string[];
