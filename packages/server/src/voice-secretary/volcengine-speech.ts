@@ -16,6 +16,7 @@ const DEFAULT_ASR_WS_RESOURCE_IDS = [
 const DEFAULT_TTS_CLUSTER = "volcano_tts";
 const DEFAULT_TTS_V3_RESOURCE_ID = "seed-tts-2.0";
 const DEFAULT_TTS_V3_QUERY_RESOURCE_ID = "volc.service_type.10029";
+const MAX_TTS_REQUEST_CHARS = 140;
 
 export interface VolcengineSpeechConfig {
   asrAppId: string;
@@ -148,6 +149,112 @@ function isVolcengineTtsV3UnidirectionalEndpoint(endpoint: string): boolean {
 
 function isWebSocketEndpoint(endpoint: string): boolean {
   return /^wss?:\/\//i.test(endpoint);
+}
+
+function splitLongTtsSegment(segment: string, maxChars: number): string[] {
+  const parts: string[] = [];
+  let remaining = segment.trim();
+
+  while (remaining.length > maxChars) {
+    const window = remaining.slice(0, maxChars);
+    const punctuationBreak = Math.max(
+      window.lastIndexOf("。"),
+      window.lastIndexOf("！"),
+      window.lastIndexOf("？"),
+      window.lastIndexOf("；"),
+      window.lastIndexOf("，"),
+      window.lastIndexOf("："),
+      window.lastIndexOf(","),
+      window.lastIndexOf("."),
+      window.lastIndexOf("!"),
+      window.lastIndexOf("?"),
+      window.lastIndexOf(";"),
+      window.lastIndexOf(":"),
+      window.lastIndexOf(" "),
+      window.lastIndexOf("\n"),
+    );
+    const breakAt =
+      punctuationBreak >= Math.floor(maxChars * 0.6)
+        ? punctuationBreak + 1
+        : maxChars;
+    const chunk = remaining.slice(0, breakAt).trim();
+    if (chunk) {
+      parts.push(chunk);
+    }
+    remaining = remaining.slice(breakAt).trim();
+  }
+
+  if (remaining) {
+    parts.push(remaining);
+  }
+
+  return parts;
+}
+
+function splitTextForTts(
+  text: string,
+  maxChars = MAX_TTS_REQUEST_CHARS,
+): string[] {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+
+  const sentenceChunks = normalized.match(
+    /[^，。！？；：,.!?;:\n]+[，。！？；：,.!?;:\n]?/g,
+  ) ?? [normalized];
+
+  const results: string[] = [];
+  let current = "";
+
+  const flushCurrent = () => {
+    const trimmed = current.trim();
+    if (trimmed) {
+      results.push(trimmed);
+    }
+    current = "";
+  };
+
+  for (const sentence of sentenceChunks) {
+    const trimmedSentence = sentence.trim();
+    if (!trimmedSentence) {
+      continue;
+    }
+
+    if (trimmedSentence.length > maxChars) {
+      flushCurrent();
+      results.push(...splitLongTtsSegment(trimmedSentence, maxChars));
+      continue;
+    }
+
+    const candidate = `${current}${trimmedSentence}`.trim();
+    if (!current || candidate.length <= maxChars) {
+      current = candidate;
+      continue;
+    }
+
+    flushCurrent();
+    current = trimmedSentence;
+  }
+
+  flushCurrent();
+  return results;
+}
+
+function combineSpeechAudioSegments(
+  segments: VolcengineSpeechTurnAudio[],
+  fullText: string,
+): VolcengineSpeechTurnAudio {
+  if (segments.length === 0) {
+    throw new Error("Volcengine TTS returned no audio");
+  }
+
+  const contentType = segments[0]?.contentType ?? "audio/mpeg";
+  return {
+    audioBase64: Buffer.concat(
+      segments.map((segment) => Buffer.from(segment.audioBase64, "base64")),
+    ).toString("base64"),
+    contentType,
+    text: fullText,
+  };
 }
 
 function parseConcatenatedJsonObjects(
@@ -590,14 +697,24 @@ export class VolcengineSpeechService {
       throw new Error("Volcengine TTS requires non-empty text");
     }
 
-    if (isVolcengineTtsV3Endpoint(this.config.ttsEndpoint)) {
-      if (isVolcengineTtsV3UnidirectionalEndpoint(this.config.ttsEndpoint)) {
-        return this.synthesizeTextV3Unidirectional(trimmedText);
-      }
-      return this.synthesizeTextV3(trimmedText);
+    const textChunks = splitTextForTts(trimmedText);
+    if (textChunks.length === 0) {
+      throw new Error("Volcengine TTS requires non-empty text");
     }
 
-    return this.synthesizeTextV1(trimmedText);
+    if (textChunks.length === 1) {
+      const singleChunk = textChunks[0];
+      if (!singleChunk) {
+        throw new Error("Volcengine TTS requires non-empty text");
+      }
+      return this.synthesizeTextChunk(singleChunk);
+    }
+
+    const audioSegments: VolcengineSpeechTurnAudio[] = [];
+    for (const chunkText of textChunks) {
+      audioSegments.push(await this.synthesizeTextChunk(chunkText));
+    }
+    return combineSpeechAudioSegments(audioSegments, trimmedText);
   }
 
   async *synthesizeTextStream(
@@ -610,23 +727,46 @@ export class VolcengineSpeechService {
       throw new Error("Volcengine TTS requires non-empty text");
     }
 
+    const textChunks = splitTextForTts(trimmedText);
+    if (textChunks.length === 0) {
+      throw new Error("Volcengine TTS requires non-empty text");
+    }
+
     if (
       isVolcengineTtsV3Endpoint(this.config.ttsEndpoint) &&
       isVolcengineTtsV3UnidirectionalEndpoint(this.config.ttsEndpoint)
     ) {
-      yield* this.synthesizeTextV3UnidirectionalStream(trimmedText);
+      for (const chunkText of textChunks) {
+        yield* this.synthesizeTextV3UnidirectionalStream(chunkText);
+      }
       return;
     }
 
-    const audio = await this.synthesizeText(trimmedText);
-    if (!audio) {
-      return;
+    for (const chunkText of textChunks) {
+      const audio = await this.synthesizeTextChunk(chunkText);
+      yield {
+        audioBase64: audio.audioBase64,
+        contentType: audio.contentType,
+        text: chunkText,
+      };
     }
-    yield {
-      audioBase64: audio.audioBase64,
-      contentType: audio.contentType,
-      text: audio.text,
-    };
+  }
+
+  private async synthesizeTextChunk(
+    trimmedText: string,
+  ): Promise<VolcengineSpeechTurnAudio> {
+    if (!this.config) {
+      throw new Error("Volcengine TTS is not configured");
+    }
+
+    if (isVolcengineTtsV3Endpoint(this.config.ttsEndpoint)) {
+      if (isVolcengineTtsV3UnidirectionalEndpoint(this.config.ttsEndpoint)) {
+        return this.synthesizeTextV3Unidirectional(trimmedText);
+      }
+      return this.synthesizeTextV3(trimmedText);
+    }
+
+    return this.synthesizeTextV1(trimmedText);
   }
 
   private async synthesizeTextV1(

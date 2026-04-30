@@ -161,7 +161,25 @@ function chooseExecutionMode(
   }
 }
 
+function canAnswerFromProjectIndex(
+  intent: string,
+  projectIndex?: ProjectKnowledgeIndex,
+): boolean {
+  if (!projectIndex) {
+    return false;
+  }
+  if (/最近.*提交|最新.*提交|代码提交|commit/i.test(intent)) {
+    return Boolean(projectIndex.latestCommitSummary);
+  }
+  return /项目.*(怎么样|现状|进展|能力|功能|背景|介绍)|介绍.*项目|status|progress|capabilit/i.test(
+    intent,
+  );
+}
+
 function shouldConsultWorker(request: PlannerRequest): boolean {
+  if (canAnswerFromProjectIndex(request.userIntent, request.projectIndex)) {
+    return false;
+  }
   if (!request.workerSessionId) {
     return true;
   }
@@ -245,7 +263,20 @@ export class VoiceSecretaryTalker {
       VoiceSecretaryTalkerLlm,
       "createOpeningText" | "createFinalBrief" | "createPlannerBrief"
     > = new VoiceSecretaryTalkerLlm(getVoiceSecretaryLlmConfig()),
+    private readonly providerPreference:
+      | "codex-first"
+      | "llm-first" = "codex-first",
   ) {}
+
+  private async chooseTalkerResult<T>(
+    codexRequest: () => Promise<T | null>,
+    llmRequest: () => Promise<T | null>,
+  ): Promise<T | null> {
+    if (this.providerPreference === "llm-first") {
+      return (await llmRequest()) ?? (await codexRequest());
+    }
+    return (await codexRequest()) ?? (await llmRequest());
+  }
 
   async createOpeningTurn(
     input: SimulatedCallInput,
@@ -256,17 +287,14 @@ export class VoiceSecretaryTalker {
       input.conversationSessionId !== undefined
         ? `对话 ${input.conversationSessionId}`
         : `${projectName} 项目`;
-    const codexOpening = await this.codexTalker.createOpeningText(
-      input,
-      workerContextLabel,
-      context,
+    const openingText = await this.chooseTalkerResult(
+      () =>
+        this.codexTalker.createOpeningText(input, workerContextLabel, context),
+      () => this.llm.createOpeningText(input, workerContextLabel, context),
     );
-    const llmOpening = codexOpening
-      ? codexOpening
-      : await this.llm.createOpeningText(input, workerContextLabel, context);
     return createTranscriptTurn(
       "talker",
-      llmOpening ?? summarizeProjectIndexForSpeech(context?.projectIndex),
+      openingText ?? summarizeProjectIndexForSpeech(context?.projectIndex),
       "tts",
     );
   }
@@ -306,8 +334,10 @@ export class VoiceSecretaryTalker {
     executorReport: ExecutorReport,
     context?: TalkerContextFrame,
     pendingHook?: VoiceSessionHookEvent,
+    userIntent?: string,
   ): Promise<TalkerBrief> {
     const deterministicBrief = buildDeterministicFinalBrief({
+      userIntent,
       plannerSuggestedNextUtterance:
         plannerResult.talkerBrief.questionsToAsk[0] ??
         "要我继续把这个任务交给正式执行会话吗？",
@@ -316,29 +346,34 @@ export class VoiceSecretaryTalker {
       executorReport,
       pendingHook,
     });
-    const codexBrief = await this.codexTalker.createFinalBrief(
-      plannerResult,
-      executorReport,
-      context,
+    if (canAnswerFromProjectIndex(userIntent ?? "", context?.projectIndex)) {
+      return deterministicBrief;
+    }
+    const generatedBrief = await this.chooseTalkerResult(
+      () =>
+        this.codexTalker.createFinalBrief(
+          plannerResult,
+          executorReport,
+          context,
+        ),
+      () => this.llm.createFinalBrief(plannerResult, executorReport, context),
     );
-    const llmBrief = codexBrief
-      ? codexBrief
-      : await this.llm.createFinalBrief(plannerResult, executorReport, context);
-    if (llmBrief) {
+    if (generatedBrief) {
       return {
-        ...llmBrief,
-        spokenSummary: deterministicBrief.spokenSummary,
+        ...generatedBrief,
+        spokenSummary:
+          generatedBrief.spokenSummary || deterministicBrief.spokenSummary,
         suggestedNextUtterance:
-          llmBrief.suggestedNextUtterance ||
+          generatedBrief.suggestedNextUtterance ||
           deterministicBrief.suggestedNextUtterance,
         factsToAvoidOverstating: [
           ...deterministicBrief.factsToAvoidOverstating,
-          ...llmBrief.factsToAvoidOverstating,
+          ...generatedBrief.factsToAvoidOverstating,
           "Speaker 只能把 Worker 的状态说成排队、处理中或已完成，不能把排队说成已经改完。",
         ],
         questionsToAsk:
-          llmBrief.questionsToAsk.length > 0
-            ? llmBrief.questionsToAsk
+          generatedBrief.questionsToAsk.length > 0
+            ? generatedBrief.questionsToAsk
             : deterministicBrief.questionsToAsk,
       };
     }
@@ -362,7 +397,20 @@ export class ProjectPlanner {
       VoiceSecretaryTalkerLlm,
       "createPlannerBrief"
     > = new VoiceSecretaryTalkerLlm(getVoiceSecretaryLlmConfig()),
+    private readonly providerPreference:
+      | "codex-first"
+      | "llm-first" = "codex-first",
   ) {}
+
+  private async choosePlannerBrief(
+    codexRequest: () => Promise<TalkerBrief | null>,
+    llmRequest: () => Promise<TalkerBrief | null>,
+  ): Promise<TalkerBrief | null> {
+    if (this.providerPreference === "llm-first") {
+      return (await llmRequest()) ?? (await codexRequest());
+    }
+    return (await codexRequest()) ?? (await llmRequest());
+  }
 
   async plan(request: PlannerRequest): Promise<PlannerResult> {
     const [instructions, topLevelEntries, providers] = await Promise.all([
@@ -405,21 +453,28 @@ export class ProjectPlanner {
       latestWorkerMessage: request.latestWorkerMessage,
       workerStatus: request.workerStatus,
     };
-    const codexBrief = await this.codexTalker.createPlannerBrief(
-      request,
-      contextSummary,
-      providerSummary,
-      instructionPaths,
-      context,
-    );
-    const llmBrief = codexBrief
-      ? codexBrief
-      : await this.llm.createPlannerBrief(
-          request,
-          contextSummary,
-          providerSummary,
-          instructionPaths,
-          context,
+    const llmBrief = canAnswerFromProjectIndex(
+      request.userIntent,
+      request.projectIndex,
+    )
+      ? null
+      : await this.choosePlannerBrief(
+          () =>
+            this.codexTalker.createPlannerBrief(
+              request,
+              contextSummary,
+              providerSummary,
+              instructionPaths,
+              context,
+            ),
+          () =>
+            this.llm.createPlannerBrief(
+              request,
+              contextSummary,
+              providerSummary,
+              instructionPaths,
+              context,
+            ),
         );
     const defaultSuggestedNext =
       "下一步你想让我创建正式执行会话，还是先把计划读给你听？";
@@ -662,6 +717,7 @@ export class SimulatedCallLoop {
       executorReport,
       this.runtimeManager.buildTalkerContext(runtime),
       pendingHook?.hook,
+      plannerRequest.userIntent,
     );
     this.runtimeManager.addTranscriptTurn(
       runtime,

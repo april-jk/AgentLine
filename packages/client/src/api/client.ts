@@ -239,8 +239,9 @@ export interface VoiceSecretaryAudioTurnResponse {
   transcript: string;
   confidence?: number;
   talkerText: string;
-  audioBase64: string;
-  audioContentType: string;
+  audioBase64?: string;
+  audioContentType?: string;
+  ttsError?: string;
   result: VoiceSecretaryResult;
 }
 

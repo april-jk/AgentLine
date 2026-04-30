@@ -54,8 +54,9 @@ interface AudioTurnResponseBody {
   transcript: string;
   confidence?: number;
   talkerText: string;
-  audioBase64: string;
-  audioContentType: string;
+  audioBase64?: string;
+  audioContentType?: string;
+  ttsError?: string;
 }
 
 type VoiceSecretaryAudioStreamEvent =
@@ -119,6 +120,15 @@ function getPhoneTalkerConfig(serverSettingsService?: ServerSettingsService): {
     model: settings?.phoneTalkerModel ?? "gpt-5.2",
     effort: settings?.phoneTalkerEffort ?? "low",
   };
+}
+
+function getTalkerProviderPreference(
+  serverSettingsService?: ServerSettingsService,
+): "codex-first" | "llm-first" {
+  const settings = serverSettingsService?.getSettings();
+  return settings?.phoneTalkerProvider === "custom-api"
+    ? "llm-first"
+    : "codex-first";
 }
 
 function createTalkerLlm(serverSettingsService?: ServerSettingsService) {
@@ -186,8 +196,20 @@ export function createVoiceSecretaryRoutes(
       getRuntimeConfig: () => getPhoneTalkerConfig(deps.serverSettingsService),
     });
     const llm = createTalkerLlm(deps.serverSettingsService);
-    const talker = new VoiceSecretaryTalker(codexTalker, llm);
-    const planner = new ProjectPlanner(deps.providerCatalog, codexTalker, llm);
+    const providerPreference = getTalkerProviderPreference(
+      deps.serverSettingsService,
+    );
+    const talker = new VoiceSecretaryTalker(
+      codexTalker,
+      llm,
+      providerPreference,
+    );
+    const planner = new ProjectPlanner(
+      deps.providerCatalog,
+      codexTalker,
+      llm,
+      providerPreference,
+    );
     const loop = new VoiceSecretaryCallLoop(executor, {
       providerCatalog: deps.providerCatalog,
       talker,
@@ -271,6 +293,20 @@ export function createVoiceSecretaryRoutes(
       utterance: body.utterance,
     });
 
+    await appendVoiceSecretaryDebugCapture(deps.dataDir, {
+      type: "typed-call",
+      route: "/calls",
+      voiceSessionId: result.voiceSession.id,
+      projectPath: body.projectPath.trim(),
+      conversationSessionId,
+      conversationProvider,
+      transcript: body.utterance.trim(),
+      talkerText: resolveTalkerText(result),
+      finalBrief: result.finalBrief.spokenSummary,
+      executorSummary: result.executorReport.summary,
+      latestWorkerMessage: result.voiceSession.latestWorkerMessage,
+    });
+
     return c.json({ result });
   });
 
@@ -337,18 +373,24 @@ export function createVoiceSecretaryRoutes(
       });
 
       const talkerText = resolveTalkerText(result);
-      const audio = await speech.synthesizeText(talkerText);
-      if (!audio) {
-        return c.json({ error: "Volcengine TTS did not return audio" }, 502);
-      }
-
       const body: AudioTurnResponseBody = {
         transcript: transcript.text,
         confidence: transcript.confidence,
         talkerText,
-        audioBase64: audio.audioBase64,
-        audioContentType: audio.contentType,
       };
+
+      try {
+        const audio = await speech.synthesizeText(talkerText);
+        if (audio) {
+          body.audioBase64 = audio.audioBase64;
+          body.audioContentType = audio.contentType;
+        } else {
+          body.ttsError = "Volcengine TTS did not return audio";
+        }
+      } catch (ttsError) {
+        body.ttsError =
+          ttsError instanceof Error ? ttsError.message : String(ttsError);
+      }
 
       await appendVoiceSecretaryDebugCapture(deps.dataDir, {
         type: "audio-call",
@@ -362,8 +404,9 @@ export function createVoiceSecretaryRoutes(
         finalBrief: result.finalBrief.spokenSummary,
         executorSummary: result.executorReport.summary,
         latestWorkerMessage: result.voiceSession.latestWorkerMessage,
-        audioContentType: audio.contentType,
-        audioBase64Length: audio.audioBase64.length,
+        audioContentType: body.audioContentType,
+        audioBase64Length: body.audioBase64?.length,
+        ttsError: body.ttsError,
       });
 
       return c.json({ ...body, result });

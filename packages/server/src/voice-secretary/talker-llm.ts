@@ -22,6 +22,16 @@ interface OpenAiCompatibleResponse {
   }>;
 }
 
+interface OpenAiCompatibleRequestBody {
+  model: string;
+  temperature: number;
+  messages: ChatMessage[];
+  response_format?: { type: "json_object" };
+  reasoning_effort?: string;
+  reasoning?: { effort: string };
+  thinking?: { type: string };
+}
+
 export interface VoiceSecretaryLlmConfig {
   apiKey: string;
   baseUrl: string;
@@ -53,7 +63,7 @@ function sanitizeText(value: unknown, fallback: string): string {
   if (typeof value !== "string") {
     return fallback;
   }
-  const trimmed = value.trim();
+  const trimmed = oralizeTalkerText(value);
   return trimmed.length > 0 ? trimmed : fallback;
 }
 
@@ -62,8 +72,77 @@ function sanitizeStringList(value: unknown): string[] {
     return [];
   }
   return value
-    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .map((item) => (typeof item === "string" ? oralizeTalkerText(item) : ""))
     .filter((item) => item.length > 0);
+}
+
+function oralizeTalkerText(value: string): string {
+  return value
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#+\s*/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/\/api\/voice-secretary/gi, "语音秘书接口")
+    .replace(/packages\/client/gi, "客户端")
+    .replace(/packages\/server/gi, "服务端")
+    .replace(/packages\/relay/gi, "中继服务")
+    .replace(/docs\/[^\s，。；,]*/gi, "项目文档")
+    .replace(/[A-Za-z0-9._-]*\/[A-Za-z0-9._/-]+/g, "相关模块")
+    .replace(/\s+/g, " ")
+    .replace(/\s*([，。！？；：,.!?;:])\s*/g, "$1")
+    .trim();
+}
+
+function extractJsonObject(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fencedMatch?.[1]?.trim() || trimmed;
+  if (!candidate) return null;
+
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+
+  for (let index = 0; index < candidate.length; index += 1) {
+    const char = candidate[index];
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (char === "\\") {
+        escaping = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") {
+      if (depth === 0) {
+        start = index;
+      }
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      if (depth === 0) continue;
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        return candidate.slice(start, index + 1);
+      }
+    }
+  }
+
+  return null;
 }
 
 export function getVoiceSecretaryLlmConfig(
@@ -135,39 +214,67 @@ async function requestJson<T>(
   const timer = setTimeout(() => controller.abort(), config.timeoutMs);
 
   try {
-    const response = await fetch(`${config.baseUrl}/chat/completions`, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        ...(config.disableThinking
-          ? {
-              reasoning_effort: "none",
-              reasoning: { effort: "none" },
-              thinking: { type: "disabled" },
-            }
-          : {}),
-        messages,
-      }),
+    const attempts: OpenAiCompatibleRequestBody[] = [];
+    const baseBody: OpenAiCompatibleRequestBody = {
+      model: config.model,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages,
+    };
+
+    if (config.disableThinking) {
+      attempts.push({
+        ...baseBody,
+        reasoning_effort: "none",
+        reasoning: { effort: "none" },
+        thinking: { type: "disabled" },
+      });
+    }
+    attempts.push(baseBody);
+    attempts.push({
+      model: config.model,
+      temperature: 0.2,
+      messages,
     });
 
-    if (!response.ok) {
-      return null;
+    for (const body of attempts) {
+      const response = await fetch(`${config.baseUrl}/chat/completions`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const rawText = await response.text();
+      if (!response.ok) {
+        if (response.status >= 500) {
+          continue;
+        }
+        const lower = rawText.toLowerCase();
+        const compatibilityError =
+          lower.includes("reasoning_effort") ||
+          lower.includes("thinking") ||
+          lower.includes("response_format");
+        if (compatibilityError) {
+          continue;
+        }
+        return null;
+      }
+
+      const payload = JSON.parse(rawText) as OpenAiCompatibleResponse;
+      const content = getContentText(payload.choices?.[0]?.message?.content);
+      const jsonText = extractJsonObject(content);
+      if (!jsonText) {
+        continue;
+      }
+
+      return JSON.parse(jsonText) as T;
     }
 
-    const payload = (await response.json()) as OpenAiCompatibleResponse;
-    const content = getContentText(payload.choices?.[0]?.message?.content);
-    if (!content) {
-      return null;
-    }
-
-    return JSON.parse(content) as T;
+    return null;
   } catch {
     return null;
   } finally {

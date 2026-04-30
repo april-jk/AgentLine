@@ -61,8 +61,8 @@ function TextList({ items }: { items: string[] | undefined }) {
   }
   return (
     <ul className="voice-list">
-      {items.map((item) => (
-        <li key={item}>{item}</li>
+      {items.map((item, index) => (
+        <li key={`${index}-${item}`}>{item}</li>
       ))}
     </ul>
   );
@@ -92,6 +92,28 @@ function buildResultConversationTurns(
   }
 
   return turns;
+}
+
+function choosePrimaryTalkerReply(result: VoiceSecretaryResult): string {
+  const finalSummary = result.finalBrief.spokenSummary.trim();
+  if (finalSummary) {
+    return finalSummary;
+  }
+
+  const latestTalkerTurn = [...result.callSession.transcript]
+    .reverse()
+    .find((turn) => turn.speaker === "talker" && typeof turn.text === "string");
+  const talkerTurnText = latestTalkerTurn?.text?.trim() ?? "";
+  if (talkerTurnText) {
+    return talkerTurnText;
+  }
+
+  const workerText = result.voiceSession.latestWorkerMessage?.trim() ?? "";
+  if (workerText) {
+    return workerText;
+  }
+
+  return "我已经整理好了这轮项目对话的结果。";
 }
 
 function ConversationBubbles({
@@ -136,12 +158,18 @@ function ConversationBubbles({
 
 function VoiceSecretaryResultView({
   result,
-}: { result: VoiceSecretaryResult }) {
+  showConversation = true,
+}: {
+  result: VoiceSecretaryResult;
+  showConversation?: boolean;
+}) {
   const basePath = useRemoteBasePath();
   const sessionLink = result.executorReport.links?.[0]?.href;
   const task = result.plannerResult.executionTask;
   const voiceSession = result.voiceSession;
   const turns = buildResultConversationTurns(result);
+  const showCallbackBlock =
+    showConversation || result.finalBrief.questionsToAsk.length > 0;
 
   return (
     <div className="voice-results">
@@ -161,9 +189,11 @@ function VoiceSecretaryResultView({
         <StatusBadge status={voiceSession.workerStatus} />
       </div>
 
-      <ResultSection title="Talker">
-        <ConversationBubbles turns={turns} />
-      </ResultSection>
+      {showConversation ? (
+        <ResultSection title="Talker">
+          <ConversationBubbles turns={turns} />
+        </ResultSection>
+      ) : null}
 
       <ResultSection title="Worker">
         <div className="voice-worker-block">
@@ -218,11 +248,13 @@ function VoiceSecretaryResultView({
           <TextList items={result.executorReport.verification} />
         </div>
 
-        <div className="voice-worker-block">
-          <span className="voice-kicker">Talker callback</span>
-          <p>{result.finalBrief.spokenSummary}</p>
-          <TextList items={result.finalBrief.questionsToAsk} />
-        </div>
+        {showCallbackBlock ? (
+          <div className="voice-worker-block">
+            <span className="voice-kicker">Talker callback</span>
+            {showConversation ? <p>{result.finalBrief.spokenSummary}</p> : null}
+            <TextList items={result.finalBrief.questionsToAsk} />
+          </div>
+        ) : null}
 
         <div className="voice-instruction-list">
           {result.plannerResult.relevantInstructions.map((instruction) => (
@@ -364,7 +396,21 @@ export function VoiceSecretaryPage() {
   );
 
   const appendLiveTurn = useCallback((turn: LiveTurn) => {
-    setLiveTurns((current) => current.concat(turn));
+    setLiveTurns((current) => {
+      const normalized = turn.text.trim();
+      if (!normalized) {
+        return current;
+      }
+      const lastTurn = current.at(-1);
+      if (
+        lastTurn &&
+        lastTurn.speaker === turn.speaker &&
+        lastTurn.text.trim() === normalized
+      ) {
+        return current;
+      }
+      return current.concat({ ...turn, text: normalized });
+    });
   }, []);
 
   const upsertLiveTurn = useCallback(
@@ -632,7 +678,17 @@ export function VoiceSecretaryPage() {
         setVoiceSessionId(response.result.voiceSession.id);
         setHasServerVoiceSession(true);
         setCallPhase("playing");
-        await playAudioReply(response.audioBase64, response.audioContentType);
+        if (response.audioBase64 && response.audioContentType) {
+          await playAudioReply(response.audioBase64, response.audioContentType);
+        }
+        if (response.ttsError) {
+          appendLiveTurn(
+            toLiveTurn(
+              "system",
+              `Volcengine TTS failed, no audio was played: ${response.ttsError}`,
+            ),
+          );
+        }
         setCallPhase(isCallActive ? "ready" : "idle");
       } catch (turnError) {
         const message =
@@ -765,7 +821,7 @@ export function VoiceSecretaryPage() {
         setLastTranscript(utterance.trim());
         appendLiveTurn(toLiveTurn("user", utterance.trim()));
         appendLiveTurn(
-          toLiveTurn("talker", response.result.finalBrief.spokenSummary),
+          toLiveTurn("talker", choosePrimaryTalkerReply(response.result)),
         );
         setResult(response.result);
         setVoiceSessionId(response.result.voiceSession.id);
@@ -975,7 +1031,10 @@ export function VoiceSecretaryPage() {
             {error ? <div className="voice-error">{error}</div> : null}
 
             {result ? (
-              <VoiceSecretaryResultView result={result} />
+              <VoiceSecretaryResultView
+                result={result}
+                showConversation={liveTurns.length === 0}
+              />
             ) : (
               <div className="voice-empty">
                 <h2>Ready</h2>

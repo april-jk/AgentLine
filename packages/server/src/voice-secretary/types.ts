@@ -44,6 +44,8 @@ export interface ProjectKnowledgeIndex {
   coreModules: string[];
   recentFocus: string[];
   knownNextSteps: string[];
+  latestCommitSummary?: string;
+  latestCommitFiles?: string[];
   topLevelEntries: string[];
   notableFiles: string[];
   summary: string;

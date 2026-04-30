@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -74,6 +75,17 @@ describe("SimulatedCallLoop", () => {
         "- Talker responds quickly through TTS.",
       ].join("\n"),
     );
+    execFileSync("git", ["init"], { cwd: projectPath });
+    execFileSync("git", ["config", "user.email", "voice@test.local"], {
+      cwd: projectPath,
+    });
+    execFileSync("git", ["config", "user.name", "Voice Test"], {
+      cwd: projectPath,
+    });
+    execFileSync("git", ["add", "."], { cwd: projectPath });
+    execFileSync("git", ["commit", "-m", "Seed test project"], {
+      cwd: projectPath,
+    });
   });
 
   afterEach(async () => {
@@ -149,6 +161,81 @@ describe("SimulatedCallLoop", () => {
     expect(result.executionTask?.prompt).toContain("ProjectPlanner");
     expect(await readFile(join(projectPath, "AGENTS.md"), "utf-8")).toBe(
       before,
+    );
+  });
+
+  it("prefers the configured llm summary over the deterministic fallback text for non-index questions", async () => {
+    const llmTalker = {
+      createOpeningText: async () => "我已经接上项目上下文了。",
+      createPlannerBrief: async () => ({
+        spokenSummary: "我先直接回答你当前最关心的项目问题。",
+        suggestedNextUtterance: "你想继续问最近一次提交，还是问当前进展？",
+        factsToAvoidOverstating: [],
+        questionsToAsk: ["你想继续问最近一次提交，还是问当前进展？"],
+      }),
+      createFinalBrief: async () => ({
+        spokenSummary:
+          "最近一次提交主要是在修 Voice Secretary 的文本与调试链路。",
+        suggestedNextUtterance: "要我继续展开这次提交改了哪些文件吗？",
+        factsToAvoidOverstating: [],
+        questionsToAsk: ["要我继续展开这次提交改了哪些文件吗？"],
+      }),
+    };
+
+    const loop = new SimulatedCallLoop(
+      new SimulatedTalker(nullCodexTalker, llmTalker, "llm-first"),
+      new ProjectPlanner(undefined, nullCodexTalker, llmTalker, "llm-first"),
+    );
+
+    const result = await loop.run({
+      projectPath,
+      utterance: "更详细说一下 Voice Secretary 的文本与调试链路。",
+    });
+
+    expect(result.finalBrief.spokenSummary).toBe(
+      "最近一次提交主要是在修 Voice Secretary 的文本与调试链路。",
+    );
+    expect(result.plannerResult.recommendedAction).toBe("consult_worker");
+    expect(result.finalBrief.suggestedNextUtterance).toBe(
+      "要我继续展开这次提交改了哪些文件吗？",
+    );
+  });
+
+  it("answers latest-commit questions directly from the project index", async () => {
+    const loop = new SimulatedCallLoop(
+      new SimulatedTalker(nullCodexTalker),
+      new ProjectPlanner(undefined, nullCodexTalker),
+    );
+
+    const result = await loop.run({
+      projectPath,
+      utterance: "最近一次代码提交是什么？",
+    });
+
+    expect(result.plannerResult.recommendedAction).toBe("answer_directly");
+    expect(result.plannerResult.executionTask).toBeUndefined();
+    expect(result.executorReport.providerSessionId).toBe("speaker-direct");
+    expect(result.finalBrief.spokenSummary).toContain("最近一次提交是");
+    expect(result.finalBrief.spokenSummary).toContain("主要动的是");
+    expect(result.finalBrief.spokenSummary).not.toContain("docs/");
+    expect(result.finalBrief.spokenSummary).not.toContain("packages/");
+  });
+
+  it("answers speech-stack questions in a short spoken style", async () => {
+    const loop = new SimulatedCallLoop(
+      new SimulatedTalker(nullCodexTalker),
+      new ProjectPlanner(undefined, nullCodexTalker),
+    );
+
+    const result = await loop.run({
+      projectPath,
+      utterance: "嗯，你看一下现在这个语音识别模块用的是什么实现的？",
+    });
+
+    expect(result.finalBrief.spokenSummary).toContain("识别和合成都走火山引擎");
+    expect(result.finalBrief.spokenSummary).not.toContain("packages/");
+    expect(result.finalBrief.spokenSummary).not.toContain(
+      "/api/voice-secretary",
     );
   });
 });

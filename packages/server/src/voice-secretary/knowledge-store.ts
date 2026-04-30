@@ -1,6 +1,8 @@
+import { execFile as execFileCallback } from "node:child_process";
 import * as fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
+import { promisify } from "node:util";
 import { getDataDir } from "../config.js";
 import { encodeProjectId } from "../projects/paths.js";
 import type {
@@ -15,7 +17,8 @@ const MAX_TOP_LEVEL_ENTRIES = 12;
 const MAX_NOTABLE_FILES = 10;
 const MAX_SNIPPET_CHARS = 320;
 const MAX_LIST_ITEMS = 6;
-const TALKER_INDEX_VERSION = 2;
+const TALKER_INDEX_VERSION = 3;
+const execFile = promisify(execFileCallback);
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -204,6 +207,54 @@ async function listTopLevelEntries(projectPath: string): Promise<string[]> {
   }
 }
 
+async function readLatestCommit(projectPath: string): Promise<{
+  summary?: string;
+  files: string[];
+}> {
+  try {
+    const [{ stdout: metaStdout }, { stdout: filesStdout }] = await Promise.all(
+      [
+        execFile(
+          "git",
+          [
+            "-C",
+            projectPath,
+            "log",
+            "-1",
+            "--date=short",
+            "--pretty=format:%h%n%s%n%ad",
+          ],
+          { timeout: 5000 },
+        ),
+        execFile(
+          "git",
+          ["-C", projectPath, "show", "--name-only", "--format=", "-1", "HEAD"],
+          { timeout: 5000 },
+        ),
+      ],
+    );
+
+    const [hash = "", subject = "", date = ""] = metaStdout
+      .split("\n")
+      .map((line) => line.trim());
+    const files = filesStdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, MAX_LIST_ITEMS);
+
+    if (!hash || !subject) {
+      return { files };
+    }
+
+    const fileSummary = files.length > 0 ? `，涉及 ${files.join("、")}` : "";
+    const summary = `最近一次提交是 ${hash}（${date || "日期未知"}），主题是“${subject}”${fileSummary}。`;
+    return { summary, files };
+  } catch {
+    return { files: [] };
+  }
+}
+
 interface TalkerKnowledgeArtifacts {
   projectId: string;
   projectDir: string;
@@ -227,6 +278,10 @@ function isProjectKnowledgeIndex(
       Array.isArray(value.coreModules) &&
       Array.isArray(value.recentFocus) &&
       Array.isArray(value.knownNextSteps) &&
+      (value.latestCommitSummary === undefined ||
+        typeof value.latestCommitSummary === "string") &&
+      (value.latestCommitFiles === undefined ||
+        Array.isArray(value.latestCommitFiles)) &&
       Array.isArray(value.topLevelEntries) &&
       Array.isArray(value.notableFiles) &&
       typeof value.summary === "string",
@@ -357,6 +412,7 @@ export class VoiceSecretaryKnowledgeStore {
     const roadmapText = fileMap.get("docs/roadmap/README.md") ?? "";
     const voiceSecretaryText =
       fileMap.get("docs/features/voice-secretary/README.md") ?? "";
+    const latestCommit = await readLatestCommit(projectPath);
 
     const projectPositioning =
       extractFirstMeaningfulParagraph(readmeText) ??
@@ -440,6 +496,7 @@ export class VoiceSecretaryKnowledgeStore {
       knownNextSteps.length > 0
         ? `下一步优先级：${knownNextSteps.join("；")}`
         : "",
+      latestCommit.summary ? `最近提交：${latestCommit.summary}` : "",
       topLevelEntries.length > 0
         ? `顶层结构：${topLevelEntries.join("、")}`
         : "",
@@ -456,6 +513,8 @@ export class VoiceSecretaryKnowledgeStore {
       coreModules,
       recentFocus,
       knownNextSteps,
+      latestCommitSummary: latestCommit.summary,
+      latestCommitFiles: latestCommit.files,
       topLevelEntries,
       notableFiles: notablePairs.map(([filePath]) => filePath),
       summary: summaryLines.join("\n"),

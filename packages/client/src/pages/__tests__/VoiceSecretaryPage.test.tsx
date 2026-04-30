@@ -20,6 +20,13 @@ const mocks = vi.hoisted(() => {
     startListening: vi.fn(),
     stopListening: vi.fn(),
   };
+  const speechSynthesis = {
+    isSupported: true,
+    isSpeaking: false,
+    error: null as string | null,
+    speak: vi.fn(async () => true),
+    stop: vi.fn(),
+  };
   const recorder = {
     get isSupported() {
       return recorderState.isSupported;
@@ -63,6 +70,7 @@ const mocks = vi.hoisted(() => {
     recorderState,
     recorder,
     speechRecognition,
+    speechSynthesis,
     api: {
       getProjectSessions: vi.fn(),
       startVoiceSecretaryAudioCall: vi.fn(),
@@ -111,6 +119,10 @@ vi.mock("../../hooks/useSpeechRecognition", () => ({
   useSpeechRecognition: () => mocks.speechRecognition,
 }));
 
+vi.mock("../../hooks/useSpeechSynthesis", () => ({
+  useSpeechSynthesis: () => mocks.speechSynthesis,
+}));
+
 describe("VoiceSecretaryPage", () => {
   const audioPlayMock = vi.fn().mockResolvedValue(undefined);
   const audioPauseMock = vi.fn();
@@ -123,6 +135,8 @@ describe("VoiceSecretaryPage", () => {
     mocks.recorder.setProcessing.mockClear();
     mocks.speechRecognition.startListening.mockClear();
     mocks.speechRecognition.stopListening.mockClear();
+    mocks.speechSynthesis.speak.mockClear();
+    mocks.speechSynthesis.stop.mockClear();
     mocks.api.getProjectSessions.mockReset();
     mocks.api.startVoiceSecretaryAudioCall.mockReset();
     mocks.api.startVoiceSecretaryCall.mockReset();
@@ -284,5 +298,198 @@ describe("VoiceSecretaryPage", () => {
       ).toBeGreaterThan(0);
     });
     expect(audioPlayMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the turn usable when Volcengine TTS fails without using browser speech", async () => {
+    mocks.api.startVoiceSecretaryAudioCall.mockResolvedValueOnce({
+      transcript: "给我介绍一下这个项目的背景信息",
+      talkerText: "这是一个移动优先的 Agent 监督项目。",
+      ttsError: "quota exceeded for types: text_words_lifetime",
+      result: {
+        callSession: {
+          id: "call-tts-fallback",
+          voiceSessionId: "voice-tts-fallback",
+          channel: "web-voice",
+          status: "waiting_for_user",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          workerSessionId: undefined,
+          workerStatus: "idle",
+          transcript: [],
+          plannerRuns: [],
+          callbackRequests: [],
+        },
+        voiceSession: {
+          id: "voice-tts-fallback",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          updatedAt: "2026-04-28T00:00:00.000Z",
+          projectPath: "/tmp/agentline",
+          workerStatus: "idle",
+          speakerProjectSummary: "Project summary",
+        },
+        plannerRequest: {
+          id: "planner-request-fallback",
+          userIntent: "给我介绍一下这个项目的背景信息",
+          knownConstraints: [],
+          missingInformation: [],
+          requestedOutcome: "answer",
+        },
+        plannerResult: {
+          id: "planner-result-fallback",
+          projectSummary: "Project summary",
+          relevantInstructions: [],
+          recommendedAction: "answer_directly",
+          talkerBrief: {
+            spokenSummary: "这是一个移动优先的 Agent 监督项目。",
+            suggestedNextUtterance: "要我继续展开最近进展吗？",
+            factsToAvoidOverstating: [],
+            questionsToAsk: [],
+          },
+        },
+        executorReport: {
+          executionTaskId: "speaker-direct",
+          providerSessionId: "speaker-direct",
+          status: "completed",
+          summary: "Speaker 直接回答了当前问题。",
+          changedFiles: [],
+          verification: ["No worker handoff"],
+        },
+        finalBrief: {
+          spokenSummary: "这是一个移动优先的 Agent 监督项目。",
+          suggestedNextUtterance: "要我继续展开最近进展吗？",
+          factsToAvoidOverstating: [],
+          questionsToAsk: [],
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <VoiceSecretaryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mocks.api.getProjectSessions).toHaveBeenCalledWith("project-1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Start live call" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Record one utterance" }),
+    );
+    await waitFor(() => {
+      expect(mocks.recorder.startRecording).toHaveBeenCalled();
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Send this utterance" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByText("这是一个移动优先的 Agent 监督项目。").length,
+      ).toBeGreaterThan(0);
+    });
+
+    expect(mocks.speechSynthesis.speak).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(/Volcengine TTS failed, no audio was played/i),
+    ).toBeTruthy();
+    expect(audioPlayMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the live conversation as the primary typed-turn transcript without duplicating the Talker panel", async () => {
+    mocks.api.startVoiceSecretaryCall.mockResolvedValue({
+      result: {
+        callSession: {
+          id: "call-typed-1",
+          voiceSessionId: "voice-typed-1",
+          channel: "web-voice",
+          status: "waiting_for_user",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          workerSessionId: undefined,
+          workerStatus: "idle",
+          transcript: [],
+          plannerRuns: [],
+          callbackRequests: [],
+        },
+        voiceSession: {
+          id: "voice-typed-1",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          updatedAt: "2026-04-28T00:00:00.000Z",
+          projectPath: "/tmp/agentline",
+          workerStatus: "idle",
+          speakerProjectSummary: "Project summary",
+        },
+        plannerRequest: {
+          id: "planner-request-typed-1",
+          userIntent: "最近一次代码提交是什么？",
+          knownConstraints: [],
+          missingInformation: [],
+          requestedOutcome: "answer",
+        },
+        plannerResult: {
+          id: "planner-result-typed-1",
+          projectSummary: "Project summary",
+          relevantInstructions: [],
+          recommendedAction: "answer_directly",
+          talkerBrief: {
+            spokenSummary:
+              "最近一次提交是 abc123，主题是“修复 Voice Secretary”。",
+            suggestedNextUtterance: "要我继续展开这次提交吗？",
+            factsToAvoidOverstating: [],
+            questionsToAsk: [],
+          },
+        },
+        executorReport: {
+          executionTaskId: "speaker-direct",
+          providerSessionId: "speaker-direct",
+          status: "completed",
+          summary: "Speaker 直接回答了当前问题。",
+          changedFiles: [],
+          verification: ["No worker handoff"],
+        },
+        finalBrief: {
+          spokenSummary:
+            "最近一次提交是 abc123，主题是“修复 Voice Secretary”。",
+          suggestedNextUtterance: "要我继续展开这次提交吗？",
+          factsToAvoidOverstating: [],
+          questionsToAsk: [],
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <VoiceSecretaryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mocks.api.getProjectSessions).toHaveBeenCalledWith("project-1");
+    });
+
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "最近一次代码提交是什么？" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send typed turn" }));
+
+    await waitFor(() => {
+      expect(mocks.api.startVoiceSecretaryCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectPath: "/tmp/agentline",
+          utterance: "最近一次代码提交是什么？",
+        }),
+      );
+    });
+
+    expect(
+      screen.getAllByText(
+        "最近一次提交是 abc123，主题是“修复 Voice Secretary”。",
+      ),
+    ).toHaveLength(1);
+    expect(
+      screen.queryByRole("heading", {
+        name: "Talker",
+      }),
+    ).toBeNull();
   });
 });
