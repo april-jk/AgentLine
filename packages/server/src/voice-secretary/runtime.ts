@@ -30,6 +30,14 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function summarizeWorkerCompletion(text: string | undefined): string {
+  const normalized = text?.trim();
+  if (!normalized) {
+    return "我已经从项目专家那里知道了更多项目细节，我们可以继续讨论了。";
+  }
+  return `项目专家刚刚补充：${normalized}`;
+}
+
 function extractAssistantText(message: SDKMessage): string | undefined {
   if (message.type !== "assistant") return undefined;
   const content = message.message?.content;
@@ -295,7 +303,7 @@ export class VoiceSecretaryRuntimeManager {
         voiceSessionId: record.snapshot.id,
         createdAt: nowIso(),
         reason: "worker_completed",
-        text: "我已经从项目专家那里知道了更多项目细节，我们可以继续讨论了。",
+        text: summarizeWorkerCompletion(record.snapshot.latestWorkerMessage),
       };
       return;
     }

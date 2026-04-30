@@ -244,6 +244,36 @@ export interface VoiceSecretaryAudioTurnResponse {
   result: VoiceSecretaryResult;
 }
 
+export type VoiceSecretaryAudioStreamEvent =
+  | {
+      type: "transcript_final";
+      transcript: string;
+      confidence?: number;
+    }
+  | {
+      type: "talker_text";
+      text: string;
+    }
+  | {
+      type: "audio_start";
+      contentType: string;
+    }
+  | {
+      type: "audio_chunk";
+      audioBase64: string;
+    }
+  | {
+      type: "result";
+      result: VoiceSecretaryResult;
+    }
+  | {
+      type: "done";
+    }
+  | {
+      type: "error";
+      error: string;
+    };
+
 export interface VoiceSecretarySessionStatusResponse {
   snapshot: VoiceSecretaryResult["voiceSession"];
   hook?: {
@@ -591,6 +621,87 @@ export const api = {
     }
 
     return (await response.json()) as VoiceSecretaryAudioTurnResponse;
+  },
+
+  startVoiceSecretaryAudioCallStream: async (request: {
+    voiceSessionId?: string;
+    projectPath: string;
+    conversationSessionId?: string;
+    conversationProvider?: ProviderName;
+    audio: Blob;
+    fileName?: string;
+    onEvent: (event: VoiceSecretaryAudioStreamEvent) => void;
+  }) => {
+    const body = new FormData();
+    if (request.voiceSessionId) {
+      body.append("voiceSessionId", request.voiceSessionId);
+    }
+    body.append("projectPath", request.projectPath);
+    if (request.conversationSessionId) {
+      body.append("conversationSessionId", request.conversationSessionId);
+    }
+    if (request.conversationProvider) {
+      body.append("conversationProvider", request.conversationProvider);
+    }
+    body.append(
+      "audio",
+      request.audio,
+      request.fileName ?? "voice-secretary-input.wav",
+    );
+
+    const response = await fetch(
+      `${API_BASE}/voice-secretary/calls/audio/stream`,
+      {
+        method: "POST",
+        body,
+        credentials: "include",
+        headers: buildProtectedRequestHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      let errorMessage = "Voice Secretary audio stream failed";
+      try {
+        const errorPayload = (await response.json()) as { error?: string };
+        if (errorPayload.error) {
+          errorMessage = errorPayload.error;
+        }
+      } catch {
+        // Ignore response parse failures and fall back to a generic message.
+      }
+      throw new Error(errorMessage);
+    }
+
+    if (!response.body) {
+      throw new Error("Voice Secretary audio stream did not return a body");
+    }
+
+    const decoder = new TextDecoder();
+    const reader = response.body.getReader();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+
+      let newlineIndex = buffer.indexOf("\n");
+      while (newlineIndex >= 0) {
+        const line = buffer.slice(0, newlineIndex).trim();
+        buffer = buffer.slice(newlineIndex + 1);
+        if (line) {
+          request.onEvent(JSON.parse(line) as VoiceSecretaryAudioStreamEvent);
+        }
+        newlineIndex = buffer.indexOf("\n");
+      }
+
+      if (done) {
+        const tail = buffer.trim();
+        if (tail) {
+          request.onEvent(JSON.parse(tail) as VoiceSecretaryAudioStreamEvent);
+        }
+        break;
+      }
+    }
   },
 
   getVoiceSecretarySessionStatus: (voiceSessionId: string) =>

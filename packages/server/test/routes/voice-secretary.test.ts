@@ -425,6 +425,105 @@ describe("Voice Secretary routes", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("streams transcript, talker text, and audio chunks for live voice turns", async () => {
+    const startSession = vi.fn(async () => ({
+      id: "process-1",
+      sessionId: "codex-session-1",
+      projectId: "project-1",
+      permissionMode: "plan",
+      modeVersion: 1,
+    }));
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/recognize/flash")) {
+          return new Response(
+            JSON.stringify({
+              result: {
+                text: "What should this project do next?",
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "X-Api-Status-Code": "20000000",
+              },
+            },
+          );
+        }
+        if (url.includes("/api/v3/tts/unidirectional")) {
+          return new Response(
+            `${JSON.stringify({
+              code: 0,
+              data: Buffer.from("RI", "utf8").toString("base64"),
+            })}${JSON.stringify({
+              code: 0,
+              data: Buffer.from("FF", "utf8").toString("base64"),
+            })}`,
+            { status: 200 },
+          );
+        }
+        throw new Error(`Unexpected fetch url: ${url}`);
+      });
+
+    const routes = createVoiceSecretaryRoutes({
+      supervisor: { startSession } as unknown as Supervisor,
+      providerCatalog,
+      serverSettingsService: {
+        getSettings: () => ({
+          phoneVolcengineAsrAppId: "asr-app",
+          phoneVolcengineAsrAccessToken: "asr-token",
+          phoneVolcengineTtsAppId: "tts-app",
+          phoneVolcengineTtsAccessToken: "tts-token",
+          phoneVolcengineTtsVoiceType: "voice-a",
+          phoneVolcengineTtsEndpoint:
+            "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
+        }),
+      } as never,
+    });
+
+    const formData = new FormData();
+    formData.set("projectPath", projectPath);
+    formData.set(
+      "audio",
+      new File([new Uint8Array([1, 2, 3])], "turn.wav", { type: "audio/wav" }),
+    );
+
+    const response = await routes.request("/calls/audio/stream", {
+      method: "POST",
+      body: formData,
+      headers: { "X-AgentLine-Request": "true" },
+    });
+
+    expect(response.status).toBe(200);
+    const payloadLines = (await response.text())
+      .trim()
+      .split("\n")
+      .map(
+        (line) => JSON.parse(line) as { type: string; [key: string]: unknown },
+      );
+    expect(payloadLines[0]).toMatchObject({
+      type: "transcript_final",
+      transcript: "What should this project do next?",
+    });
+    expect(payloadLines.some((event) => event.type === "talker_text")).toBe(
+      true,
+    );
+    expect(payloadLines).toContainEqual({
+      type: "audio_start",
+      contentType: "audio/mpeg",
+    });
+    expect(payloadLines).toContainEqual({
+      type: "audio_chunk",
+      audioBase64: Buffer.from("RI", "utf8").toString("base64"),
+    });
+    expect(payloadLines.at(-1)).toEqual({ type: "done" });
+    expect(startSession).toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("reports a direct unidirectional error when TTS v3 rejects the voice-resource pairing", async () => {
     const startSession = vi.fn(async () => ({
       id: "process-1",

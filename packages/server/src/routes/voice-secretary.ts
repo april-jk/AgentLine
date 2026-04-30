@@ -4,6 +4,7 @@ import type { ProviderName } from "../sdk/providers/types.js";
 import type { ServerSettingsService } from "../services/ServerSettingsService.js";
 import type { Supervisor } from "../supervisor/Supervisor.js";
 import { CodexEphemeralTalker } from "../voice-secretary/codex-ephemeral.js";
+import { appendVoiceSecretaryDebugCapture } from "../voice-secretary/debug-capture.js";
 import {
   AgentLineExecutorAgentAdapter,
   ProjectPlanner,
@@ -56,6 +57,36 @@ interface AudioTurnResponseBody {
   audioBase64: string;
   audioContentType: string;
 }
+
+type VoiceSecretaryAudioStreamEvent =
+  | {
+      type: "transcript_final";
+      transcript: string;
+      confidence?: number;
+    }
+  | {
+      type: "talker_text";
+      text: string;
+    }
+  | {
+      type: "audio_start";
+      contentType: string;
+    }
+  | {
+      type: "audio_chunk";
+      audioBase64: string;
+    }
+  | {
+      type: "result";
+      result: unknown;
+    }
+  | {
+      type: "done";
+    }
+  | {
+      type: "error";
+      error: string;
+    };
 
 function parseConversationSessionId(value: unknown): string | undefined | null {
   if (value === undefined || value === null || value === "") return undefined;
@@ -113,6 +144,7 @@ export function createVoiceSecretaryRoutes(
   const routes = new Hono();
   const knowledgeStore = new VoiceSecretaryKnowledgeStore(deps.dataDir);
   const runtimeManager = new VoiceSecretaryRuntimeManager(knowledgeStore);
+  const textEncoder = new TextEncoder();
 
   const bindVoiceWorker = (
     voiceSessionId: string | undefined,
@@ -140,6 +172,63 @@ export function createVoiceSecretaryRoutes(
       process?.subscribe.bind(process),
     );
   };
+
+  const createVoiceTurnLoop = (voiceSessionId?: string) => {
+    if (!deps.supervisor) {
+      throw new Error("AgentLine executor is unavailable");
+    }
+    const executor = new AgentLineExecutorAgentAdapter({
+      supervisor: deps.supervisor,
+      sessionMetadataService: deps.sessionMetadataService,
+      onSessionCreated: (session) => bindVoiceWorker(voiceSessionId, session),
+    });
+    const codexTalker = new CodexEphemeralTalker({
+      getRuntimeConfig: () => getPhoneTalkerConfig(deps.serverSettingsService),
+    });
+    const llm = createTalkerLlm(deps.serverSettingsService);
+    const talker = new VoiceSecretaryTalker(codexTalker, llm);
+    const planner = new ProjectPlanner(deps.providerCatalog, codexTalker, llm);
+    const loop = new VoiceSecretaryCallLoop(executor, {
+      providerCatalog: deps.providerCatalog,
+      talker,
+      planner,
+      knowledgeStore,
+      runtimeManager,
+    });
+    return { loop };
+  };
+
+  const resolveTalkerText = (
+    result: Awaited<ReturnType<VoiceSecretaryCallLoop["run"]>>,
+  ) =>
+    result.finalBrief.spokenSummary.trim() ||
+    result.callSession.transcript
+      .filter((turn) => turn.speaker === "talker")
+      .map((turn) => turn.text.trim())
+      .find((text) => text.length > 0) ||
+    "我已经准备好了下一步的正式执行建议。";
+
+  const splitTalkerTextForStreaming = (text: string): string[] => {
+    const normalized = text.trim();
+    if (!normalized) return [];
+    const sentenceChunks = normalized.match(
+      /[^，。！？；,.!?;\n]+[，。！？；,.!?;\n]?/g,
+    ) ?? [normalized];
+    return sentenceChunks.flatMap((chunk) => {
+      const trimmed = chunk.trim();
+      if (trimmed.length <= 18) {
+        return trimmed ? [trimmed] : [];
+      }
+      const parts: string[] = [];
+      for (let index = 0; index < trimmed.length; index += 18) {
+        parts.push(trimmed.slice(index, index + 18));
+      }
+      return parts;
+    });
+  };
+
+  const encodeStreamEvent = (event: VoiceSecretaryAudioStreamEvent) =>
+    textEncoder.encode(`${JSON.stringify(event)}\n`);
 
   routes.post("/calls", async (c) => {
     const body = await c.req.json<CallBody>().catch(() => null);
@@ -173,24 +262,7 @@ export function createVoiceSecretaryRoutes(
       return c.json({ error: "AgentLine executor is unavailable" }, 503);
     }
 
-    const executor = new AgentLineExecutorAgentAdapter({
-      supervisor: deps.supervisor,
-      sessionMetadataService: deps.sessionMetadataService,
-      onSessionCreated: (session) => bindVoiceWorker(voiceSessionId, session),
-    });
-    const codexTalker = new CodexEphemeralTalker({
-      getRuntimeConfig: () => getPhoneTalkerConfig(deps.serverSettingsService),
-    });
-    const llm = createTalkerLlm(deps.serverSettingsService);
-    const talker = new VoiceSecretaryTalker(codexTalker, llm);
-    const planner = new ProjectPlanner(deps.providerCatalog, codexTalker, llm);
-    const loop = new VoiceSecretaryCallLoop(executor, {
-      providerCatalog: deps.providerCatalog,
-      talker,
-      planner,
-      knowledgeStore,
-      runtimeManager,
-    });
+    const { loop } = createVoiceTurnLoop(voiceSessionId);
     const result = await loop.run({
       voiceSessionId,
       projectPath: body.projectPath,
@@ -247,29 +319,7 @@ export function createVoiceSecretaryRoutes(
         return c.json({ error: "Volcengine speech is not configured" }, 503);
       }
 
-      const executor = new AgentLineExecutorAgentAdapter({
-        supervisor: deps.supervisor,
-        sessionMetadataService: deps.sessionMetadataService,
-        onSessionCreated: (session) => bindVoiceWorker(voiceSessionId, session),
-      });
-      const codexTalker = new CodexEphemeralTalker({
-        getRuntimeConfig: () =>
-          getPhoneTalkerConfig(deps.serverSettingsService),
-      });
-      const llm = createTalkerLlm(deps.serverSettingsService);
-      const talker = new VoiceSecretaryTalker(codexTalker, llm);
-      const planner = new ProjectPlanner(
-        deps.providerCatalog,
-        codexTalker,
-        llm,
-      );
-      const loop = new VoiceSecretaryCallLoop(executor, {
-        providerCatalog: deps.providerCatalog,
-        talker,
-        planner,
-        knowledgeStore,
-        runtimeManager,
-      });
+      const { loop } = createVoiceTurnLoop(voiceSessionId);
 
       const transcript = await speech.transcribeAudio(
         new Uint8Array(await audioFile.arrayBuffer()),
@@ -286,13 +336,7 @@ export function createVoiceSecretaryRoutes(
         utterance: transcript.text,
       });
 
-      const talkerText =
-        result.finalBrief.spokenSummary.trim() ||
-        result.callSession.transcript
-          .filter((turn) => turn.speaker === "talker")
-          .map((turn) => turn.text.trim())
-          .find((text) => text.length > 0) ||
-        "我已经准备好了下一步的正式执行建议。";
+      const talkerText = resolveTalkerText(result);
       const audio = await speech.synthesizeText(talkerText);
       if (!audio) {
         return c.json({ error: "Volcengine TTS did not return audio" }, 502);
@@ -306,6 +350,22 @@ export function createVoiceSecretaryRoutes(
         audioContentType: audio.contentType,
       };
 
+      await appendVoiceSecretaryDebugCapture(deps.dataDir, {
+        type: "audio-call",
+        route: "/calls/audio",
+        voiceSessionId: result.voiceSession.id,
+        projectPath: projectPathValue.trim(),
+        conversationSessionId,
+        conversationProvider,
+        transcript: transcript.text,
+        talkerText,
+        finalBrief: result.finalBrief.spokenSummary,
+        executorSummary: result.executorReport.summary,
+        latestWorkerMessage: result.voiceSession.latestWorkerMessage,
+        audioContentType: audio.contentType,
+        audioBase64Length: audio.audioBase64.length,
+      });
+
       return c.json({ ...body, result });
     } catch (error) {
       const message =
@@ -317,12 +377,168 @@ export function createVoiceSecretaryRoutes(
     }
   });
 
+  routes.post("/calls/audio/stream", async (c) => {
+    try {
+      if (!deps.supervisor) {
+        return c.json({ error: "AgentLine executor is unavailable" }, 503);
+      }
+
+      const formData = await c.req.formData().catch(() => null);
+      if (!formData) {
+        return c.json({ error: "Invalid multipart form body" }, 400);
+      }
+
+      const projectPathValue = formData.get("projectPath");
+      if (typeof projectPathValue !== "string" || !projectPathValue.trim()) {
+        return c.json({ error: "projectPath is required" }, 400);
+      }
+
+      const conversationSessionId = parseConversationSessionId(
+        formData.get("conversationSessionId"),
+      );
+      if (conversationSessionId === null) {
+        return c.json({ error: "conversationSessionId must be a string" }, 400);
+      }
+      const conversationProvider = parseConversationProvider(
+        formData.get("conversationProvider"),
+      );
+      if (conversationProvider === null) {
+        return c.json({ error: "conversationProvider must be a string" }, 400);
+      }
+      const voiceSessionId = parseVoiceSessionId(
+        formData.get("voiceSessionId"),
+      );
+      if (voiceSessionId === null) {
+        return c.json({ error: "voiceSessionId must be a string" }, 400);
+      }
+
+      const audioFile = formData.get("audio");
+      if (!(audioFile instanceof File) || audioFile.size === 0) {
+        return c.json({ error: "audio is required" }, 400);
+      }
+
+      const speech = createSpeechService(deps.serverSettingsService);
+      if (!speech.enabled) {
+        return c.json({ error: "Volcengine speech is not configured" }, 503);
+      }
+
+      const stream = new ReadableStream<Uint8Array>({
+        start: async (controller) => {
+          const push = (event: VoiceSecretaryAudioStreamEvent) => {
+            controller.enqueue(encodeStreamEvent(event));
+          };
+
+          try {
+            const transcript = await speech.transcribeAudio(
+              new Uint8Array(await audioFile.arrayBuffer()),
+            );
+            if (!transcript) {
+              push({
+                type: "error",
+                error: "Volcengine ASR did not return text",
+              });
+              controller.close();
+              return;
+            }
+            push({
+              type: "transcript_final",
+              transcript: transcript.text,
+              confidence: transcript.confidence,
+            });
+
+            const { loop } = createVoiceTurnLoop(voiceSessionId);
+            const result = await loop.run({
+              voiceSessionId,
+              projectPath: projectPathValue.trim(),
+              conversationSessionId,
+              conversationProvider,
+              utterance: transcript.text,
+            });
+            const talkerText = resolveTalkerText(result);
+            for (const chunk of splitTalkerTextForStreaming(talkerText)) {
+              push({ type: "talker_text", text: chunk });
+            }
+            push({ type: "result", result });
+
+            let announcedAudio = false;
+            for await (const chunk of speech.synthesizeTextStream(talkerText)) {
+              if (!announcedAudio) {
+                announcedAudio = true;
+                push({
+                  type: "audio_start",
+                  contentType: chunk.contentType,
+                });
+              }
+              push({
+                type: "audio_chunk",
+                audioBase64: chunk.audioBase64,
+              });
+            }
+
+            await appendVoiceSecretaryDebugCapture(deps.dataDir, {
+              type: "audio-call-stream",
+              route: "/calls/audio/stream",
+              voiceSessionId: result.voiceSession.id,
+              projectPath: projectPathValue.trim(),
+              conversationSessionId,
+              conversationProvider,
+              transcript: transcript.text,
+              talkerText,
+              finalBrief: result.finalBrief.spokenSummary,
+              executorSummary: result.executorReport.summary,
+              latestWorkerMessage: result.voiceSession.latestWorkerMessage,
+            });
+
+            push({ type: "done" });
+          } catch (error) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Voice Secretary audio stream failed";
+            console.error("[VoiceSecretary] audio stream failed:", error);
+            push({ type: "error", error: message });
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/x-ndjson; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Voice Secretary audio stream failed";
+      console.error("[VoiceSecretary] audio stream setup failed:", error);
+      return c.json({ error: message }, 500);
+    }
+  });
+
   routes.get("/calls/:voiceSessionId", async (c) => {
     const voiceSessionId = c.req.param("voiceSessionId");
     const status = runtimeManager.consumePendingHook(voiceSessionId);
     if (!status) {
+      await appendVoiceSecretaryDebugCapture(deps.dataDir, {
+        type: "hook-poll-miss",
+        route: "/calls/:voiceSessionId",
+        voiceSessionId,
+      });
       return c.json({ error: "Voice session not found" }, 404);
     }
+    await appendVoiceSecretaryDebugCapture(deps.dataDir, {
+      type: "hook-poll",
+      route: "/calls/:voiceSessionId",
+      voiceSessionId,
+      hook: status.hook,
+      snapshot: status.snapshot,
+    });
     return c.json(status);
   });
 

@@ -60,6 +60,12 @@ export interface VolcengineSpeechTurnAudio {
   text: string;
 }
 
+export interface VolcengineSpeechStreamChunk {
+  audioBase64: string;
+  contentType: string;
+  text: string;
+}
+
 function normalizeSpeechEndpoint(
   value: string | undefined,
   fallback: string,
@@ -147,6 +153,13 @@ function isWebSocketEndpoint(endpoint: string): boolean {
 function parseConcatenatedJsonObjects(
   text: string,
 ): Array<Record<string, unknown>> {
+  return consumeConcatenatedJsonObjects(text).objects;
+}
+
+function consumeConcatenatedJsonObjects(text: string): {
+  objects: Array<Record<string, unknown>>;
+  remainder: string;
+} {
   const results: Array<Record<string, unknown>> = [];
   let start = -1;
   let depth = 0;
@@ -191,7 +204,8 @@ function parseConcatenatedJsonObjects(
     }
   }
 
-  return results;
+  const remainder = start >= 0 ? text.slice(start) : "";
+  return { objects: results, remainder };
 }
 
 function parseWavePcmS16Le(input: Uint8Array): Uint8Array {
@@ -586,6 +600,35 @@ export class VolcengineSpeechService {
     return this.synthesizeTextV1(trimmedText);
   }
 
+  async *synthesizeTextStream(
+    text: string,
+  ): AsyncGenerator<VolcengineSpeechStreamChunk> {
+    if (!this.config) return;
+
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      throw new Error("Volcengine TTS requires non-empty text");
+    }
+
+    if (
+      isVolcengineTtsV3Endpoint(this.config.ttsEndpoint) &&
+      isVolcengineTtsV3UnidirectionalEndpoint(this.config.ttsEndpoint)
+    ) {
+      yield* this.synthesizeTextV3UnidirectionalStream(trimmedText);
+      return;
+    }
+
+    const audio = await this.synthesizeText(trimmedText);
+    if (!audio) {
+      return;
+    }
+    yield {
+      audioBase64: audio.audioBase64,
+      contentType: audio.contentType,
+      text: audio.text,
+    };
+  }
+
   private async synthesizeTextV1(
     trimmedText: string,
   ): Promise<VolcengineSpeechTurnAudio> {
@@ -768,6 +811,29 @@ export class VolcengineSpeechService {
   private async synthesizeTextV3Unidirectional(
     trimmedText: string,
   ): Promise<VolcengineSpeechTurnAudio> {
+    const chunks: Buffer[] = [];
+    let contentType =
+      this.config?.ttsEncoding === "wav" ? "audio/wav" : "audio/mpeg";
+    for await (const chunk of this.synthesizeTextV3UnidirectionalStream(
+      trimmedText,
+    )) {
+      contentType = chunk.contentType;
+      chunks.push(Buffer.from(chunk.audioBase64, "base64"));
+    }
+    if (chunks.length === 0) {
+      throw new Error("Volcengine TTS v3 unidirectional returned no audio");
+    }
+
+    return {
+      audioBase64: Buffer.concat(chunks).toString("base64"),
+      contentType,
+      text: trimmedText,
+    };
+  }
+
+  private async *synthesizeTextV3UnidirectionalStream(
+    trimmedText: string,
+  ): AsyncGenerator<VolcengineSpeechStreamChunk> {
     if (!this.config) {
       throw new Error("Volcengine TTS is not configured");
     }
@@ -794,32 +860,69 @@ export class VolcengineSpeechService {
       }),
     });
 
-    const rawText = await response.text();
-    const payloads = parseConcatenatedJsonObjects(
-      rawText,
-    ) as VolcengineTtsV3DirectResponse[];
-    const errorPayload = payloads.find((payload) => {
-      if (payload.code === 0 || payload.code === 20000000) {
-        return false;
+    const contentType =
+      this.config.ttsEncoding === "wav" ? "audio/wav" : "audio/mpeg";
+    const stream = response.body;
+    if (!stream) {
+      throw new Error("Volcengine TTS v3 unidirectional returned no body");
+    }
+
+    const decoder = new TextDecoder();
+    const reader = stream.getReader();
+    let buffer = "";
+    let sawAudio = false;
+    let pendingError: string | null = null;
+
+    const emitPayloads = function* (
+      payloads: VolcengineTtsV3DirectResponse[],
+    ): Generator<VolcengineSpeechStreamChunk> {
+      for (const payload of payloads) {
+        if (payload.code !== 0 && payload.code !== 20000000) {
+          pendingError =
+            payload.message ??
+            `Volcengine TTS v3 unidirectional failed (${payload.code ?? "unknown"})`;
+          continue;
+        }
+
+        if (typeof payload.data !== "string" || !payload.data) {
+          continue;
+        }
+
+        sawAudio = true;
+        yield {
+          audioBase64: payload.data,
+          contentType,
+          text: trimmedText,
+        };
       }
-      return true;
-    });
-    const audioChunks = payloads
-      .map((payload) => payload.data)
-      .filter((chunk): chunk is string => Boolean(chunk))
-      .map((chunk) => Buffer.from(chunk, "base64"));
-    if (!response.ok || errorPayload || audioChunks.length === 0) {
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+
+      const parsed = consumeConcatenatedJsonObjects(buffer);
+      buffer = parsed.remainder;
+      yield* emitPayloads(parsed.objects as VolcengineTtsV3DirectResponse[]);
+
+      if (done) {
+        const tail = decoder.decode();
+        if (tail) {
+          buffer += tail;
+          const finalParsed = consumeConcatenatedJsonObjects(buffer);
+          buffer = finalParsed.remainder;
+          yield* emitPayloads(
+            finalParsed.objects as VolcengineTtsV3DirectResponse[],
+          );
+        }
+        break;
+      }
+    }
+
+    if (!response.ok || pendingError || !sawAudio) {
       throw new Error(
-        `Volcengine TTS v3 unidirectional failed${errorPayload?.message ? `: ${errorPayload.message}` : response.ok ? "" : ` (${response.status})`}`,
+        `Volcengine TTS v3 unidirectional failed${pendingError ? `: ${pendingError}` : response.ok ? "" : ` (${response.status})`}`,
       );
     }
-    const audioBase64 = Buffer.concat(audioChunks).toString("base64");
-
-    return {
-      audioBase64,
-      contentType:
-        this.config.ttsEncoding === "wav" ? "audio/wav" : "audio/mpeg",
-      text: trimmedText,
-    };
   }
 }

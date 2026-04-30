@@ -9,40 +9,68 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VoiceSecretaryPage } from "../VoiceSecretaryPage";
 
-const mocks = vi.hoisted(() => ({
-  projects: [
-    {
-      id: "project-1",
-      name: "AgentLine",
-      path: "/tmp/agentline",
-      lastActivity: "2026-04-28T00:00:00.000Z",
-    },
-  ],
-  settings: {
-    phoneTalkerProvider: "codex",
-    phoneTalkerModel: "gpt-5.2",
-    phoneVolcengineAsrAppId: "asr-app",
-    phoneVolcengineAsrAccessToken: "asr-token",
-    phoneVolcengineTtsAppId: "tts-app",
-    phoneVolcengineTtsAccessToken: "tts-token",
-    phoneVolcengineTtsVoiceType: "voice-a",
-  },
-  recorder: {
+const mocks = vi.hoisted(() => {
+  const recorderState = {
     isSupported: true,
     isRecording: false,
-    status: "idle",
+    status: "idle" as const,
     error: null as string | null,
-    startRecording: vi.fn(),
-    stopRecording: vi.fn(),
+  };
+  const speechRecognition = {
+    startListening: vi.fn(),
+    stopListening: vi.fn(),
+  };
+  const recorder = {
+    get isSupported() {
+      return recorderState.isSupported;
+    },
+    get isRecording() {
+      return recorderState.isRecording;
+    },
+    get status() {
+      return recorderState.status;
+    },
+    get error() {
+      return recorderState.error;
+    },
+    startRecording: vi.fn(async () => {
+      recorderState.isRecording = true;
+    }),
+    stopRecording: vi.fn(async () => {
+      recorderState.isRecording = false;
+      return new Blob(["wav"], { type: "audio/wav" });
+    }),
     setProcessing: vi.fn(),
-  },
-  api: {
-    getProjectSessions: vi.fn(),
-    startVoiceSecretaryAudioCall: vi.fn(),
-    startVoiceSecretaryCall: vi.fn(),
-    getVoiceSecretarySessionStatus: vi.fn(),
-  },
-}));
+  };
+  return {
+    projects: [
+      {
+        id: "project-1",
+        name: "AgentLine",
+        path: "/tmp/agentline",
+        lastActivity: "2026-04-28T00:00:00.000Z",
+      },
+    ],
+    settings: {
+      phoneTalkerProvider: "custom-api",
+      phoneTalkerModel: "deepseek-v4-flash",
+      phoneVolcengineAsrAppId: "asr-app",
+      phoneVolcengineAsrAccessToken: "asr-token",
+      phoneVolcengineTtsAppId: "tts-app",
+      phoneVolcengineTtsAccessToken: "tts-token",
+      phoneVolcengineTtsVoiceType: "voice-a",
+    },
+    recorderState,
+    recorder,
+    speechRecognition,
+    api: {
+      getProjectSessions: vi.fn(),
+      startVoiceSecretaryAudioCall: vi.fn(),
+      startVoiceSecretaryCall: vi.fn(),
+      getVoiceSecretarySessionStatus: vi.fn(),
+    },
+  };
+});
 
 vi.mock("../../api/client", () => ({
   api: mocks.api,
@@ -79,25 +107,42 @@ vi.mock("../../hooks/useVoiceRecorder", () => ({
   useVoiceRecorder: () => mocks.recorder,
 }));
 
+vi.mock("../../hooks/useSpeechRecognition", () => ({
+  useSpeechRecognition: () => mocks.speechRecognition,
+}));
+
 describe("VoiceSecretaryPage", () => {
   const audioPlayMock = vi.fn().mockResolvedValue(undefined);
   const audioPauseMock = vi.fn();
 
   beforeEach(() => {
+    mocks.recorderState.isRecording = false;
+    mocks.recorderState.error = null;
+    mocks.recorder.startRecording.mockClear();
+    mocks.recorder.stopRecording.mockClear();
+    mocks.recorder.setProcessing.mockClear();
+    mocks.speechRecognition.startListening.mockClear();
+    mocks.speechRecognition.stopListening.mockClear();
     mocks.api.getProjectSessions.mockReset();
     mocks.api.startVoiceSecretaryAudioCall.mockReset();
     mocks.api.startVoiceSecretaryCall.mockReset();
     mocks.api.getVoiceSecretarySessionStatus.mockReset();
-    mocks.recorder.startRecording.mockReset();
-    mocks.recorder.stopRecording.mockReset();
-    mocks.recorder.setProcessing.mockReset();
-    mocks.recorder.isRecording = false;
-    mocks.recorder.error = null;
 
     mocks.api.getProjectSessions.mockResolvedValue({ sessions: [] });
+    mocks.api.getVoiceSecretarySessionStatus.mockResolvedValue({
+      snapshot: {
+        id: "voice-1",
+        startedAt: "2026-04-28T00:00:00.000Z",
+        updatedAt: "2026-04-28T00:00:00.000Z",
+        projectPath: "/tmp/agentline",
+        workerSessionId: "session-1",
+        workerProvider: "codex",
+        workerStatus: "running",
+      },
+    });
     mocks.api.startVoiceSecretaryAudioCall.mockResolvedValue({
-      transcript: "Help me understand what this project should do next.",
-      talkerText: "Talker final reply",
+      transcript: "项目现在怎么样？",
+      talkerText: "项目已经接通了实时语音链路。",
       audioBase64: "SUQz",
       audioContentType: "audio/mpeg",
       result: {
@@ -125,10 +170,10 @@ describe("VoiceSecretaryPage", () => {
         },
         plannerRequest: {
           id: "planner-request-1",
-          userIntent: "Help me understand what this project should do next.",
+          userIntent: "项目现在怎么样？",
           knownConstraints: [],
           missingInformation: [],
-          requestedOutcome: "plan",
+          requestedOutcome: "summary",
         },
         plannerResult: {
           id: "planner-result-1",
@@ -161,22 +206,11 @@ describe("VoiceSecretaryPage", () => {
           verification: ["Verified"],
         },
         finalBrief: {
-          spokenSummary: "Talker final reply",
-          suggestedNextUtterance: "Ask next",
+          spokenSummary: "项目已经接通了实时语音链路。",
+          suggestedNextUtterance: "继续追问",
           factsToAvoidOverstating: [],
-          questionsToAsk: ["Ask next"],
+          questionsToAsk: [],
         },
-      },
-    });
-    mocks.api.getVoiceSecretarySessionStatus.mockResolvedValue({
-      snapshot: {
-        id: "voice-1",
-        startedAt: "2026-04-28T00:00:00.000Z",
-        updatedAt: "2026-04-28T00:00:00.000Z",
-        projectPath: "/tmp/agentline",
-        workerSessionId: "session-1",
-        workerProvider: "codex",
-        workerStatus: "running",
       },
     });
 
@@ -204,11 +238,7 @@ describe("VoiceSecretaryPage", () => {
     vi.clearAllMocks();
   });
 
-  it("submits recorded audio to the Volcengine-backed route and plays the reply", async () => {
-    const audioBlob = new Blob(["wav"], { type: "audio/wav" });
-    mocks.recorder.isRecording = true;
-    mocks.recorder.stopRecording.mockResolvedValue(audioBlob);
-
+  it("submits recorded audio and plays the synthesized reply", async () => {
     render(
       <MemoryRouter>
         <VoiceSecretaryPage />
@@ -220,19 +250,39 @@ describe("VoiceSecretaryPage", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Start live call" }));
-    fireEvent.click(screen.getByRole("button", { name: "Stop recording" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Record one utterance" }),
+    );
 
     await waitFor(() => {
-      expect(mocks.api.startVoiceSecretaryAudioCall).toHaveBeenCalledWith({
-        voiceSessionId: expect.any(String),
-        projectPath: "/tmp/agentline",
-        conversationSessionId: undefined,
-        conversationProvider: undefined,
-        audio: audioBlob,
-      });
+      expect(mocks.recorder.startRecording).toHaveBeenCalled();
+      expect(mocks.speechRecognition.startListening).toHaveBeenCalled();
     });
 
+    fireEvent.click(
+      screen.getByRole("button", { name: "Send this utterance" }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.recorder.stopRecording).toHaveBeenCalled();
+      expect(mocks.speechRecognition.stopListening).toHaveBeenCalled();
+      expect(mocks.api.startVoiceSecretaryAudioCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          voiceSessionId: expect.any(String),
+          projectPath: "/tmp/agentline",
+          conversationSessionId: undefined,
+          conversationProvider: undefined,
+          audio: expect.any(Blob),
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("项目现在怎么样？").length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText("项目已经接通了实时语音链路。").length,
+      ).toBeGreaterThan(0);
+    });
     expect(audioPlayMock).toHaveBeenCalledTimes(1);
-    expect(screen.getAllByText("Talker final reply").length).toBeGreaterThan(0);
   });
 });
