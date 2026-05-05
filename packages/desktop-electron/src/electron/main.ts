@@ -16,14 +16,20 @@ const __dirname = path.dirname(__filename);
 const packageRoot = path.resolve(__dirname, "../..");
 const repoRoot = path.resolve(packageRoot, "../..");
 
-const DASHBOARD_URL = "http://localhost:3400";
+const DASHBOARD_PORT = 3400;
+const DASHBOARD_URL = `http://localhost:${DASHBOARD_PORT}`;
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
+const runtimeRoot = path.join(process.resourcesPath, "runtime", "agentline");
+
 const serverManager = new ServerManager({
   repoRoot,
-  port: 3400,
+  runtimeRoot,
+  packaged: app.isPackaged,
+  dataDir: path.join(app.getPath("userData"), "agentline-data"),
+  port: DASHBOARD_PORT,
 });
 
 const broadcastStatus = (status: ServerStatus): void => {

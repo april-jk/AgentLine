@@ -3,7 +3,14 @@
     "name": "AgentLine Mobile",
     "slug": "agentline-mobile-rn",
     "version": "0.1.0",
+    "scheme": "agentline-mobile",
     "orientation": "portrait",
+    "ios": {
+      "bundleIdentifier": "com.agentline.mobile.rn"
+    },
+    "android": {
+      "package": "com.agentline.mobile.rn"
+    },
     "platforms": ["ios", "android"],
     "assetBundlePatterns": ["**/*"]
   }

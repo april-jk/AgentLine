@@ -9,12 +9,17 @@
     "build": "pnpm run build:renderer && pnpm run build:electron",
     "build:renderer": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
-    "start": "pnpm run build && pnpm exec electron ."
+    "start": "pnpm run build && pnpm exec electron .",
+    "dist:dir": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --dir",
+    "dist:mac": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --mac dmg zip",
+    "dist:win": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --win nsis portable",
+    "dist:linux": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --linux AppImage deb"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -22,7 +27,32 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.6.0",
     "electron": "^31.7.7",
+    "electron-builder": "^25.1.8",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"
+  },
+  "build": {
+    "appId": "com.agentline.desktop.electron",
+    "productName": "AgentLine Desktop",
+    "directories": {
+      "output": "release"
+    },
+    "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
+    "extraResources": [
+      {
+        "from": "runtime",
+        "to": "runtime",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
+    }
   }
 }

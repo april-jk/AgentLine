@@ -186,7 +186,7 @@ export interface SidebarNavItemProps {
   /** Route path to navigate to */
   to: string;
   /** Icon to display (use SidebarIcons or custom ReactNode) */
-  icon: ReactNode;
+  icon: any;
   /** Label text */
   label: string;
   /** Optional badge count (displays if > 0) */

@@ -26,11 +26,17 @@ type ManagedChildProcess = ChildProcessByStdio<null, Readable, Readable>;
 
 interface ServerManagerOptions {
   repoRoot: string;
+  runtimeRoot?: string;
+  dataDir: string;
+  packaged: boolean;
   port?: number;
 }
 
 export class ServerManager extends EventEmitter {
   private readonly repoRoot: string;
+  private readonly runtimeRoot: string | null;
+  private readonly dataDir: string;
+  private readonly packaged: boolean;
   private readonly port: number;
   private child: ManagedChildProcess | null = null;
   private status: ServerStatus;
@@ -38,6 +44,9 @@ export class ServerManager extends EventEmitter {
   constructor(options: ServerManagerOptions) {
     super();
     this.repoRoot = options.repoRoot;
+    this.runtimeRoot = options.runtimeRoot ?? null;
+    this.dataDir = options.dataDir;
+    this.packaged = options.packaged;
     this.port = options.port ?? SERVER_PORT;
     this.status = {
       state: "stopped",
@@ -55,10 +64,12 @@ export class ServerManager extends EventEmitter {
       return this.getStatus();
     }
 
-    const serverEntry = path.join(
-      this.repoRoot,
-      "packages/server/dist/index.js",
-    );
+    const serverEntry = this.packaged
+      ? path.join(this.runtimeRoot ?? "", "dist/index.js")
+      : path.join(this.repoRoot, "packages/server/dist/index.js");
+    const workingDir = this.packaged
+      ? (this.runtimeRoot ?? this.repoRoot)
+      : this.repoRoot;
 
     try {
       await access(serverEntry);
@@ -80,10 +91,12 @@ export class ServerManager extends EventEmitter {
     });
 
     const child: ManagedChildProcess = spawn(process.execPath, [serverEntry], {
-      cwd: this.repoRoot,
+      cwd: workingDir,
       env: {
         ...process.env,
         PORT: String(this.port),
+        AGENTLINE_DATA_DIR: this.dataDir,
+        ...(this.packaged ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
