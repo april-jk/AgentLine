@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "AgentLine Mobile",
+    "slug": "agentline-mobile-rn",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android"],
+    "assetBundlePatterns": ["**/*"]
+  }
+}
