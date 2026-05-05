@@ -151,6 +151,15 @@ function summarizeWorkerLiveUpdate(
     : `${spoken.replace(/[。！？!?]+$/u, "")}，我继续帮你盯着。`;
 }
 
+function normalizeWorkerSessionId(
+  workerSessionId: string | undefined,
+): string | undefined {
+  if (!workerSessionId || workerSessionId === "speaker-direct") {
+    return undefined;
+  }
+  return workerSessionId;
+}
+
 function ConversationBubbles({
   turns,
 }: {
@@ -202,6 +211,10 @@ function VoiceSecretaryResultView({
   const sessionLink = result.executorReport.links?.[0]?.href;
   const task = result.plannerResult.executionTask;
   const voiceSession = result.voiceSession;
+  const boundWorkerSessionId = normalizeWorkerSessionId(
+    voiceSession.workerSessionId,
+  );
+  const hasBoundWorker = Boolean(boundWorkerSessionId);
   const turns = buildResultConversationTurns(result);
   const showCallbackBlock =
     showConversation || result.finalBrief.questionsToAsk.length > 0;
@@ -215,11 +228,13 @@ function VoiceSecretaryResultView({
         </div>
         <div>
           <span className="voice-kicker">Project expert</span>
-          <strong>{voiceSession.workerSessionId ?? "Not bound yet"}</strong>
+          <strong>{boundWorkerSessionId ?? "Not bound yet"}</strong>
         </div>
         <div>
           <span className="voice-kicker">Worker provider</span>
-          <strong>{voiceSession.workerProvider ?? "None"}</strong>
+          <strong>
+            {hasBoundWorker ? (voiceSession.workerProvider ?? "None") : "None"}
+          </strong>
         </div>
         <StatusBadge status={voiceSession.workerStatus} />
       </div>
@@ -260,15 +275,14 @@ function VoiceSecretaryResultView({
           <div className="voice-grid voice-grid-compact">
             <div>
               <span className="voice-kicker">Bound worker</span>
-              <strong>
-                {voiceSession.workerSessionId ??
-                  result.executorReport.providerSessionId}
-              </strong>
+              <strong>{boundWorkerSessionId ?? "Not bound yet"}</strong>
             </div>
             <div>
               <span className="voice-kicker">Latest worker message</span>
               <strong>
-                {voiceSession.latestWorkerMessage ? "Available" : "None yet"}
+                {hasBoundWorker && voiceSession.latestWorkerMessage
+                  ? "Available"
+                  : "None yet"}
               </strong>
             </div>
           </div>
@@ -623,7 +637,16 @@ export function VoiceSecretaryPage() {
   }, [stopTalkerTextPump]);
 
   useEffect(() => {
-    if (!isCallActive || !voiceSessionId || !hasServerVoiceSession) return;
+    const activeWorkerSessionId = normalizeWorkerSessionId(
+      result?.voiceSession.workerSessionId,
+    );
+    const shouldPoll =
+      isCallActive &&
+      Boolean(voiceSessionId) &&
+      hasServerVoiceSession &&
+      Boolean(activeWorkerSessionId) &&
+      result?.voiceSession.workerStatus !== "idle";
+    if (!shouldPoll) return;
     let cancelled = false;
     const poll = async () => {
       try {
@@ -645,8 +668,11 @@ export function VoiceSecretaryPage() {
           lastWorkerUpdateKeyRef.current = `${status.hook.id}:${status.hook.text}`;
           return;
         }
+        const normalizedWorkerSessionId = normalizeWorkerSessionId(
+          status.snapshot.workerSessionId,
+        );
         if (
-          !status.snapshot.workerSessionId ||
+          !normalizedWorkerSessionId ||
           status.snapshot.workerStatus === "idle"
         ) {
           return;
@@ -681,7 +707,14 @@ export function VoiceSecretaryPage() {
       cancelled = true;
       window.clearInterval(handle);
     };
-  }, [appendLiveTurn, hasServerVoiceSession, isCallActive, voiceSessionId]);
+  }, [
+    appendLiveTurn,
+    hasServerVoiceSession,
+    isCallActive,
+    result?.voiceSession.workerSessionId,
+    result?.voiceSession.workerStatus,
+    voiceSessionId,
+  ]);
 
   const playAudioReply = useCallback(
     async (audioBase64: string, contentType: string) => {

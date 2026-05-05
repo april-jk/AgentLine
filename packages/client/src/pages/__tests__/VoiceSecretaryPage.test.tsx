@@ -699,4 +699,88 @@ describe("VoiceSecretaryPage", () => {
     expect(screen.getAllByText("这是项目的基础介绍。")).toHaveLength(1);
     expect(screen.queryByText(/前端实时字幕用 Web Speech API 预览/)).toBeNull();
   });
+
+  it("treats speaker-direct results as unbound worker state and skips status polling", async () => {
+    mocks.api.startVoiceSecretaryCall.mockResolvedValueOnce({
+      result: {
+        callSession: {
+          id: "call-typed-direct-panel",
+          voiceSessionId: "voice-typed-direct-panel",
+          channel: "web-voice",
+          status: "waiting_for_user",
+          workerStatus: "idle",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          transcript: [],
+          plannerRuns: [],
+          callbackRequests: [],
+        },
+        voiceSession: {
+          id: "voice-typed-direct-panel",
+          startedAt: "2026-04-28T00:00:00.000Z",
+          updatedAt: "2026-04-28T00:00:00.000Z",
+          projectPath: "/tmp/agentline",
+          workerStatus: "idle",
+          latestWorkerMessage: "旧的历史 worker 信息",
+          speakerProjectSummary: "Project summary",
+        },
+        plannerRequest: {
+          id: "planner-request-direct-panel",
+          userIntent: "最近一次代码提交是什么？",
+          knownConstraints: [],
+          missingInformation: [],
+          requestedOutcome: "answer",
+        },
+        plannerResult: {
+          id: "planner-result-direct-panel",
+          projectSummary: "Project summary",
+          relevantInstructions: [],
+          recommendedAction: "answer_directly",
+          talkerBrief: {
+            spokenSummary: "最近一次提交是 abc123。",
+            suggestedNextUtterance: "要我继续展开这次提交吗？",
+            factsToAvoidOverstating: [],
+            questionsToAsk: [],
+          },
+        },
+        executorReport: {
+          executionTaskId: "speaker-direct",
+          providerSessionId: "speaker-direct",
+          status: "completed",
+          summary: "Speaker 直接回答了当前问题。",
+          changedFiles: [],
+          verification: ["No worker handoff"],
+        },
+        finalBrief: {
+          spokenSummary: "最近一次提交是 abc123。",
+          suggestedNextUtterance: "要我继续展开这次提交吗？",
+          factsToAvoidOverstating: [],
+          questionsToAsk: [],
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <VoiceSecretaryPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mocks.api.getProjectSessions).toHaveBeenCalledWith("project-1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Start live call" }));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "最近一次代码提交是什么？" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send typed turn" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("最近一次提交是 abc123。")).toBeTruthy();
+    });
+
+    expect(screen.getAllByText("Not bound yet").length).toBeGreaterThan(0);
+    expect(screen.getByText("None yet")).toBeTruthy();
+    expect(mocks.api.getVoiceSecretarySessionStatus).not.toHaveBeenCalled();
+  });
 });
