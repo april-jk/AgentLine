@@ -96,7 +96,7 @@ export class ServerManager extends EventEmitter {
         ...process.env,
         PORT: String(this.port),
         AGENTLINE_DATA_DIR: this.dataDir,
-        ...(this.packaged ? { NODE_ENV: "production" } : {}),
+        NODE_ENV: "production",
         ...(this.packaged ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
