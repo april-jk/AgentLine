@@ -1,3 +1,4 @@
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -7,9 +8,12 @@ import {
   app,
   ipcMain,
   nativeImage,
-  shell,
 } from "electron";
-import { ServerManager, type ServerStatus } from "./serverManager.js";
+import {
+  ServerManager,
+  type ControlPlaneConfig,
+  type ServerStatus,
+} from "./serverManager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +35,33 @@ interface ServerRuntimeState {
   recovering: boolean;
 }
 
+interface DesktopControlPlaneConfig extends ControlPlaneConfig {
+  lastEmail?: string;
+}
+
+interface DesktopAppConfig {
+  controlPlane?: DesktopControlPlaneConfig;
+}
+
+interface ControlPlaneLoginPayload {
+  baseUrl: string;
+  email: string;
+  password: string;
+  relayWsUrl?: string;
+}
+
+interface ControlPlaneLoginResponse {
+  accessToken: string;
+  expiresAt: string;
+}
+
+interface ControlPlanePublicConfig {
+  baseUrl?: string;
+  relayWsUrl?: string;
+  lastEmail?: string;
+  hasAccessToken: boolean;
+}
+
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
@@ -43,6 +74,42 @@ let lastRecoverReason: string | undefined;
 let lastRecoverError: string | undefined;
 
 const runtimeRoot = path.join(process.resourcesPath, "runtime", "agentline");
+const desktopConfigPath = path.join(app.getPath("userData"), "desktop-config.json");
+
+let desktopConfig: DesktopAppConfig = {};
+
+const deriveRelayWsUrl = (baseUrl: string): string => {
+  const url = new URL(baseUrl);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/ws";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+};
+
+const normalizeHttpUrl = (urlInput: string): string =>
+  urlInput.trim().replace(/\/+$/, "");
+
+const getControlPlanePublicConfig = (): ControlPlanePublicConfig => ({
+  baseUrl: desktopConfig.controlPlane?.baseUrl,
+  relayWsUrl: desktopConfig.controlPlane?.relayWsUrl,
+  lastEmail: desktopConfig.controlPlane?.lastEmail,
+  hasAccessToken: Boolean(desktopConfig.controlPlane?.accessToken),
+});
+
+const loadDesktopConfig = async (): Promise<void> => {
+  try {
+    const raw = await readFile(desktopConfigPath, "utf-8");
+    const parsed = JSON.parse(raw) as DesktopAppConfig;
+    desktopConfig = parsed ?? {};
+  } catch {
+    desktopConfig = {};
+  }
+};
+
+const saveDesktopConfig = async (): Promise<void> => {
+  await writeFile(desktopConfigPath, JSON.stringify(desktopConfig, null, 2), "utf-8");
+};
 
 const serverManager = new ServerManager({
   repoRoot,
@@ -50,6 +117,7 @@ const serverManager = new ServerManager({
   packaged: app.isPackaged,
   dataDir: path.join(app.getPath("userData"), "agentline-data"),
   port: DASHBOARD_PORT,
+  controlPlane: desktopConfig.controlPlane,
 });
 
 const broadcastStatus = (status: ServerStatus): void => {
@@ -80,6 +148,83 @@ const getRuntimeState = async (): Promise<ServerRuntimeState> => ({
   lastRecoverError,
   recovering: recoverInFlight,
 });
+
+const fetchControlPlaneBridgeStatus = async (): Promise<unknown> => {
+  if (!(await isDashboardReachable())) {
+    return {
+      enabled: false,
+      running: false,
+      pausedReason: "backend_unreachable",
+      consecutiveFailures: 0,
+    };
+  }
+
+  const response = await fetch(
+    `${DASHBOARD_URL}/api/remote-access/control-plane/status`,
+    {
+      signal: AbortSignal.timeout(2000),
+      headers: {
+        "x-agentline-api": "desktop-electron",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    return {
+      enabled: false,
+      running: false,
+      pausedReason: `status_${response.status}`,
+      consecutiveFailures: 0,
+    };
+  }
+
+  return (await response.json()) as unknown;
+};
+
+const loginToControlPlane = async (
+  payload: ControlPlaneLoginPayload,
+): Promise<ControlPlanePublicConfig> => {
+  const baseUrl = normalizeHttpUrl(payload.baseUrl);
+  const relayWsUrl =
+    payload.relayWsUrl && payload.relayWsUrl.trim().length > 0
+      ? payload.relayWsUrl.trim()
+      : deriveRelayWsUrl(baseUrl);
+
+  const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: payload.email.trim(),
+      password: payload.password,
+    }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) {
+    let message = `login_failed_${response.status}`;
+    try {
+      const data = (await response.json()) as { error?: string };
+      if (data.error) {
+        message = data.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  const data = (await response.json()) as ControlPlaneLoginResponse;
+  desktopConfig.controlPlane = {
+    baseUrl,
+    relayWsUrl,
+    accessToken: data.accessToken,
+    lastEmail: payload.email.trim(),
+    deviceType: "desktop-electron",
+  };
+  await saveDesktopConfig();
+  serverManager.updateControlPlaneConfig(desktopConfig.controlPlane);
+  await serverManager.restart();
+  return getControlPlanePublicConfig();
+};
 
 const waitForDashboard = async (): Promise<boolean> => {
   const maxAttempts = 40;
@@ -130,6 +275,22 @@ const tryAttachDashboard = async (): Promise<void> => {
   }
 
   await mainWindow.loadURL(DASHBOARD_URL);
+};
+
+const openMainProgram = async (): Promise<void> => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    await createWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+  mainWindow.focus();
+  await tryAttachDashboard();
 };
 
 const recoverServer = async (reason: string): Promise<void> => {
@@ -199,11 +360,21 @@ const createWindow = async (): Promise<void> => {
 };
 
 const createTray = (): void => {
-  const image = nativeImage
-    .createFromDataURL(
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAKUlEQVR42mP8//8/Azbw////JxJQ0f///5mBiYGBQYEwGoaGhoZA1AAAwQwH+bgvi7wAAAABJRU5ErkJggg==",
-    )
-    .resize({ width: 16, height: 16 });
+  const trayIconPath = path.join(
+    packageRoot,
+    "runtime",
+    "agentline",
+    "client-dist",
+    "icon-192.png",
+  );
+  const imageFromFile = nativeImage.createFromPath(trayIconPath);
+  const image = imageFromFile.isEmpty()
+    ? nativeImage
+        .createFromDataURL(
+          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAKUlEQVR42mP8//8/Azbw////JxJQ0f///5mBiYGBQYEwGoaGhoZA1AAAwQwH+bgvi7wAAAABJRU5ErkJggg==",
+        )
+        .resize({ width: 16, height: 16 })
+    : imageFromFile.resize({ width: 16, height: 16 });
 
   tray = new Tray(image);
   tray.setToolTip("AgentLine Desktop Electron");
@@ -212,7 +383,7 @@ const createTray = (): void => {
     {
       label: "Open Dashboard",
       click: () => {
-        void shell.openExternal(DASHBOARD_URL);
+        void openMainProgram();
       },
     },
     {
@@ -232,12 +403,7 @@ const createTray = (): void => {
 
   tray.setContextMenu(contextMenu);
   tray.on("double-click", () => {
-    if (!mainWindow) {
-      void createWindow();
-      return;
-    }
-    mainWindow.show();
-    mainWindow.focus();
+    void openMainProgram();
   });
 };
 
@@ -248,11 +414,27 @@ const registerIpcHandlers = (): void => {
   ipcMain.handle("server:stop", () => serverManager.stop());
   ipcMain.handle("server:restart", () => serverManager.restart());
   ipcMain.handle("server:open-dashboard", async () => {
-    await shell.openExternal(DASHBOARD_URL);
+    await openMainProgram();
+  });
+  ipcMain.handle("control-plane:get-config", () => getControlPlanePublicConfig());
+  ipcMain.handle("control-plane:get-status", () => fetchControlPlaneBridgeStatus());
+  ipcMain.handle(
+    "control-plane:login",
+    async (_event, payload: ControlPlaneLoginPayload) =>
+      loginToControlPlane(payload),
+  );
+  ipcMain.handle("control-plane:clear", async () => {
+    desktopConfig.controlPlane = undefined;
+    await saveDesktopConfig();
+    serverManager.updateControlPlaneConfig({});
+    await serverManager.restart();
+    return getControlPlanePublicConfig();
   });
 };
 
 app.whenReady().then(async () => {
+  await loadDesktopConfig();
+  serverManager.updateControlPlaneConfig(desktopConfig.controlPlane ?? {});
   registerIpcHandlers();
   serverManager.on("status", (status) => {
     broadcastStatus(status);

@@ -58,6 +58,7 @@ import { RealClaudeSDK } from "./sdk/real.js";
 import {
   BrowserProfileService,
   ConnectedBrowsersService,
+  ControlPlaneBridgeService,
   InstallService,
   ModelInfoService,
   NetworkBindingService,
@@ -113,6 +114,7 @@ let supervisorForShutdown:
   | Awaited<ReturnType<typeof createApp>>["supervisor"]
   | null = null;
 let deviceBridgeForShutdown: DeviceBridgeService | null = null;
+let controlPlaneBridgeForShutdown: ControlPlaneBridgeService | null = null;
 let isShuttingDown = false;
 
 /**
@@ -158,6 +160,11 @@ async function gracefulShutdown(signal: string): Promise<void> {
     } catch (error) {
       console.error("[Shutdown] Error shutting down emulator bridge:", error);
     }
+  }
+
+  if (controlPlaneBridgeForShutdown) {
+    controlPlaneBridgeForShutdown.stop();
+    console.log("[Shutdown] Control-plane bridge stopped");
   }
 
   closeCodexCorrelationDebugLogger();
@@ -454,6 +461,23 @@ async function startServer() {
 
   // Callback holder for relay config changes - will be set after app creation
   const relayConfigCallbackHolder: { callback?: () => Promise<void> } = {};
+  const controlPlaneRelayRefreshHolder: { callback?: () => Promise<void> } = {};
+
+  const controlPlaneBridgeService = new ControlPlaneBridgeService({
+    config: {
+      baseUrl: config.controlPlaneBaseUrl,
+      accessToken: config.controlPlaneAccessToken,
+      relayUrl: config.controlPlaneRelayWsUrl,
+      installId: installService.getInstallId(),
+      deviceName:
+        config.controlPlaneDeviceName ?? `${os.hostname()} (${os.platform()})`,
+      deviceType: config.controlPlaneDeviceType,
+      heartbeatIntervalMs: config.controlPlaneHeartbeatIntervalMs,
+    },
+    remoteAccessService,
+    onRelayConfigChanged: () =>
+      controlPlaneRelayRefreshHolder.callback?.() ?? Promise.resolve(),
+  });
 
   // Callback holder for network binding changes - will be set after servers are created
   const networkBindingCallbackHolder: {
@@ -518,6 +542,7 @@ async function startServer() {
     remoteAccessService,
     remoteSessionService,
     relayClientService,
+    controlPlaneBridgeService,
     relayConfigCallbackHolder,
     // Note: frontendProxy not passed - will be added below
     serverHost: "127.0.0.1", // Always report localhost as main binding
@@ -550,6 +575,7 @@ async function startServer() {
   // Set service references for graceful shutdown
   supervisorForShutdown = supervisor;
   deviceBridgeForShutdown = deviceBridgeService ?? null;
+  controlPlaneBridgeForShutdown = controlPlaneBridgeService;
 
   // Set up debug context for maintenance server
   setDebugContext({
@@ -651,9 +677,11 @@ async function startServer() {
 
   // Wire up the callback for relay config changes from API routes
   relayConfigCallbackHolder.callback = updateRelayConnection;
+  controlPlaneRelayRefreshHolder.callback = updateRelayConnection;
 
   // Start relay connection on boot if configured
   await updateRelayConnection();
+  await controlPlaneBridgeService.start();
 
   // Serve stable (emergency) UI from /_stable/ path if available
   // This bypasses HMR and serves pre-built assets directly

@@ -122,6 +122,18 @@ export interface Config {
   httpsSelfSigned: boolean;
   /** Desktop auth token for Tauri app. Requests with matching X-Desktop-Token header bypass auth. */
   desktopAuthToken?: string;
+  /** Optional relay control-plane base URL for account/device registration */
+  controlPlaneBaseUrl?: string;
+  /** Optional relay control-plane bearer token */
+  controlPlaneAccessToken?: string;
+  /** Optional relay websocket URL used after fetching relay username */
+  controlPlaneRelayWsUrl?: string;
+  /** Optional device display name for control-plane registration */
+  controlPlaneDeviceName?: string;
+  /** Device type label for control-plane registration */
+  controlPlaneDeviceType: string;
+  /** Heartbeat interval for control-plane device keepalive */
+  controlPlaneHeartbeatIntervalMs: number;
 }
 
 /**
@@ -273,6 +285,19 @@ export function loadConfig(): Config {
     openBrowser: process.env.OPEN_BROWSER === "true",
     httpsSelfSigned: process.env.HTTPS_SELF_SIGNED === "true",
     desktopAuthToken: process.env.DESKTOP_AUTH_TOKEN || undefined,
+    controlPlaneBaseUrl: process.env.CONTROL_PLANE_BASE_URL || undefined,
+    controlPlaneAccessToken:
+      process.env.CONTROL_PLANE_ACCESS_TOKEN || undefined,
+    controlPlaneRelayWsUrl:
+      process.env.CONTROL_PLANE_RELAY_WS_URL || undefined,
+    controlPlaneDeviceName:
+      process.env.CONTROL_PLANE_DEVICE_NAME || undefined,
+    controlPlaneDeviceType:
+      process.env.CONTROL_PLANE_DEVICE_TYPE || "desktop-electron",
+    controlPlaneHeartbeatIntervalMs: Math.max(
+      10_000,
+      parseIntOrDefault(process.env.CONTROL_PLANE_HEARTBEAT_INTERVAL_MS, 30_000),
+    ),
   };
 }
 

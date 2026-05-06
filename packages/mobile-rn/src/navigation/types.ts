@@ -1,5 +1,5 @@
 export type RootStackParamList = {
   Login: undefined;
   HostList: undefined;
-  Session: { hostId: string };
+  Session: { hostId: string; relayUsername: string; hostName: string };
 };

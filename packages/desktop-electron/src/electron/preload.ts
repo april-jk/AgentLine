@@ -10,6 +10,20 @@ interface ServerRuntimeState {
   recovering: boolean;
 }
 
+interface ControlPlanePublicConfig {
+  baseUrl?: string;
+  relayWsUrl?: string;
+  lastEmail?: string;
+  hasAccessToken: boolean;
+}
+
+interface ControlPlaneLoginPayload {
+  baseUrl: string;
+  email: string;
+  password: string;
+  relayWsUrl?: string;
+}
+
 const api = {
   getServerStatus: (): Promise<ServerStatus> =>
     ipcRenderer.invoke("server:get-status"),
@@ -21,6 +35,16 @@ const api = {
     ipcRenderer.invoke("server:restart"),
   openDashboard: (): Promise<void> =>
     ipcRenderer.invoke("server:open-dashboard"),
+  getControlPlaneConfig: (): Promise<ControlPlanePublicConfig> =>
+    ipcRenderer.invoke("control-plane:get-config"),
+  getControlPlaneStatus: (): Promise<unknown> =>
+    ipcRenderer.invoke("control-plane:get-status"),
+  loginControlPlane: (
+    payload: ControlPlaneLoginPayload,
+  ): Promise<ControlPlanePublicConfig> =>
+    ipcRenderer.invoke("control-plane:login", payload),
+  clearControlPlane: (): Promise<ControlPlanePublicConfig> =>
+    ipcRenderer.invoke("control-plane:clear"),
   onServerStatusChange: (
     listener: (status: ServerStatus) => void,
   ): (() => void) => {

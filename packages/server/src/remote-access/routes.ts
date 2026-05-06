@@ -4,6 +4,7 @@
 
 import { Hono } from "hono";
 import type { RelayClientService } from "../services/RelayClientService.js";
+import type { ControlPlaneBridgeService } from "../services/ControlPlaneBridgeService.js";
 import type { RemoteAccessService } from "./RemoteAccessService.js";
 import type { RemoteSessionService } from "./RemoteSessionService.js";
 
@@ -13,6 +14,8 @@ export interface RemoteAccessRoutesOptions {
   remoteSessionService?: RemoteSessionService;
   /** Optional relay client service for status reporting */
   relayClientService?: RelayClientService;
+  /** Optional control-plane bridge service for account/device automation */
+  controlPlaneBridgeService?: ControlPlaneBridgeService;
   /** Callback to update relay connection when config changes */
   onRelayConfigChanged?: () => Promise<void>;
 }
@@ -24,6 +27,7 @@ export function createRemoteAccessRoutes(
     remoteAccessService,
     remoteSessionService,
     relayClientService,
+    controlPlaneBridgeService,
     onRelayConfigChanged,
   } = options;
   const app = new Hono();
@@ -245,6 +249,34 @@ export function createRemoteAccessRoutes(
       error: state.error ?? null,
       reconnectAttempts: state.reconnectAttempts,
     });
+  });
+
+  /**
+   * GET /api/remote-access/control-plane/status
+   * Get control-plane bridge status (desktop auto register/heartbeat).
+   */
+  app.get("/control-plane/status", (c) => {
+    if (!controlPlaneBridgeService) {
+      return c.json({
+        enabled: false,
+        running: false,
+        pausedReason: "unavailable",
+        consecutiveFailures: 0,
+      });
+    }
+    return c.json(controlPlaneBridgeService.getState());
+  });
+
+  /**
+   * POST /api/remote-access/control-plane/sync
+   * Trigger an immediate control-plane sync cycle.
+   */
+  app.post("/control-plane/sync", async (c) => {
+    if (!controlPlaneBridgeService) {
+      return c.json({ error: "control_plane_bridge_unavailable" }, 503);
+    }
+    const state = await controlPlaneBridgeService.syncNow();
+    return c.json(state);
   });
 
   /**

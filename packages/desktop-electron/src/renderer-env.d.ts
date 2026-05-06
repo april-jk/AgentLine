@@ -19,6 +19,20 @@ interface ServerRuntimeState {
   recovering: boolean;
 }
 
+interface ControlPlanePublicConfig {
+  baseUrl?: string;
+  relayWsUrl?: string;
+  lastEmail?: string;
+  hasAccessToken: boolean;
+}
+
+interface ControlPlaneLoginPayload {
+  baseUrl: string;
+  email: string;
+  password: string;
+  relayWsUrl?: string;
+}
+
 interface DesktopApi {
   getServerStatus: () => Promise<ServerStatus>;
   getServerRuntimeState: () => Promise<ServerRuntimeState>;
@@ -26,6 +40,12 @@ interface DesktopApi {
   stopServer: () => Promise<ServerStatus>;
   restartServer: () => Promise<ServerStatus>;
   openDashboard: () => Promise<void>;
+  getControlPlaneConfig: () => Promise<ControlPlanePublicConfig>;
+  getControlPlaneStatus: () => Promise<unknown>;
+  loginControlPlane: (
+    payload: ControlPlaneLoginPayload,
+  ) => Promise<ControlPlanePublicConfig>;
+  clearControlPlane: () => Promise<ControlPlanePublicConfig>;
   onServerStatusChange: (listener: (status: ServerStatus) => void) => () => void;
 }
 

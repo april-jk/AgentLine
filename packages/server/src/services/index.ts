@@ -12,6 +12,13 @@ export {
 } from "./RelayClientService.js";
 
 export {
+  ControlPlaneBridgeService,
+  type ControlPlaneBridgeConfig,
+  type ControlPlaneBridgeState,
+  type ControlPlaneBridgeServiceOptions,
+} from "./ControlPlaneBridgeService.js";
+
+export {
   NetworkBindingService,
   type NetworkBindingServiceOptions,
   type NetworkBindingState,

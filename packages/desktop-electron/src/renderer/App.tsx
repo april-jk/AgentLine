@@ -19,6 +19,18 @@ interface ServerRuntimeState {
   recovering: boolean;
 }
 
+interface ControlPlaneBridgeState {
+  enabled: boolean;
+  running: boolean;
+  pausedReason?: string;
+  deviceId?: string;
+  relayUsername?: string;
+  lastSyncAt?: string;
+  lastHeartbeatAt?: string;
+  lastError?: string;
+  consecutiveFailures: number;
+}
+
 const stateLabel: Record<ServerState, string> = {
   stopped: "Stopped",
   starting: "Starting",
@@ -39,6 +51,14 @@ export function App() {
   const desktopApi = window.desktopApi;
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [runtime, setRuntime] = useState<ServerRuntimeState | null>(null);
+  const [bridgeState, setBridgeState] = useState<ControlPlaneBridgeState | null>(
+    null,
+  );
+  const [controlPlaneBaseUrl, setControlPlaneBaseUrl] = useState("");
+  const [controlPlaneRelayWsUrl, setControlPlaneRelayWsUrl] = useState("");
+  const [controlPlaneEmail, setControlPlaneEmail] = useState("");
+  const [controlPlanePassword, setControlPlanePassword] = useState("");
+  const [controlPlaneConfigured, setControlPlaneConfigured] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,10 +71,31 @@ export function App() {
     }
 
     let mounted = true;
+    const loadControlPlane = async () => {
+      try {
+        const config = await desktopApi.getControlPlaneConfig();
+        const state =
+          (await desktopApi.getControlPlaneStatus()) as ControlPlaneBridgeState;
+        if (!mounted) {
+          return;
+        }
+        setControlPlaneBaseUrl(config.baseUrl ?? "");
+        setControlPlaneRelayWsUrl(config.relayWsUrl ?? "");
+        setControlPlaneEmail(config.lastEmail ?? "");
+        setControlPlaneConfigured(config.hasAccessToken);
+        setBridgeState(state);
+      } catch {
+        if (mounted) {
+          setBridgeState(null);
+        }
+      }
+    };
+
     const load = async () => {
       try {
         const currentStatus = await desktopApi.getServerStatus();
         const currentRuntime = await desktopApi.getServerRuntimeState();
+        await loadControlPlane();
         if (mounted) {
           setStatus(currentStatus);
           setRuntime(currentRuntime);
@@ -68,14 +109,19 @@ export function App() {
 
     void load();
     const runtimeTimer = setInterval(() => {
-      void desktopApi
-        .getServerRuntimeState()
-        .then((currentRuntime) => {
+      void (async () => {
+        try {
+          const currentRuntime = await desktopApi.getServerRuntimeState();
+          const currentBridgeState =
+            (await desktopApi.getControlPlaneStatus()) as ControlPlaneBridgeState;
           if (mounted) {
             setRuntime(currentRuntime);
+            setBridgeState(currentBridgeState);
           }
-        })
-        .catch(() => {});
+        } catch {
+          // ignore refresh errors
+        }
+      })();
     }, 3000);
 
     const unsubscribe = desktopApi.onServerStatusChange((nextStatus) => {
@@ -111,6 +157,47 @@ export function App() {
     }
   };
 
+  const runControlPlaneLogin = async () => {
+    if (!desktopApi) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const config = await desktopApi.loginControlPlane({
+        baseUrl: controlPlaneBaseUrl,
+        relayWsUrl: controlPlaneRelayWsUrl,
+        email: controlPlaneEmail,
+        password: controlPlanePassword,
+      });
+      setControlPlaneConfigured(config.hasAccessToken);
+      setControlPlanePassword("");
+      const nextState =
+        (await desktopApi.getControlPlaneStatus()) as ControlPlaneBridgeState;
+      setBridgeState(nextState);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Control-plane login failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runControlPlaneClear = async () => {
+    if (!desktopApi) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const config = await desktopApi.clearControlPlane();
+      setControlPlaneConfigured(config.hasAccessToken);
+      setControlPlanePassword("");
+      const nextState =
+        (await desktopApi.getControlPlaneStatus()) as ControlPlaneBridgeState;
+      setBridgeState(nextState);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Control-plane clear failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <main className="container">
       <h1>AgentLine Server Control</h1>
@@ -121,7 +208,7 @@ export function App() {
           />
           <strong>{statusText}</strong>
         </div>
-        <p>Dashboard URL: http://localhost:3400</p>
+        <p>Dashboard URL: http://127.0.0.1:{status?.port ?? 45731}</p>
         <p>PID: {status?.pid ?? "-"}</p>
         <p>Port: {status?.port ?? 3400}</p>
         <p>Message: {status?.message ?? "-"}</p>
@@ -136,6 +223,49 @@ export function App() {
         {status?.startedAt ? (
           <p>Started: {new Date(status.startedAt).toLocaleString()}</p>
         ) : null}
+      </section>
+
+      <section className="card">
+        <h2>Account Relay Bridge</h2>
+        <p>Control Plane Base URL</p>
+        <input
+          value={controlPlaneBaseUrl}
+          onChange={(event) => setControlPlaneBaseUrl(event.target.value)}
+          placeholder="http://127.0.0.1:4400"
+          disabled={busy}
+        />
+        <p>Relay WebSocket URL (optional)</p>
+        <input
+          value={controlPlaneRelayWsUrl}
+          onChange={(event) => setControlPlaneRelayWsUrl(event.target.value)}
+          placeholder="ws://127.0.0.1:4400/ws"
+          disabled={busy}
+        />
+        <p>Account Email</p>
+        <input
+          value={controlPlaneEmail}
+          onChange={(event) => setControlPlaneEmail(event.target.value)}
+          placeholder="you@example.com"
+          disabled={busy}
+        />
+        <p>Password</p>
+        <input
+          type="password"
+          value={controlPlanePassword}
+          onChange={(event) => setControlPlanePassword(event.target.value)}
+          placeholder="password"
+          disabled={busy}
+        />
+        <p>Configured: {controlPlaneConfigured ? "Yes" : "No"}</p>
+        <p>Bridge Enabled: {bridgeState?.enabled ? "Yes" : "No"}</p>
+        <p>Bridge Running: {bridgeState?.running ? "Yes" : "No"}</p>
+        <p>Relay Username: {bridgeState?.relayUsername ?? "-"}</p>
+        <p>Device ID: {bridgeState?.deviceId ?? "-"}</p>
+        <p>Last Sync: {bridgeState?.lastSyncAt ?? "-"}</p>
+        <p>Last Heartbeat: {bridgeState?.lastHeartbeatAt ?? "-"}</p>
+        <p>Paused Reason: {bridgeState?.pausedReason ?? "-"}</p>
+        <p>Last Error: {bridgeState?.lastError ?? "-"}</p>
+        <p>Failures: {bridgeState?.consecutiveFailures ?? 0}</p>
       </section>
 
       <section className="actions">
@@ -169,7 +299,13 @@ export function App() {
             }
           }}
         >
-          Open http://localhost:3400
+          Open Local Dashboard
+        </button>
+        <button type="button" disabled={busy} onClick={runControlPlaneLogin}>
+          Login Control Plane
+        </button>
+        <button type="button" disabled={busy} onClick={runControlPlaneClear}>
+          Clear Control Plane
         </button>
       </section>
 

@@ -30,6 +30,16 @@ interface ServerManagerOptions {
   dataDir: string;
   packaged: boolean;
   port?: number;
+  controlPlane?: ControlPlaneConfig;
+}
+
+export interface ControlPlaneConfig {
+  baseUrl?: string;
+  accessToken?: string;
+  relayWsUrl?: string;
+  deviceName?: string;
+  deviceType?: string;
+  heartbeatIntervalMs?: number;
 }
 
 export class ServerManager extends EventEmitter {
@@ -38,6 +48,7 @@ export class ServerManager extends EventEmitter {
   private readonly dataDir: string;
   private readonly packaged: boolean;
   private readonly port: number;
+  private controlPlane: ControlPlaneConfig;
   private child: ManagedChildProcess | null = null;
   private status: ServerStatus;
 
@@ -48,6 +59,7 @@ export class ServerManager extends EventEmitter {
     this.dataDir = options.dataDir;
     this.packaged = options.packaged;
     this.port = options.port ?? SERVER_PORT;
+    this.controlPlane = options.controlPlane ?? {};
     this.status = {
       state: "stopped",
       pid: null,
@@ -57,6 +69,14 @@ export class ServerManager extends EventEmitter {
 
   getStatus(): ServerStatus {
     return { ...this.status };
+  }
+
+  getControlPlaneConfig(): ControlPlaneConfig {
+    return { ...this.controlPlane };
+  }
+
+  updateControlPlaneConfig(next: ControlPlaneConfig): void {
+    this.controlPlane = { ...next };
   }
 
   async start(): Promise<ServerStatus> {
@@ -100,6 +120,28 @@ export class ServerManager extends EventEmitter {
         AGENTLINE_DATA_DIR: this.dataDir,
         NODE_ENV: "production",
         ...(this.packaged ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
+        ...(this.controlPlane.baseUrl
+          ? { CONTROL_PLANE_BASE_URL: this.controlPlane.baseUrl }
+          : {}),
+        ...(this.controlPlane.accessToken
+          ? { CONTROL_PLANE_ACCESS_TOKEN: this.controlPlane.accessToken }
+          : {}),
+        ...(this.controlPlane.relayWsUrl
+          ? { CONTROL_PLANE_RELAY_WS_URL: this.controlPlane.relayWsUrl }
+          : {}),
+        ...(this.controlPlane.deviceName
+          ? { CONTROL_PLANE_DEVICE_NAME: this.controlPlane.deviceName }
+          : {}),
+        ...(this.controlPlane.deviceType
+          ? { CONTROL_PLANE_DEVICE_TYPE: this.controlPlane.deviceType }
+          : {}),
+        ...(this.controlPlane.heartbeatIntervalMs
+          ? {
+              CONTROL_PLANE_HEARTBEAT_INTERVAL_MS: String(
+                this.controlPlane.heartbeatIntervalMs,
+              ),
+            }
+          : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });

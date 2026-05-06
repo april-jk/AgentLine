@@ -8,14 +8,14 @@ import type { RootStackParamList } from "../navigation/types";
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
 export function LoginScreen({ navigation }: Props) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const onLogin = async () => {
     try {
       setSubmitting(true);
-      const result = await apiClient.login({ username, password });
+      const result = await apiClient.login({ email, password });
       await setSecureItem(secureStorageKeys.accessToken, result.accessToken);
       navigation.replace("HostList");
     } catch (error) {
@@ -31,10 +31,11 @@ export function LoginScreen({ navigation }: Props) {
       <Text style={styles.title}>AgentLine Mobile</Text>
       <TextInput
         autoCapitalize="none"
-        placeholder="用户名"
+        keyboardType="email-address"
+        placeholder="邮箱"
         style={styles.input}
-        value={username}
-        onChangeText={setUsername}
+        value={email}
+        onChangeText={setEmail}
       />
       <TextInput
         secureTextEntry
