@@ -22,6 +22,9 @@ const DASHBOARD_HEALTH_URL = `${DASHBOARD_URL}/health`;
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let isQuitting = false;
+let recoverInFlight = false;
+let dashboardAttachTimer: ReturnType<typeof setInterval> | null = null;
 
 const runtimeRoot = path.join(process.resourcesPath, "runtime", "agentline");
 
@@ -62,6 +65,42 @@ const waitForDashboard = async (): Promise<boolean> => {
     await sleep(250);
   }
   return false;
+};
+
+const tryAttachDashboard = async (): Promise<void> => {
+  if (!mainWindow) {
+    return;
+  }
+  const currentUrl = mainWindow.webContents.getURL();
+  if (currentUrl.startsWith(DASHBOARD_URL)) {
+    return;
+  }
+
+  const ready = await waitForDashboard();
+  if (!ready) {
+    return;
+  }
+
+  await mainWindow.loadURL(DASHBOARD_URL);
+};
+
+const recoverServer = async (reason: string): Promise<void> => {
+  if (isQuitting || recoverInFlight) {
+    return;
+  }
+
+  recoverInFlight = true;
+  try {
+    console.warn(`[desktop-electron] Recover server triggered: ${reason}`);
+    await serverManager.restart();
+    await tryAttachDashboard();
+  } catch (error) {
+    console.error(
+      `[desktop-electron] Recover server failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  } finally {
+    recoverInFlight = false;
+  }
 };
 
 const createWindow = async (): Promise<void> => {
@@ -160,11 +199,20 @@ const registerIpcHandlers = (): void => {
 
 app.whenReady().then(async () => {
   registerIpcHandlers();
-  serverManager.on("status", broadcastStatus);
+  serverManager.on("status", (status) => {
+    broadcastStatus(status);
+    if (status.state === "error") {
+      void recoverServer(status.message ?? "unknown server error");
+    }
+  });
 
   await serverManager.start();
   await createWindow();
   createTray();
+
+  dashboardAttachTimer = setInterval(() => {
+    void tryAttachDashboard();
+  }, 4000);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -174,6 +222,11 @@ app.whenReady().then(async () => {
 });
 
 app.on("before-quit", async () => {
+  isQuitting = true;
+  if (dashboardAttachTimer) {
+    clearInterval(dashboardAttachTimer);
+    dashboardAttachTimer = null;
+  }
   await serverManager.stop();
 });
 
