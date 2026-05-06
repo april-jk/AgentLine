@@ -3,6 +3,7 @@
     "name": "AgentLine Mobile",
     "slug": "agentline-mobile-rn",
     "version": "0.1.0",
+    "newArchEnabled": false,
     "scheme": "agentline-mobile",
     "orientation": "portrait",
     "ios": {
