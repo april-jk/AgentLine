@@ -77,7 +77,20 @@ fn server_entry() -> Result<std::path::PathBuf, String> {
         return Ok(installed);
     }
 
-    Err("AgentLine server not found. Run setup first.".to_string())
+    // Fallback for local/dev workflows: use the repository server build directly
+    // instead of requiring npm installation on the user's machine.
+    let repo_server = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../server")
+        .join("dist")
+        .join("index.js");
+    if repo_server.exists() {
+        return Ok(repo_server);
+    }
+
+    Err(
+        "AgentLine server not found. Build packages/server or configure YEP_DEV_DIR."
+            .to_string(),
+    )
 }
 
 /// Set up child process for clean shutdown: kill-on-drop and own process group.
