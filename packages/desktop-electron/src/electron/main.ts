@@ -34,6 +34,7 @@ let tray: Tray | null = null;
 let isQuitting = false;
 let recoverInFlight = false;
 let dashboardAttachTimer: ReturnType<typeof setInterval> | null = null;
+let consecutiveHealthFailures = 0;
 let autoRecoverCount = 0;
 let lastRecoverAt: number | undefined;
 let lastRecoverReason: string | undefined;
@@ -86,6 +87,29 @@ const waitForDashboard = async (): Promise<boolean> => {
     }
     await sleep(250);
   }
+  return false;
+};
+
+const ensureBackendReady = async (): Promise<boolean> => {
+  const maxBootstrapAttempts = 3;
+  for (let attempt = 1; attempt <= maxBootstrapAttempts; attempt += 1) {
+    await serverManager.start();
+    const healthy = await waitForDashboard();
+    if (healthy) {
+      return true;
+    }
+
+    console.warn(
+      `[desktop-electron] Backend bootstrap health timeout (attempt ${attempt}/${maxBootstrapAttempts}).`,
+    );
+    await recoverServer(
+      `bootstrap health timeout (attempt ${attempt}/${maxBootstrapAttempts})`,
+    );
+    if (await waitForDashboard()) {
+      return true;
+    }
+  }
+
   return false;
 };
 
@@ -235,12 +259,25 @@ app.whenReady().then(async () => {
     }
   });
 
-  await serverManager.start();
+  await ensureBackendReady();
   await createWindow();
   createTray();
 
   dashboardAttachTimer = setInterval(() => {
-    void tryAttachDashboard();
+    void (async () => {
+      const reachable = await isDashboardReachable();
+      if (reachable) {
+        consecutiveHealthFailures = 0;
+        await tryAttachDashboard();
+        return;
+      }
+
+      consecutiveHealthFailures += 1;
+      if (consecutiveHealthFailures >= 3) {
+        consecutiveHealthFailures = 0;
+        await recoverServer("periodic health probe failed 3 times");
+      }
+    })();
   }, 4000);
 
   app.on("activate", () => {
