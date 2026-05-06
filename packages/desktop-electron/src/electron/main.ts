@@ -20,11 +20,24 @@ const DASHBOARD_PORT = 3400;
 const DASHBOARD_URL = `http://localhost:${DASHBOARD_PORT}`;
 const DASHBOARD_HEALTH_URL = `${DASHBOARD_URL}/health`;
 
+interface ServerRuntimeState {
+  backendReachable: boolean;
+  autoRecoverCount: number;
+  lastRecoverAt?: number;
+  lastRecoverReason?: string;
+  lastRecoverError?: string;
+  recovering: boolean;
+}
+
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 let recoverInFlight = false;
 let dashboardAttachTimer: ReturnType<typeof setInterval> | null = null;
+let autoRecoverCount = 0;
+let lastRecoverAt: number | undefined;
+let lastRecoverReason: string | undefined;
+let lastRecoverError: string | undefined;
 
 const runtimeRoot = path.join(process.resourcesPath, "runtime", "agentline");
 
@@ -55,6 +68,15 @@ const isDashboardReachable = async (): Promise<boolean> => {
     return false;
   }
 };
+
+const getRuntimeState = async (): Promise<ServerRuntimeState> => ({
+  backendReachable: await isDashboardReachable(),
+  autoRecoverCount,
+  lastRecoverAt,
+  lastRecoverReason,
+  lastRecoverError,
+  recovering: recoverInFlight,
+});
 
 const waitForDashboard = async (): Promise<boolean> => {
   const maxAttempts = 40;
@@ -89,12 +111,18 @@ const recoverServer = async (reason: string): Promise<void> => {
     return;
   }
 
+  autoRecoverCount += 1;
+  lastRecoverAt = Date.now();
+  lastRecoverReason = reason;
+  lastRecoverError = undefined;
   recoverInFlight = true;
   try {
     console.warn(`[desktop-electron] Recover server triggered: ${reason}`);
     await serverManager.restart();
     await tryAttachDashboard();
   } catch (error) {
+    lastRecoverError =
+      error instanceof Error ? error.message : String(error);
     console.error(
       `[desktop-electron] Recover server failed: ${error instanceof Error ? error.message : String(error)}`,
     );
@@ -189,6 +217,7 @@ const createTray = (): void => {
 
 const registerIpcHandlers = (): void => {
   ipcMain.handle("server:get-status", () => serverManager.getStatus());
+  ipcMain.handle("server:get-runtime-state", () => getRuntimeState());
   ipcMain.handle("server:start", () => serverManager.start());
   ipcMain.handle("server:stop", () => serverManager.stop());
   ipcMain.handle("server:restart", () => serverManager.restart());

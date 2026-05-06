@@ -1,9 +1,20 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { ServerStatus } from "./serverManager.js";
 
+interface ServerRuntimeState {
+  backendReachable: boolean;
+  autoRecoverCount: number;
+  lastRecoverAt?: number;
+  lastRecoverReason?: string;
+  lastRecoverError?: string;
+  recovering: boolean;
+}
+
 const api = {
   getServerStatus: (): Promise<ServerStatus> =>
     ipcRenderer.invoke("server:get-status"),
+  getServerRuntimeState: (): Promise<ServerRuntimeState> =>
+    ipcRenderer.invoke("server:get-runtime-state"),
   startServer: (): Promise<ServerStatus> => ipcRenderer.invoke("server:start"),
   stopServer: (): Promise<ServerStatus> => ipcRenderer.invoke("server:stop"),
   restartServer: (): Promise<ServerStatus> =>

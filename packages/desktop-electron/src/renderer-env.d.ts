@@ -10,8 +10,18 @@ interface ServerStatus {
   startedAt?: number;
 }
 
+interface ServerRuntimeState {
+  backendReachable: boolean;
+  autoRecoverCount: number;
+  lastRecoverAt?: number;
+  lastRecoverReason?: string;
+  lastRecoverError?: string;
+  recovering: boolean;
+}
+
 interface DesktopApi {
   getServerStatus: () => Promise<ServerStatus>;
+  getServerRuntimeState: () => Promise<ServerRuntimeState>;
   startServer: () => Promise<ServerStatus>;
   stopServer: () => Promise<ServerStatus>;
   restartServer: () => Promise<ServerStatus>;
