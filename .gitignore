@@ -36,6 +36,11 @@ coverage/
 # Test artifacts
 test-results/
 .playwright-artifacts-*/
+.playwright-mcp/
+
+# Local voice-secretary snapshots
+/playwright-voice-secretary-*.yml
+/voice-secretary-snapshot.yml
 
 # Temp files
 .tmp/
