@@ -6,6 +6,7 @@ import { cors } from "hono/cors";
 import { WebSocketServer } from "ws";
 import { loadConfig } from "./config.js";
 import { ConnectionManager } from "./connections.js";
+import { RelayControlPlaneService } from "./control-plane.js";
 import { createDb } from "./db.js";
 import { createLogger } from "./logger.js";
 import { UsernameRegistry } from "./registry.js";
@@ -32,6 +33,7 @@ logger.info(
 // Initialize database and registry
 const db = createDb(config.dataDir);
 const registry = new UsernameRegistry(db);
+const controlPlane = new RelayControlPlaneService(db);
 
 // Run reclamation on startup
 const reclaimed = registry.reclaimInactive(config.reclaimDays);
@@ -58,9 +60,17 @@ app.use(
   cors({
     origin: "*",
     allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
+    allowHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+function getBearerToken(authHeader: string | undefined): string | null {
+  if (!authHeader) return null;
+  const [scheme, token] = authHeader.split(" ");
+  if (!scheme || !token) return null;
+  if (scheme.toLowerCase() !== "bearer") return null;
+  return token.trim();
+}
 
 // Health check endpoint
 app.get("/health", (c) => {
@@ -98,6 +108,155 @@ app.get("/stats", (c) => {
   return c.html(generateRelayStatsHtml(telemetryStatus.eventsDir), 200, {
     "Cache-Control": "no-cache, no-store, must-revalidate",
   });
+});
+
+app.post("/api/v1/auth/register", async (c) => {
+  try {
+    const body = await c.req.json();
+    const email =
+      typeof body?.email === "string" ? body.email : ("" as string);
+    const password =
+      typeof body?.password === "string" ? body.password : ("" as string);
+    const user = controlPlane.registerUser(email, password);
+    return c.json({ user }, 201);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "bad_request";
+    const status =
+      message === "email_taken"
+        ? 409
+        : message === "invalid_email" || message === "password_too_short"
+          ? 400
+          : 400;
+    return c.json({ error: message }, status);
+  }
+});
+
+app.post("/api/v1/auth/login", async (c) => {
+  try {
+    const body = await c.req.json();
+    const email =
+      typeof body?.email === "string" ? body.email : ("" as string);
+    const password =
+      typeof body?.password === "string" ? body.password : ("" as string);
+
+    const { user, session } = controlPlane.login(email, password);
+    return c.json(
+      {
+        user,
+        accessToken: session.token,
+        expiresAt: session.expiresAt,
+      },
+      200,
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "invalid_credentials";
+    if (message === "invalid_credentials") {
+      return c.json({ error: message }, 401);
+    }
+    return c.json({ error: "bad_request" }, 400);
+  }
+});
+
+app.post("/api/v1/auth/logout", (c) => {
+  const token = getBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+
+  try {
+    const auth = controlPlane.authenticate(token);
+    controlPlane.revokeSession(auth.sessionId);
+    return c.body(null, 204);
+  } catch {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+});
+
+app.get("/api/v1/me", (c) => {
+  const token = getBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+
+  try {
+    const auth = controlPlane.authenticate(token);
+    return c.json({ user: auth.user });
+  } catch {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+});
+
+app.post("/api/v1/devices/register", async (c) => {
+  const token = getBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+
+  try {
+    const auth = controlPlane.authenticate(token);
+    const body = await c.req.json();
+    const installId =
+      typeof body?.installId === "string" ? body.installId : ("" as string);
+    const deviceName =
+      typeof body?.deviceName === "string"
+        ? body.deviceName
+        : ("AgentLine Device" as string);
+    const deviceType =
+      typeof body?.deviceType === "string" ? body.deviceType : ("desktop" as string);
+
+    const device = controlPlane.registerOrUpdateDevice({
+      userId: auth.user.id,
+      installId,
+      deviceName,
+      deviceType,
+    });
+    return c.json({ device }, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "bad_request";
+    if (message === "unauthorized") {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.post("/api/v1/devices/:deviceId/heartbeat", (c) => {
+  const token = getBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+
+  try {
+    const auth = controlPlane.authenticate(token);
+    const deviceId = c.req.param("deviceId");
+    const device = controlPlane.touchDevice({ userId: auth.user.id, deviceId });
+    return c.json({ device }, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "bad_request";
+    if (message === "device_not_found") {
+      return c.json({ error: message }, 404);
+    }
+    return c.json({ error: "unauthorized" }, 401);
+  }
+});
+
+app.get("/api/v1/devices", (c) => {
+  const token = getBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+
+  try {
+    const auth = controlPlane.authenticate(token);
+    const devices = controlPlane.listDevices(
+      auth.user.id,
+      connectionManager.getActiveServers(),
+    );
+    return c.json({ devices });
+  } catch {
+    return c.json({ error: "unauthorized" }, 401);
+  }
 });
 
 // Check if a specific username has a server online (waiting for client)
