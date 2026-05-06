@@ -16,8 +16,10 @@ const __dirname = path.dirname(__filename);
 const packageRoot = path.resolve(__dirname, "../..");
 const repoRoot = path.resolve(packageRoot, "../..");
 
-const DASHBOARD_PORT = 3400;
-const DASHBOARD_URL = `http://localhost:${DASHBOARD_PORT}`;
+// Use uncommon, desktop-dedicated ports to avoid clashing with common
+// development ports (3000/3400/5173/etc).
+const DASHBOARD_PORT = 45731;
+const DASHBOARD_URL = `http://127.0.0.1:${DASHBOARD_PORT}`;
 const DASHBOARD_HEALTH_URL = `${DASHBOARD_URL}/health`;
 
 interface ServerRuntimeState {
