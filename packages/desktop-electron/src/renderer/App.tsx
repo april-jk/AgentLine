@@ -27,15 +27,23 @@ const stateClass: Record<ServerState, string> = {
 };
 
 export function App() {
+  const desktopApi = window.desktopApi;
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!desktopApi) {
+      setError(
+        "Desktop bridge is unavailable (window.desktopApi is undefined). Please restart the app.",
+      );
+      return;
+    }
+
     let mounted = true;
     const load = async () => {
       try {
-        const currentStatus = await window.desktopApi.getServerStatus();
+        const currentStatus = await desktopApi.getServerStatus();
         if (mounted) {
           setStatus(currentStatus);
         }
@@ -48,7 +56,7 @@ export function App() {
 
     void load();
 
-    const unsubscribe = window.desktopApi.onServerStatusChange((nextStatus) => {
+    const unsubscribe = desktopApi.onServerStatusChange((nextStatus) => {
       if (mounted) {
         setStatus(nextStatus);
       }
@@ -103,21 +111,21 @@ export function App() {
         <button
           type="button"
           disabled={busy}
-          onClick={() => runAction(window.desktopApi.startServer)}
+          onClick={() => (desktopApi ? runAction(desktopApi.startServer) : undefined)}
         >
           Start Server
         </button>
         <button
           type="button"
           disabled={busy}
-          onClick={() => runAction(window.desktopApi.stopServer)}
+          onClick={() => (desktopApi ? runAction(desktopApi.stopServer) : undefined)}
         >
           Stop Server
         </button>
         <button
           type="button"
           disabled={busy}
-          onClick={() => runAction(window.desktopApi.restartServer)}
+          onClick={() => (desktopApi ? runAction(desktopApi.restartServer) : undefined)}
         >
           Restart Server
         </button>
@@ -125,7 +133,9 @@ export function App() {
           type="button"
           disabled={busy}
           onClick={() => {
-            void window.desktopApi.openDashboard();
+            if (desktopApi) {
+              void desktopApi.openDashboard();
+            }
           }}
         >
           Open http://localhost:3400

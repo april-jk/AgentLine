@@ -18,6 +18,7 @@ const repoRoot = path.resolve(packageRoot, "../..");
 
 const DASHBOARD_PORT = 3400;
 const DASHBOARD_URL = `http://localhost:${DASHBOARD_PORT}`;
+const DASHBOARD_HEALTH_URL = `${DASHBOARD_URL}/health`;
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -38,11 +39,36 @@ const broadcastStatus = (status: ServerStatus): void => {
   }
 };
 
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const isDashboardReachable = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(DASHBOARD_HEALTH_URL, {
+      signal: AbortSignal.timeout(1500),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+};
+
+const waitForDashboard = async (): Promise<boolean> => {
+  const maxAttempts = 40;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (await isDashboardReachable()) {
+      return true;
+    }
+    await sleep(250);
+  }
+  return false;
+};
+
 const createWindow = async (): Promise<void> => {
   mainWindow = new BrowserWindow({
     width: 900,
     height: 620,
-    title: "AgentLine Electron",
+    title: "AgentLine Desktop",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -50,11 +76,28 @@ const createWindow = async (): Promise<void> => {
     },
   });
 
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL) => {
+      console.error(
+        `[desktop-electron] renderer load failed: ${errorCode} ${errorDescription} ${validatedURL}`,
+      );
+    },
+  );
+
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   if (devUrl) {
     await mainWindow.loadURL(devUrl);
   } else {
-    await mainWindow.loadFile(path.resolve(__dirname, "../../dist/index.html"));
+    const dashboardReady = await waitForDashboard();
+    if (dashboardReady) {
+      await mainWindow.loadURL(DASHBOARD_URL);
+    } else {
+      console.error(
+        "[desktop-electron] Dashboard health check timeout, fallback to local control panel renderer.",
+      );
+      await mainWindow.loadFile(path.resolve(__dirname, "../../dist/index.html"));
+    }
   }
 
   mainWindow.on("closed", () => {
@@ -119,9 +162,9 @@ app.whenReady().then(async () => {
   registerIpcHandlers();
   serverManager.on("status", broadcastStatus);
 
+  await serverManager.start();
   await createWindow();
   createTray();
-  await serverManager.start();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
