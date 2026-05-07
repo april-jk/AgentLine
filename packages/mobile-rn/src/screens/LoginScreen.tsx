@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -10,11 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  type LanScanResult,
-  scanLanServers,
-  smartScanLanServers,
-} from "../lib/connection/lanScanner";
+import type { LanScanResult } from "../lib/connection/lanScanner";
 import {
   type ForwardMode,
   resolveForwardingTarget,
@@ -81,7 +77,7 @@ function dedupeKnownHosts(
   return items;
 }
 
-export function LoginScreen({ navigation }: Props) {
+export function LoginScreen({ navigation, route }: Props) {
   const { themeMode } = useThemePreference();
   const theme = useAppTheme(themeMode);
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -102,9 +98,6 @@ export function LoginScreen({ navigation }: Props) {
   const [scanPort, setScanPort] = useState("45731");
   const [scanAdvanced, setScanAdvanced] = useState(false);
   const [entryMode, setEntryMode] = useState<ForwardMode>("direct");
-  const [scanLoading, setScanLoading] = useState(false);
-  const [scanProgress, setScanProgress] = useState("");
-  const [scanResults, setScanResults] = useState<LanScanResult[]>([]);
   const [recentServers, setRecentServers] = useState<string[]>([]);
 
   useEffect(() => {
@@ -156,56 +149,69 @@ export function LoginScreen({ navigation }: Props) {
   }, []);
 
   const knownHosts = useMemo(
-    () => dedupeKnownHosts(recentServers, scanResults),
-    [recentServers, scanResults],
+    () => dedupeKnownHosts(recentServers, []),
+    [recentServers],
   );
 
-  const saveRecent = async (url: string) => {
-    const deduped = [url, ...recentServers.filter((x) => x !== url)].slice(
-      0,
-      10,
-    );
-    setRecentServers(deduped);
-    await setSecureItem(
-      secureStorageKeys.recentDirectServers,
-      JSON.stringify(deduped),
-    );
-  };
-
-  const openDirectConsole = async (serverUrl = directServerUrl) => {
-    try {
-      if (!serverUrl.trim()) {
-        Alert.alert("缺少地址", "请填写电脑端 AgentLine 地址");
-        return;
-      }
-      if (!directUsername.trim()) {
-        Alert.alert("缺少用户名", "请填写直连用户名");
-        return;
-      }
-
-      const target = resolveForwardingTarget({
-        mode: "direct",
-        directServerUrl: serverUrl,
-        directUsername,
-        directPassword,
-        themeMode,
-      });
-      await setSecureItem(secureStorageKeys.connectionMode, "direct");
-      await setSecureItem(secureStorageKeys.directServerUrl, target.url);
+  const saveRecent = useCallback(
+    async (url: string) => {
+      const deduped = [url, ...recentServers.filter((x) => x !== url)].slice(
+        0,
+        10,
+      );
+      setRecentServers(deduped);
       await setSecureItem(
-        secureStorageKeys.directUsername,
-        directUsername.trim(),
+        secureStorageKeys.recentDirectServers,
+        JSON.stringify(deduped),
       );
-      await setSecureItem(secureStorageKeys.directPassword, directPassword);
-      await saveRecent(target.url);
-      navigation.navigate("Console", target);
-    } catch (error) {
-      Alert.alert(
-        "打开失败",
-        error instanceof Error ? error.message : "未知错误",
-      );
-    }
-  };
+    },
+    [recentServers],
+  );
+
+  const openDirectConsole = useCallback(
+    async (serverUrl = directServerUrl) => {
+      try {
+        if (!serverUrl.trim()) {
+          Alert.alert("缺少地址", "请填写电脑端 AgentLine 地址");
+          return;
+        }
+        if (!directUsername.trim()) {
+          Alert.alert("缺少用户名", "请填写直连用户名");
+          return;
+        }
+
+        const target = resolveForwardingTarget({
+          mode: "direct",
+          directServerUrl: serverUrl,
+          directUsername,
+          directPassword,
+          themeMode,
+        });
+        await setSecureItem(secureStorageKeys.connectionMode, "direct");
+        await setSecureItem(secureStorageKeys.directServerUrl, target.url);
+        await setSecureItem(
+          secureStorageKeys.directUsername,
+          directUsername.trim(),
+        );
+        await setSecureItem(secureStorageKeys.directPassword, directPassword);
+        await saveRecent(target.url);
+        navigation.navigate("Console", target);
+      } catch (error) {
+        Alert.alert(
+          "打开失败",
+          error instanceof Error ? error.message : "未知错误",
+        );
+      }
+    },
+    [
+      directPassword,
+      directServerUrl,
+      directUsername,
+      navigation,
+      saveRecent,
+      themeMode,
+    ],
+  );
 
   const openRelayConsole = async () => {
     try {
@@ -242,67 +248,28 @@ export function LoginScreen({ navigation }: Props) {
     }
   };
 
-  const onSmartScan = async () => {
-    const port = Number(scanPort.trim() || "45731");
-    if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-      Alert.alert("扫描失败", "端口必须是 1-65535");
-      return;
+  useEffect(() => {
+    const selectedHostUrl = route.params?.selectedHostUrl;
+    if (!selectedHostUrl?.trim()) return;
+
+    setDirectServerUrl(selectedHostUrl);
+    void saveRecent(selectedHostUrl);
+
+    if (route.params?.connectOnSelect) {
+      void openDirectConsole(selectedHostUrl);
     }
 
-    setScanLoading(true);
-    setScanResults([]);
-    setScanProgress("正在搜索可连接的电脑...");
-    try {
-      const found = await smartScanLanServers({
-        port,
-        recentServers,
-        onProgress: (progress) => {
-          setScanProgress(
-            progress.phase === "quick"
-              ? `快速搜索 ${progress.scanned}/${progress.total}`
-              : `扩展搜索 ${progress.scanned}/${progress.total}`,
-          );
-        },
-      });
-      setScanResults(found);
-      if (found.length === 1 && found[0]) {
-        setDirectServerUrl(found[0].baseUrl);
-        await saveRecent(found[0].baseUrl);
-      }
-    } catch {
-      Alert.alert("扫描失败", "请重试");
-    } finally {
-      setScanLoading(false);
-      setScanProgress("");
-    }
-  };
-
-  const onManualScan = async () => {
-    const prefix = scanPrefix.trim();
-    if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(prefix)) {
-      Alert.alert("扫描失败", "网段格式应为 192.168.1");
-      return;
-    }
-
-    const port = Number(scanPort.trim() || "45731");
-    if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-      Alert.alert("扫描失败", "端口必须是 1-65535");
-      return;
-    }
-
-    setScanLoading(true);
-    setScanResults([]);
-    setScanProgress("正在扫描指定网段...");
-    try {
-      const found = await scanLanServers(prefix, port);
-      setScanResults(found);
-    } catch {
-      Alert.alert("扫描失败", "请重试");
-    } finally {
-      setScanLoading(false);
-      setScanProgress("");
-    }
-  };
+    navigation.setParams({
+      selectedHostUrl: undefined,
+      connectOnSelect: undefined,
+    });
+  }, [
+    navigation,
+    openDirectConsole,
+    route.params?.connectOnSelect,
+    route.params?.selectedHostUrl,
+    saveRecent,
+  ]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -355,35 +322,56 @@ export function LoginScreen({ navigation }: Props) {
 
           <Pressable
             style={styles.utilityButton}
-            onPress={() => void onSmartScan()}
-            disabled={scanLoading}
+            onPress={() =>
+              navigation.navigate("SearchHosts", {
+                currentServerUrl: directServerUrl,
+                recentServers,
+                scanPrefix,
+                scanPort,
+              })
+            }
           >
-            <Text style={styles.utilityButtonText}>
-              {scanLoading ? "正在搜索..." : "自动搜索局域网主机"}
-            </Text>
+            <Text style={styles.utilityButtonText}>自动搜索局域网主机</Text>
           </Pressable>
 
-          {scanProgress ? (
-            <Text style={styles.statusText}>{scanProgress}</Text>
-          ) : null}
-
-          <Text style={styles.sectionSubtitle}>添加新主机</Text>
-
-          <Pressable
-            style={[
-              styles.modeOption,
-              entryMode === "relay" ? styles.modeOptionActive : null,
-            ]}
-            onPress={() => setEntryMode("relay")}
-          >
-            <Text style={styles.modeOptionTitle}>通过中继连接</Text>
-            <Text style={styles.modeOptionDesc}>
-              通过中继服务器从任意位置连接，无需端口转发。
-            </Text>
-          </Pressable>
+          <View style={styles.modeSwitch}>
+            <Pressable
+              style={[
+                styles.modeTab,
+                entryMode === "direct" ? styles.modeTabActive : null,
+              ]}
+              onPress={() => setEntryMode("direct")}
+            >
+              <Text
+                style={[
+                  styles.modeTabText,
+                  entryMode === "direct" ? styles.modeTabTextActive : null,
+                ]}
+              >
+                直接连接
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.modeTab,
+                entryMode === "relay" ? styles.modeTabActive : null,
+              ]}
+              onPress={() => setEntryMode("relay")}
+            >
+              <Text
+                style={[
+                  styles.modeTabText,
+                  entryMode === "relay" ? styles.modeTabTextActive : null,
+                ]}
+              >
+                通过中继连接
+              </Text>
+            </Pressable>
+          </View>
 
           {entryMode === "relay" ? (
             <View style={styles.formCard}>
+              <Text style={styles.formTitle}>通过中继连接</Text>
               <View style={styles.formGroup}>
                 <Text style={styles.fieldLabel}>控制平面地址</Text>
                 <TextInput
@@ -438,21 +426,9 @@ export function LoginScreen({ navigation }: Props) {
             </View>
           ) : null}
 
-          <Pressable
-            style={[
-              styles.modeOption,
-              entryMode === "direct" ? styles.modeOptionActive : null,
-            ]}
-            onPress={() => setEntryMode("direct")}
-          >
-            <Text style={styles.modeOptionTitle}>直接连接</Text>
-            <Text style={styles.modeOptionDesc}>
-              通过 WebSocket 地址直接连接，适用于局域网或 Tailscale。
-            </Text>
-          </Pressable>
-
           {entryMode === "direct" ? (
             <View style={styles.formCard}>
+              <Text style={styles.formTitle}>直接连接</Text>
               <View style={styles.formGroup}>
                 <Text style={styles.fieldLabel}>电脑端地址</Text>
                 <TextInput
@@ -521,10 +497,16 @@ export function LoginScreen({ navigation }: Props) {
                   />
                   <Pressable
                     style={styles.secondaryButton}
-                    onPress={() => void onManualScan()}
-                    disabled={scanLoading}
+                    onPress={() =>
+                      navigation.navigate("SearchHosts", {
+                        currentServerUrl: directServerUrl,
+                        recentServers,
+                        scanPrefix,
+                        scanPort,
+                      })
+                    }
                   >
-                    <Text style={styles.secondaryButtonText}>扫描这个网段</Text>
+                    <Text style={styles.secondaryButtonText}>打开扫描窗口</Text>
                   </Pressable>
                 </View>
               ) : null}
@@ -655,35 +637,44 @@ const createStyles = (theme: AppTheme) =>
       fontSize: 13,
       fontWeight: "500",
     },
-    statusText: {
-      color: theme.textMuted,
-      fontSize: 12,
-      textAlign: "center",
-    },
-    modeOption: {
-      gap: theme.spaceXs,
-      padding: theme.spaceMd,
-      borderRadius: theme.radiusMd,
+    modeSwitch: {
+      flexDirection: "row",
+      padding: 4,
+      borderRadius: 999,
       backgroundColor: theme.panelAlt,
       borderWidth: 1,
       borderColor: theme.borderSoft,
     },
-    modeOptionActive: {
-      borderColor: theme.brandTeal,
+    modeTab: {
+      flex: 1,
+      borderRadius: 999,
+      paddingVertical: 12,
+      alignItems: "center",
     },
-    modeOptionTitle: {
-      color: theme.text,
-      fontSize: 15,
-      fontWeight: "500",
+    modeTabActive: {
+      backgroundColor: theme.bg,
     },
-    modeOptionDesc: {
+    modeTabText: {
       color: theme.textSecondary,
       fontSize: 13,
-      lineHeight: 20,
+      fontWeight: "600",
+    },
+    modeTabTextActive: {
+      color: theme.text,
     },
     formCard: {
       gap: theme.spaceSm,
-      marginTop: -4,
+      padding: theme.spaceMd,
+      borderRadius: theme.radiusLg,
+      backgroundColor: theme.panelAlt,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+    },
+    formTitle: {
+      color: theme.text,
+      fontSize: 16,
+      fontWeight: "700",
+      marginBottom: theme.spaceXs,
     },
     formGroup: {
       gap: 6,

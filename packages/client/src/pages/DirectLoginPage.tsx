@@ -10,7 +10,12 @@ import { Link } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
-import { createDirectHost, loadSavedHosts, saveHost } from "../lib/hostStorage";
+import {
+  createDirectHost,
+  getHostByWsUrl,
+  loadSavedHosts,
+  saveHost,
+} from "../lib/hostStorage";
 
 function parseHashCredentials(): {
   wsUrl: string;
@@ -48,6 +53,7 @@ export function DirectLoginPage() {
     isConnecting,
     isAutoResuming,
     error,
+    setCurrentHostId,
     storedUrl,
     storedUsername,
     hasStoredSession,
@@ -87,28 +93,28 @@ export function DirectLoginPage() {
 
     void (async () => {
       try {
+        const existing = getHostByWsUrl(normalizedWsUrl);
+        if (existing) {
+          setCurrentHostId(existing.id);
+        } else {
+          const newHost = createDirectHost({
+            wsUrl: normalizedWsUrl,
+            srpUsername: normalizedUsername,
+          });
+          saveHost(newHost);
+          setCurrentHostId(newHost.id);
+        }
         await connect(
           normalizedWsUrl,
           normalizedUsername,
           normalizedPassword,
           true,
         );
-
-        const existing = loadSavedHosts().hosts.find(
-          (h) => h.mode === "direct" && h.wsUrl === normalizedWsUrl,
-        );
-        if (!existing) {
-          const newHost = createDirectHost({
-            wsUrl: normalizedWsUrl,
-            srpUsername: normalizedUsername,
-          });
-          saveHost(newHost);
-        }
       } catch {
         // connection error is surfaced by context/local state
       }
     })();
-  }, [connect, isAutoResuming]);
+  }, [connect, isAutoResuming, setCurrentHostId]);
 
   // If auto-resume is in progress, show a loading screen
   if (isAutoResuming) {
@@ -163,6 +169,22 @@ export function DirectLoginPage() {
     }
 
     try {
+      let hostIdToRemember: string | null = null;
+      if (rememberMe) {
+        const existing = getHostByWsUrl(wsUrl);
+        if (existing) {
+          hostIdToRemember = existing.id;
+        } else {
+          const newHost = createDirectHost({
+            wsUrl,
+            srpUsername: username.trim(),
+          });
+          saveHost(newHost);
+          hostIdToRemember = newHost.id;
+        }
+        setCurrentHostId(hostIdToRemember);
+      }
+
       // If we have a stored session and credentials match, try to resume
       if (
         hasStoredSession &&
@@ -186,6 +208,9 @@ export function DirectLoginPage() {
             srpUsername: username.trim(),
           });
           saveHost(newHost);
+          if (!hostIdToRemember) {
+            setCurrentHostId(newHost.id);
+          }
         }
       }
       // On success, the RemoteApp will render the main app instead of login

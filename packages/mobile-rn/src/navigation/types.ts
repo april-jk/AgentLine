@@ -1,7 +1,18 @@
 import type { ForwardMode } from "../lib/forwarding/layer";
 
 export type RootStackParamList = {
-  Login: undefined;
+  Login:
+    | {
+        selectedHostUrl?: string;
+        connectOnSelect?: boolean;
+      }
+    | undefined;
+  SearchHosts: {
+    currentServerUrl: string;
+    recentServers: string[];
+    scanPrefix: string;
+    scanPort: string;
+  };
   Console: {
     mode: ForwardMode;
     url: string;

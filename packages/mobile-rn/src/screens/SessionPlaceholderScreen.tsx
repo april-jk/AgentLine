@@ -14,8 +14,7 @@ export function SessionPlaceholderScreen({ route }: Props) {
   const { themeMode, setThemeMode } = useThemePreference();
   const theme = useAppTheme(themeMode);
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { url, mode, source, injectedJavaScriptBeforeContentLoaded } =
-    route.params;
+  const { source, injectedJavaScriptBeforeContentLoaded } = route.params;
 
   const handleMessage = (event: WebViewMessageEvent) => {
     try {
@@ -38,21 +37,6 @@ export function SessionPlaceholderScreen({ route }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.modeBar}>
-        <View style={styles.modeBarHeader}>
-          <Text style={styles.titleText}>控制台</Text>
-          <View style={styles.modePill}>
-            <Text style={styles.modePillText}>
-              {mode === "direct" ? "直连" : "中转"}
-            </Text>
-          </View>
-        </View>
-        <Text style={styles.urlLabel}>连接目标</Text>
-        <Text style={styles.urlText} numberOfLines={1}>
-          {url}
-        </Text>
-      </View>
-
       <WebView
         source={source}
         originWhitelist={["*"]}
@@ -86,47 +70,6 @@ const createStyles = (theme: AppTheme) =>
     safeArea: {
       flex: 1,
       backgroundColor: theme.bg,
-    },
-    modeBar: {
-      backgroundColor: theme.panel,
-      borderBottomColor: theme.border,
-      borderBottomWidth: 1,
-      paddingHorizontal: theme.spaceLg,
-      paddingVertical: theme.spaceMd,
-    },
-    modeBarHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: theme.spaceSm,
-    },
-    titleText: {
-      color: theme.text,
-      fontSize: 16,
-      fontWeight: "700",
-    },
-    modePill: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 999,
-      backgroundColor: theme.panelAlt,
-      borderWidth: 1,
-      borderColor: theme.borderSoft,
-    },
-    modePillText: {
-      color: theme.success,
-      fontSize: 11,
-      fontWeight: "700",
-    },
-    urlLabel: {
-      color: theme.textDimmed,
-      fontSize: 11,
-      marginTop: theme.spaceSm,
-    },
-    urlText: {
-      color: theme.textSecondary,
-      fontSize: 12,
-      marginTop: 2,
     },
     loadingWrap: {
       flex: 1,

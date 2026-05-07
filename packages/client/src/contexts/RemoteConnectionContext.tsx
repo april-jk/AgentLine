@@ -126,6 +126,12 @@ interface RemoteConnectionState {
   ) => Promise<void>;
   /** Connect via relay server */
   connectViaRelay: (options: ConnectViaRelayOptions) => Promise<void>;
+  /** Resume a saved direct host session without re-entering password */
+  connectDirectWithSession: (
+    wsUrl: string,
+    username: string,
+    session: StoredSession,
+  ) => Promise<void>;
   /** Disconnect and clear credentials. Set isIntentional=false for programmatic host switches. */
   disconnect: (isIntentional?: boolean) => void;
   /** Clear auto-resume error (e.g., user chose to go to login) */
@@ -542,6 +548,38 @@ export function RemoteConnectionProvider({ children }: Props) {
     [handleSessionEstablished, handleDisconnect],
   );
 
+  const connectDirectWithSession = useCallback(
+    async (wsUrl: string, username: string, session: StoredSession) => {
+      setIsConnecting(true);
+      setError(null);
+      setIsIntentionalDisconnect(false);
+      rememberMeRef.current = true;
+
+      try {
+        saveCredentials(wsUrl, username, session);
+
+        const conn = SecureConnection.forResumeOnly(
+          session,
+          handleSessionEstablished,
+          handleDisconnect,
+        );
+
+        await conn.fetch("/auth/status");
+
+        setGlobalConnection(conn);
+        setConnection(conn);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Session resume failed";
+        setError(message);
+        throw err;
+      } finally {
+        setIsConnecting(false);
+      }
+    },
+    [handleDisconnect, handleSessionEstablished],
+  );
+
   const disconnect = useCallback(
     (isIntentional = true) => {
       // Use flushSync to ensure state updates are processed synchronously
@@ -832,6 +870,7 @@ export function RemoteConnectionProvider({ children }: Props) {
     isIntentionalDisconnect,
     connect,
     connectViaRelay,
+    connectDirectWithSession,
     disconnect,
     clearAutoResumeError,
     retryAutoResume,

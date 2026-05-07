@@ -136,6 +136,12 @@ export function getHostByRelayUsername(
   );
 }
 
+/** Find a direct host by WebSocket URL */
+export function getHostByWsUrl(wsUrl: string): SavedHost | undefined {
+  const data = loadSavedHosts();
+  return data.hosts.find((h) => h.mode === "direct" && h.wsUrl === wsUrl);
+}
+
 /** Find a host by ID */
 export function getHostById(id: string): SavedHost | undefined {
   const data = loadSavedHosts();
