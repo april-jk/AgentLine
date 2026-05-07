@@ -3,6 +3,8 @@ export type LoginRequest = {
   password: string;
 };
 
+export type ConnectionMode = "relay" | "direct";
+
 export type AccountUser = {
   id: string;
   email: string;
@@ -41,6 +43,40 @@ type ControlPlaneDevice = {
 
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, "");
+}
+
+export function normalizeHttpBaseUrl(rawValue: string): string {
+  const value = rawValue.trim();
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return normalizeBaseUrl(value);
+  }
+  if (value.startsWith("ws://")) {
+    return normalizeBaseUrl(value.replace("ws://", "http://"));
+  }
+  if (value.startsWith("wss://")) {
+    return normalizeBaseUrl(value.replace("wss://", "https://"));
+  }
+  return normalizeBaseUrl(`http://${value}`);
+}
+
+export function normalizeWsUrl(rawValue: string): string {
+  let wsUrl = rawValue.trim();
+  if (wsUrl.startsWith("http://")) {
+    wsUrl = wsUrl.replace("http://", "ws://");
+  } else if (wsUrl.startsWith("https://")) {
+    wsUrl = wsUrl.replace("https://", "wss://");
+  } else if (!wsUrl.startsWith("ws://") && !wsUrl.startsWith("wss://")) {
+    wsUrl = `ws://${wsUrl}`;
+  }
+  if (!wsUrl.endsWith("/api/ws")) {
+    wsUrl = `${wsUrl.replace(/\/$/, "")}/api/ws`;
+  }
+  return wsUrl;
+}
+
+export function toDirectWsUrl(rawHttpBaseUrl: string): string {
+  const base = normalizeHttpBaseUrl(rawHttpBaseUrl);
+  return normalizeWsUrl(`${base}/api/ws`);
 }
 
 export class ApiClient {
@@ -120,6 +156,151 @@ export class ApiClient {
       state: "pending",
       message: `已拿到 relay 用户名 ${host.relayUsername}，下一步接入加密会话通道。`,
     };
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+}
+
+export type DirectServerHealth = {
+  status: string;
+  timestamp: string;
+};
+
+export type DirectServerInfo = {
+  host: string;
+  port: number;
+  boundToAllInterfaces: boolean;
+  localhostOnly: boolean;
+  installId?: string;
+  capabilities?: {
+    deviceBridge: boolean;
+  };
+};
+
+export type DirectProject = {
+  id: string;
+  name: string;
+  path?: string;
+  provider?: string;
+  activeOwnedCount?: number;
+  activeExternalCount?: number;
+};
+
+export type DirectSessionSummary = {
+  id: string;
+  title: string | null;
+  updatedAt: string;
+  provider?: string;
+};
+
+export type DirectSessionMessage = {
+  id: string;
+  role?: "user" | "assistant";
+  type?: "user" | "assistant";
+  content: string | Array<{ type?: string; text?: string }>;
+  timestamp?: string;
+};
+
+export type DirectSessionDetail = {
+  session: {
+    id: string;
+    title: string | null;
+    updatedAt: string;
+    provider?: string;
+    messages?: DirectSessionMessage[];
+  };
+  messages?: DirectSessionMessage[];
+};
+
+export class DirectServerClient {
+  private readonly baseUrl: string;
+
+  constructor(serverUrl: string) {
+    this.baseUrl = normalizeHttpBaseUrl(serverUrl);
+  }
+
+  private async getJson<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`);
+    if (!response.ok) {
+      throw new Error(`请求失败 (${response.status})：${path}`);
+    }
+    return (await response.json()) as T;
+  }
+
+  private async postJson<T>(path: string, body: unknown): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-AgentLine-Request": "true",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      let message = `请求失败 (${response.status})：${path}`;
+      try {
+        const data = (await response.json()) as { error?: string };
+        if (data.error) message = data.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(message);
+    }
+    return (await response.json()) as T;
+  }
+
+  async getHealth(): Promise<DirectServerHealth> {
+    return this.getJson<DirectServerHealth>("/health");
+  }
+
+  async getServerInfo(): Promise<DirectServerInfo | null> {
+    try {
+      return await this.getJson<DirectServerInfo>("/api/server-info");
+    } catch {
+      return null;
+    }
+  }
+
+  async listProjects(): Promise<DirectProject[]> {
+    const payload = await this.getJson<{ projects?: DirectProject[] }>(
+      "/api/projects",
+    );
+    return payload.projects ?? [];
+  }
+
+  async listProjectSessions(projectId: string): Promise<DirectSessionSummary[]> {
+    const payload = await this.getJson<{ sessions?: DirectSessionSummary[] }>(
+      `/api/projects/${encodeURIComponent(projectId)}/sessions`,
+    );
+    return payload.sessions ?? [];
+  }
+
+  async getSession(
+    projectId: string,
+    sessionId: string,
+  ): Promise<DirectSessionDetail> {
+    return this.getJson<DirectSessionDetail>(
+      `/api/projects/${encodeURIComponent(projectId)}/sessions/${encodeURIComponent(sessionId)}`,
+    );
+  }
+
+  async sendMessage(sessionId: string, message: string): Promise<void> {
+    await this.postJson(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
+      message,
+    });
+  }
+
+  async resumeSession(
+    projectId: string,
+    sessionId: string,
+    message: string,
+  ): Promise<void> {
+    await this.postJson(
+      `/api/projects/${encodeURIComponent(projectId)}/sessions/${encodeURIComponent(sessionId)}/resume`,
+      { message },
+    );
   }
 
   getBaseUrl(): string {

@@ -5,6 +5,9 @@ use tokio::process::{Child, Command};
 
 use crate::config;
 
+const DEFAULT_DESKTOP_PORT: u16 = 45731;
+const DEFAULT_DESKTOP_PORT_FALLBACKS: [u16; 5] = [45732, 45733, 45734, 45735, 45736];
+
 pub struct ServerState {
     pub child: Mutex<Option<Child>>,
     pub desktop_token: Mutex<Option<String>>,
@@ -103,6 +106,30 @@ fn setup_child_process(cmd: &mut Command) {
     }
 }
 
+/// Resolve server port with desktop-friendly defaults:
+/// 1) user-configured port
+/// 2) dedicated high ports (avoid common dev-port collisions)
+/// 3) random free high port as last resort
+fn resolve_server_port(cfg: &config::AppConfig) -> Result<u16, String> {
+    if let Some(port) = cfg.port {
+        return Ok(port);
+    }
+
+    let mut preferred_ports = vec![DEFAULT_DESKTOP_PORT];
+    preferred_ports.extend(DEFAULT_DESKTOP_PORT_FALLBACKS);
+
+    for candidate in preferred_ports {
+        if std::net::TcpListener::bind(("0.0.0.0", candidate)).is_ok() {
+            return Ok(candidate);
+        }
+    }
+
+    let listener = std::net::TcpListener::bind("0.0.0.0:0")
+        .map_err(|e| format!("Failed to find free port: {e}"))?;
+    let addr = listener.local_addr().map_err(|e| e.to_string())?;
+    Ok(addr.port())
+}
+
 #[tauri::command]
 pub async fn start_server(app: AppHandle) -> Result<(), String> {
     let state = app.state::<ServerState>();
@@ -118,17 +145,7 @@ pub async fn start_server(app: AppHandle) -> Result<(), String> {
     let data_dir = config::data_dir();
     let token = generate_token();
 
-    // Resolve port: use user override or auto-pick a free port.
-    let port = match cfg.port {
-        Some(p) => p,
-        None => {
-            let listener = std::net::TcpListener::bind("127.0.0.1:0")
-                .map_err(|e| format!("Failed to find free port: {e}"))?;
-            let addr = listener.local_addr().map_err(|e| e.to_string())?;
-            addr.port()
-            // listener is dropped here, freeing the port for the server
-        }
-    };
+    let port = resolve_server_port(&cfg)?;
 
     let child = if let Some(dev_dir) = config::dev_dir() {
         // Dev mode: run `pnpm dev` from local source.
@@ -138,6 +155,8 @@ pub async fn start_server(app: AppHandle) -> Result<(), String> {
         cmd.args(["--login", "-c", "exec pnpm dev"])
             .current_dir(&dev_dir)
             .env("PORT", port.to_string())
+            .env("HOST", "0.0.0.0")
+            .env("CLI_HOST_OVERRIDE", "true")
             .env("AGENTLINE_DATA_DIR", data_dir.to_string_lossy().as_ref())
             .env("DESKTOP_AUTH_TOKEN", &token);
         setup_child_process(&mut cmd);
@@ -152,6 +171,8 @@ pub async fn start_server(app: AppHandle) -> Result<(), String> {
             .arg(&entry)
             .env("NODE_ENV", "production")
             .env("PORT", port.to_string())
+            .env("HOST", "0.0.0.0")
+            .env("CLI_HOST_OVERRIDE", "true")
             .env("AGENTLINE_DATA_DIR", data_dir.to_string_lossy().as_ref())
             .env("DESKTOP_AUTH_TOKEN", &token);
         setup_child_process(&mut cmd);

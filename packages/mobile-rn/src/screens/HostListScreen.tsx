@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { type HostItem, apiClient } from "../lib/api/client";
+import { ApiClient, type HostItem } from "../lib/api/client";
 import { getSecureItem, secureStorageKeys } from "../lib/storage/secureStorage";
 import type { RootStackParamList } from "../navigation/types";
 
@@ -22,12 +22,36 @@ export function HostListScreen({ navigation }: Props) {
     let cancelled = false;
     const loadHosts = async () => {
       try {
+        const mode = await getSecureItem(secureStorageKeys.connectionMode);
+        if (mode === "direct") {
+          const serverUrl = await getSecureItem(secureStorageKeys.directServerUrl);
+          const username = await getSecureItem(secureStorageKeys.directUsername);
+          if (!serverUrl) {
+            navigation.replace("Login");
+            return;
+          }
+          const directHost: HostItem = {
+            id: "direct-host",
+            name: username?.trim() ? username : serverUrl.replace(/^https?:\/\//, ""),
+            status: "online",
+            relayState: "offline",
+            relayUsername: "direct",
+            deviceType: `direct · ${serverUrl}`,
+          };
+          if (!cancelled) {
+            setHosts([directHost]);
+          }
+          return;
+        }
         const accessToken = await getSecureItem(secureStorageKeys.accessToken);
+        const controlPlaneUrl =
+          (await getSecureItem(secureStorageKeys.controlPlaneUrl)) ??
+          "http://10.0.2.2:4400";
         if (!accessToken) {
           navigation.replace("Login");
           return;
         }
-        const result = await apiClient.listHosts(accessToken);
+        const result = await new ApiClient(controlPlaneUrl).listHosts(accessToken);
         if (!cancelled) {
           setHosts(result);
         }
@@ -67,6 +91,12 @@ export function HostListScreen({ navigation }: Props) {
                 hostId: item.id,
                 relayUsername: item.relayUsername,
                 hostName: item.name,
+                mode: item.id === "direct-host" ? "direct" : "relay",
+                directServerUrl:
+                  item.id === "direct-host"
+                    ? item.deviceType.replace("direct · ", "")
+                    : undefined,
+                directUsername: item.id === "direct-host" ? item.name : undefined,
               })
             }
           >

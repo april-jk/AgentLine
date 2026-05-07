@@ -10,7 +10,8 @@
       "bundleIdentifier": "com.agentline.mobile.rn"
     },
     "android": {
-      "package": "com.agentline.mobile.rn"
+      "package": "com.agentline.mobile.rn",
+      "usesCleartextTraffic": true
     },
     "platforms": ["ios", "android"],
     "assetBundlePatterns": ["**/*"]
