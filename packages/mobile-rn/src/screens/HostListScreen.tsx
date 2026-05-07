@@ -8,9 +8,11 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiClient, type HostItem } from "../lib/api/client";
 import { getSecureItem, secureStorageKeys } from "../lib/storage/secureStorage";
 import type { RootStackParamList } from "../navigation/types";
+import { theme } from "../styles/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "HostList">;
 
@@ -74,78 +76,168 @@ export function HostListScreen({ navigation }: Props) {
   }, [navigation]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.subtitle}>同账号下在线桌面设备列表</Text>
-      {loading ? <ActivityIndicator style={styles.loading} /> : null}
-      <FlatList
-        data={hosts}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={
-          <Text style={styles.empty}>暂无设备，请先在桌面端登录同一账号。</Text>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.item}
-            onPress={() =>
-              navigation.navigate("Session", {
-                hostId: item.id,
-                relayUsername: item.relayUsername,
-                hostName: item.name,
-                mode: item.id === "direct-host" ? "direct" : "relay",
-                directServerUrl:
-                  item.id === "direct-host"
-                    ? item.deviceType.replace("direct · ", "")
-                    : undefined,
-                directUsername: item.id === "direct-host" ? item.name : undefined,
-              })
-            }
-          >
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.status}>
-              {item.status} · {item.relayState} · {item.deviceType}
-            </Text>
-            <Text style={styles.hint}>relay: {item.relayUsername}</Text>
-          </Pressable>
-        )}
-      />
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <Text style={styles.title}>设备列表</Text>
+        <Text style={styles.subtitle}>同账号下在线桌面设备</Text>
+        {loading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color={theme.primary} />
+            <Text style={styles.loadingText}>正在加载设备...</Text>
+          </View>
+        ) : null}
+
+        <FlatList
+          data={hosts}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>暂无设备</Text>
+              <Text style={styles.emptySub}>请先在桌面端启动 AgentLine 并完成登录</Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const isDirect = item.id === "direct-host";
+            return (
+              <Pressable
+                style={({ pressed }) => [styles.item, pressed ? styles.itemPressed : null]}
+                onPress={() =>
+                  navigation.navigate("Session", {
+                    hostId: item.id,
+                    relayUsername: item.relayUsername,
+                    hostName: item.name,
+                    mode: isDirect ? "direct" : "relay",
+                    directServerUrl: isDirect
+                      ? item.deviceType.replace("direct · ", "")
+                      : undefined,
+                    directUsername: isDirect ? item.name : undefined,
+                  })
+                }
+              >
+                <View style={styles.itemTop}>
+                  <Text style={styles.name}>{item.name}</Text>
+                  <View style={[styles.badge, isDirect ? styles.badgeDirect : styles.badgeRelay]}>
+                    <Text style={styles.badgeText}>{isDirect ? "直连" : "中继"}</Text>
+                  </View>
+                </View>
+                <Text style={styles.statusLine}>
+                  {item.status} · {item.relayState}
+                </Text>
+                <Text style={styles.detail} numberOfLines={1}>
+                  {item.deviceType}
+                </Text>
+                <Text style={styles.hint}>relay: {item.relayUsername}</Text>
+              </Pressable>
+            );
+          }}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: theme.bg,
+    flex: 1,
+  },
   container: {
     flex: 1,
-    padding: 16,
+    padding: theme.spaceLg,
+  },
+  title: {
+    color: theme.text,
+    fontSize: 24,
+    fontWeight: "700",
   },
   subtitle: {
-    color: "#5B6270",
-    marginBottom: 12,
+    color: theme.textSecondary,
+    marginBottom: theme.spaceMd,
+    marginTop: 4,
   },
-  loading: {
-    marginBottom: 12,
+  loadingRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: theme.spaceSm,
+  },
+  loadingText: {
+    color: theme.textSecondary,
+  },
+  listContent: {
+    gap: theme.spaceSm,
+    paddingBottom: theme.spaceLg,
   },
   item: {
-    borderColor: "#D9DEE8",
-    borderRadius: 10,
+    backgroundColor: theme.panel,
+    borderColor: theme.border,
+    borderRadius: theme.radiusMd,
     borderWidth: 1,
-    marginBottom: 10,
-    padding: 12,
+    padding: theme.spaceMd,
+  },
+  itemPressed: {
+    opacity: 0.86,
+  },
+  itemTop: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
   },
   name: {
+    color: theme.text,
+    flex: 1,
     fontSize: 16,
+    fontWeight: "700",
+    marginRight: 12,
+  },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  badgeDirect: {
+    backgroundColor: "#1f3b30",
+  },
+  badgeRelay: {
+    backgroundColor: "#2e3241",
+  },
+  badgeText: {
+    color: theme.text,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  statusLine: {
+    color: theme.success,
     fontWeight: "600",
   },
-  status: {
-    color: "#5B6270",
+  detail: {
+    color: theme.textSecondary,
     marginTop: 4,
   },
   hint: {
-    color: "#6F7684",
+    color: theme.textMuted,
     fontSize: 12,
     marginTop: 6,
   },
-  empty: {
-    color: "#5B6270",
+  emptyCard: {
+    alignItems: "center",
+    backgroundColor: theme.panel,
+    borderColor: theme.border,
+    borderRadius: theme.radiusMd,
+    borderWidth: 1,
+    marginTop: 8,
+    padding: theme.spaceLg,
+  },
+  emptyTitle: {
+    color: theme.text,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  emptySub: {
+    color: theme.textSecondary,
     textAlign: "center",
   },
 });

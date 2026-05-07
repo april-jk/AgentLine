@@ -2,7 +2,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   FlatList,
   Pressable,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ApiClient,
   DirectServerClient,
@@ -25,10 +25,10 @@ import {
   type ProbeResult,
   probeDirectHttp,
   probeDirectWebSocket,
-  probeRelayRouting,
 } from "../lib/connection/probe";
 import { getSecureItem, secureStorageKeys } from "../lib/storage/secureStorage";
 import type { RootStackParamList } from "../navigation/types";
+import { theme } from "../styles/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Session">;
 
@@ -43,6 +43,35 @@ function messageToText(message: DirectSessionMessage): string {
     })
     .join("\n")
     .trim();
+}
+
+function AppButton({
+  title,
+  onPress,
+  disabled,
+  variant = "primary",
+}: {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  variant?: "primary" | "ghost";
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.button,
+        variant === "primary" ? styles.buttonPrimary : styles.buttonGhost,
+        pressed && !disabled ? styles.buttonPressed : null,
+        disabled ? styles.buttonDisabled : null,
+      ]}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      <Text style={variant === "primary" ? styles.buttonText : styles.buttonGhostText}>
+        {title}
+      </Text>
+    </Pressable>
+  );
 }
 
 export function SessionPlaceholderScreen({ route }: Props) {
@@ -72,10 +101,7 @@ export function SessionPlaceholderScreen({ route }: Props) {
   const [messageInput, setMessageInput] = useState("");
   const [sending, setSending] = useState(false);
 
-  const resolvedServerUrl = useMemo(
-    () => directServerUrl ?? "",
-    [directServerUrl],
-  );
+  const resolvedServerUrl = useMemo(() => directServerUrl ?? "", [directServerUrl]);
 
   const runProbe = async (serverUrl: string) => {
     setProbing(true);
@@ -148,11 +174,7 @@ export function SessionPlaceholderScreen({ route }: Props) {
         }
       }
       setMessageInput("");
-      await loadSessionDetail(
-        resolvedServerUrl,
-        selectedProject.id,
-        selectedSession.id,
-      );
+      await loadSessionDetail(resolvedServerUrl, selectedProject.id, selectedSession.id);
     } finally {
       setSending(false);
     }
@@ -238,115 +260,127 @@ export function SessionPlaceholderScreen({ route }: Props) {
 
   if (!placeholder) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.primary} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (mode !== "direct") {
     return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Host: {hostName}</Text>
-        <Text style={styles.message}>{placeholder.message}</Text>
-        <Text style={styles.probe}>
-          中继探测：{probeResult.state} · {probeResult.message}
-        </Text>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centerCard}>
+          <Text style={styles.title}>Host: {hostName}</Text>
+          <Text style={styles.message}>{placeholder.message}</Text>
+          <Text style={styles.statusText}>
+            中继探测：{probeResult.state} · {probeResult.message}
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>内网直连控制台</Text>
-      <Text style={styles.sub}>Host: {hostName}</Text>
-      <Text style={styles.probe}>
-        HTTP: {httpProbeResult.state} · WS: {probeResult.state}
-      </Text>
-      <Text style={styles.sub}>
-        绑定：{directServerInfo?.host ?? "-"}:{directServerInfo?.port ?? "-"}
-      </Text>
-      <Button
-        title={probing || loading ? "刷新中..." : "刷新服务器数据"}
-        onPress={() => {
-          if (resolvedServerUrl) {
-            void runProbe(resolvedServerUrl);
-            void loadDirectOverview(resolvedServerUrl);
-          }
-        }}
-        disabled={probing || loading}
-      />
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.headerCard}>
+          <Text style={styles.title}>内网直连控制台</Text>
+          <Text style={styles.sub}>Host: {hostName}</Text>
+          <Text style={styles.sub}>
+            HTTP: {httpProbeResult.state} · WS: {probeResult.state}
+          </Text>
+          <Text style={styles.sub}>
+            绑定：{directServerInfo?.host ?? "-"}:{directServerInfo?.port ?? "-"}
+          </Text>
+          <AppButton
+            title={probing || loading ? "刷新中..." : "刷新服务器数据"}
+            onPress={() => {
+              if (resolvedServerUrl) {
+                void runProbe(resolvedServerUrl);
+                void loadDirectOverview(resolvedServerUrl);
+              }
+            }}
+            disabled={probing || loading}
+            variant="ghost"
+          />
+        </View>
 
-      <Text style={styles.section}>项目</Text>
-      <FlatList
-        horizontal
-        data={directProjects}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Pressable
-            style={[
-              styles.chip,
-              selectedProject?.id === item.id ? styles.chipActive : null,
-            ]}
-            onPress={() => setSelectedProject(item)}
-          >
-            <Text style={styles.chipText}>{item.name}</Text>
-          </Pressable>
-        )}
-        ListEmptyComponent={<Text style={styles.empty}>暂无项目</Text>}
-      />
+        <Text style={styles.section}>项目</Text>
+        <FlatList
+          horizontal
+          data={directProjects}
+          keyExtractor={(item) => item.id}
+          showsHorizontalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <Pressable
+              style={[styles.chip, selectedProject?.id === item.id ? styles.chipActive : null]}
+              onPress={() => setSelectedProject(item)}
+            >
+              <Text style={styles.chipText}>{item.name}</Text>
+            </Pressable>
+          )}
+          ListEmptyComponent={<Text style={styles.empty}>暂无项目</Text>}
+        />
 
-      <Text style={styles.section}>会话</Text>
-      <FlatList
-        horizontal
-        data={projectSessions}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Pressable
-            style={[
-              styles.chip,
-              selectedSession?.id === item.id ? styles.chipActive : null,
-            ]}
-            onPress={() => setSelectedSession(item)}
-          >
-            <Text style={styles.chipText}>{item.title ?? item.id.slice(0, 8)}</Text>
-          </Pressable>
-        )}
-        ListEmptyComponent={<Text style={styles.empty}>暂无会话</Text>}
-      />
+        <Text style={styles.section}>会话</Text>
+        <FlatList
+          horizontal
+          data={projectSessions}
+          keyExtractor={(item) => item.id}
+          showsHorizontalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <Pressable
+              style={[styles.chip, selectedSession?.id === item.id ? styles.chipActive : null]}
+              onPress={() => setSelectedSession(item)}
+            >
+              <Text style={styles.chipText}>{item.title ?? item.id.slice(0, 8)}</Text>
+            </Pressable>
+          )}
+          ListEmptyComponent={<Text style={styles.empty}>暂无会话</Text>}
+        />
 
-      <Text style={styles.section}>消息</Text>
-      <FlatList
-        style={styles.messageList}
-        data={sessionDetail?.messages ?? sessionDetail?.session.messages ?? []}
-        keyExtractor={(item, index) => item.id ?? `${index}`}
-        renderItem={({ item }) => (
-          <View style={styles.msgItem}>
-            <Text style={styles.msgRole}>{item.role ?? item.type ?? "unknown"}</Text>
-            <Text style={styles.msgText}>{messageToText(item)}</Text>
+        <Text style={styles.section}>消息</Text>
+        <FlatList
+          style={styles.messageList}
+          data={sessionDetail?.messages ?? sessionDetail?.session.messages ?? []}
+          keyExtractor={(item, index) => item.id ?? `${index}`}
+          renderItem={({ item }) => (
+            <View style={styles.msgItem}>
+              <Text style={styles.msgRole}>{item.role ?? item.type ?? "unknown"}</Text>
+              <Text style={styles.msgText}>{messageToText(item)}</Text>
+            </View>
+          )}
+          ListEmptyComponent={<Text style={styles.empty}>暂无消息</Text>}
+        />
+
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="输入消息控制该会话"
+            placeholderTextColor={theme.textMuted}
+            value={messageInput}
+            onChangeText={setMessageInput}
+          />
+          <View style={styles.sendWrap}>
+            <AppButton
+              title={sending ? "发送中..." : "发送"}
+              onPress={() => void sendMessageToSession()}
+              disabled={sending || !selectedProject || !selectedSession}
+            />
           </View>
-        )}
-        ListEmptyComponent={<Text style={styles.empty}>暂无消息</Text>}
-      />
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="输入消息控制该会话"
-          value={messageInput}
-          onChangeText={setMessageInput}
-        />
-        <Button
-          title={sending ? "发送中..." : "发送"}
-          onPress={() => void sendMessageToSession()}
-          disabled={sending || !selectedProject || !selectedSession}
-        />
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: theme.bg,
+    flex: 1,
+  },
   container: {
     flex: 1,
     gap: 8,
@@ -358,64 +392,85 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 16,
   },
+  centerCard: {
+    backgroundColor: theme.panel,
+    borderColor: theme.border,
+    borderRadius: theme.radiusMd,
+    borderWidth: 1,
+    margin: 16,
+    padding: 16,
+  },
+  headerCard: {
+    backgroundColor: theme.panel,
+    borderColor: theme.border,
+    borderRadius: theme.radiusMd,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12,
+  },
   title: {
+    color: theme.text,
     fontSize: 18,
     fontWeight: "700",
   },
   sub: {
-    color: "#5B6270",
+    color: theme.textSecondary,
   },
   message: {
-    color: "#5B6270",
+    color: theme.textSecondary,
     marginTop: 8,
-    textAlign: "center",
   },
-  probe: {
-    color: "#2B3D67",
+  statusText: {
+    color: theme.textSecondary,
+    marginTop: 4,
   },
   section: {
-    color: "#1F2A44",
+    color: theme.text,
     fontWeight: "700",
     marginTop: 6,
   },
   chip: {
-    backgroundColor: "#F4F6FA",
-    borderColor: "#D9DEE8",
+    backgroundColor: theme.panel,
+    borderColor: theme.border,
     borderRadius: 8,
     borderWidth: 1,
     marginRight: 8,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
   },
   chipActive: {
-    backgroundColor: "#E7ECF8",
-    borderColor: "#7F8FB6",
+    backgroundColor: theme.panelAlt,
+    borderColor: theme.primary,
   },
   chipText: {
-    color: "#1E2430",
+    color: theme.text,
     fontSize: 12,
   },
   empty: {
-    color: "#7A8190",
+    color: theme.textMuted,
     paddingVertical: 8,
   },
   messageList: {
-    borderColor: "#D9DEE8",
+    backgroundColor: theme.panel,
+    borderColor: theme.border,
     borderRadius: 10,
     borderWidth: 1,
     flex: 1,
     padding: 8,
   },
   msgItem: {
+    borderBottomColor: theme.borderSoft,
+    borderBottomWidth: 1,
     marginBottom: 8,
+    paddingBottom: 8,
   },
   msgRole: {
-    color: "#3F4A61",
+    color: theme.primary,
     fontSize: 11,
     fontWeight: "700",
   },
   msgText: {
-    color: "#1F2430",
+    color: theme.text,
     fontSize: 13,
     marginTop: 2,
   },
@@ -425,11 +480,46 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   input: {
-    borderColor: "#C7CCD6",
+    backgroundColor: theme.panelAlt,
+    borderColor: theme.border,
     borderRadius: 8,
     borderWidth: 1,
+    color: theme.text,
     flex: 1,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
+  },
+  sendWrap: {
+    width: 96,
+  },
+  button: {
+    borderRadius: theme.radiusSm,
+    paddingVertical: 10,
+  },
+  buttonPrimary: {
+    backgroundColor: theme.primary,
+  },
+  buttonGhost: {
+    backgroundColor: theme.panelAlt,
+    borderColor: theme.border,
+    borderWidth: 1,
+  },
+  buttonPressed: {
+    opacity: 0.85,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    color: "#0a1725",
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  buttonGhostText: {
+    color: theme.text,
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });
