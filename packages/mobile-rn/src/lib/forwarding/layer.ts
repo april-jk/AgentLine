@@ -2,7 +2,6 @@ import type { ThemeMode } from "../../styles/theme";
 import { normalizeHttpBaseUrl } from "../api/client";
 
 export type ForwardMode = "direct" | "relay";
-const DEFAULT_REMOTE_WEB_BASE_URL = "http://127.0.0.1:45734";
 const DEFAULT_REMOTE_THEME: ThemeMode = "auto";
 
 export type ForwardingInput =
@@ -92,8 +91,39 @@ function normalizeRelayLoginUrl(controlPlaneUrl: string): string {
   return `${base}/remote/login/relay`;
 }
 
-function normalizeDirectLoginUrl(): string {
-  const base = normalizeHttpBaseUrl(DEFAULT_REMOTE_WEB_BASE_URL);
+function normalizeDirectWebBaseUrl(directServerUrl: string): string {
+  const base = normalizeHttpBaseUrl(directServerUrl);
+  if (base.endsWith("/remote/login/direct")) {
+    return base.slice(0, -"/remote/login/direct".length);
+  }
+  if (base.endsWith("/login/direct")) {
+    return base.slice(0, -"/login/direct".length);
+  }
+  if (base.endsWith("/remote")) return base.slice(0, -"/remote".length);
+  return base;
+}
+
+function parseBaseUrlParts(base: string): {
+  protocol: string;
+  host: string;
+  port: number;
+} | null {
+  const match = base.match(/^(https?:)\/\/([^/:]+)(?::(\d+))?$/);
+  if (!match?.[1] || !match[2]) return null;
+
+  return {
+    protocol: match[1],
+    host: match[2],
+    port: Number(match[3] || (match[1] === "https:" ? 443 : 80)),
+  };
+}
+
+function normalizeDirectLoginUrl(directServerUrl: string): string {
+  const base = normalizeDirectWebBaseUrl(directServerUrl);
+  const parsed = parseBaseUrlParts(base);
+  if (parsed) {
+    return `${parsed.protocol}//${parsed.host}:${String(parsed.port + 3)}/login/direct`;
+  }
   if (isLocalRemoteDevBase(base)) {
     return `${base}/login/direct`;
   }
@@ -166,7 +196,7 @@ export function resolveForwardingTarget(
 ): ForwardingTarget {
   if (input.mode === "direct") {
     const directServerUrl = normalizeHttpBaseUrl(input.directServerUrl);
-    const url = `${normalizeDirectLoginUrl()}${buildDirectHash(input)}`;
+    const url = `${normalizeDirectLoginUrl(input.directServerUrl)}${buildDirectHash(input)}`;
     return {
       mode: "direct",
       url: directServerUrl,

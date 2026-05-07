@@ -109,6 +109,10 @@ createRoot(rootElement).render(
             {/* Login routes — redirect to app if already connected */}
             <Route element={<UnauthenticatedGate />}>
               <Route path="/login" element={<HostPickerPage />} />
+              <Route
+                path="/login/new"
+                element={<Navigate to="/login/relay" replace />}
+              />
               <Route path="/login/direct" element={<DirectLoginPage />} />
               <Route path="/login/relay" element={<RelayLoginPage />} />
             </Route>

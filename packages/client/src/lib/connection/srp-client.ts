@@ -11,11 +11,13 @@ import type {
   SRPClientSessionStep2,
   SRPClientSession as SRPClientSessionType,
 } from "tssrp6a";
+import { ensureWebCryptoSubtle } from "./webcrypto-subtle-polyfill";
 
 let _tssrp6a: typeof import("tssrp6a") | null = null;
 
 async function loadSrp() {
   if (!_tssrp6a) {
+    ensureWebCryptoSubtle();
     _tssrp6a = await import("tssrp6a");
   }
   return _tssrp6a;
