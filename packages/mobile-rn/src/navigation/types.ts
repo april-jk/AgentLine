@@ -1,12 +1,14 @@
+import type { ForwardMode } from "../lib/forwarding/layer";
+
 export type RootStackParamList = {
   Login: undefined;
-  HostList: undefined;
-  Session: {
-    hostId: string;
-    relayUsername: string;
-    hostName: string;
-    mode: "relay" | "direct";
-    directServerUrl?: string;
-    directUsername?: string;
+  Console: {
+    mode: ForwardMode;
+    url: string;
+    title: string;
+    source: {
+      uri: string;
+    };
+    injectedJavaScriptBeforeContentLoaded?: string;
   };
 };

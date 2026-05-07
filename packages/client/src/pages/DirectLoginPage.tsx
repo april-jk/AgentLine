@@ -5,12 +5,41 @@
  * On successful auth, the app switches to the main view.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
 import { createDirectHost, loadSavedHosts, saveHost } from "../lib/hostStorage";
+
+function parseHashCredentials(): {
+  wsUrl: string;
+  username: string;
+  password: string;
+} | null {
+  const hash = window.location.hash;
+  if (!hash || hash.length < 2) return null;
+
+  try {
+    const params = new URLSearchParams(hash.slice(1));
+    const wsUrl = params.get("ws");
+    const username = params.get("u");
+    const password = params.get("p") ?? "";
+
+    if (wsUrl || username || password) {
+      window.history.replaceState(null, "", window.location.pathname);
+      return {
+        wsUrl: wsUrl ?? "",
+        username: username ?? "",
+        password,
+      };
+    }
+  } catch {
+    // Ignore parse errors
+  }
+
+  return null;
+}
 
 export function DirectLoginPage() {
   const { t } = useI18n();
@@ -35,6 +64,51 @@ export function DirectLoginPage() {
   // Always default to "remember me" - logout feature can be added later
   const [rememberMe, setRememberMe] = useState(true);
   const [localError, setLocalError] = useState<string | null>(null);
+  const autoLoginAttempted = useRef(false);
+
+  useEffect(() => {
+    if (autoLoginAttempted.current || isAutoResuming) return;
+    autoLoginAttempted.current = true;
+
+    const hashCreds = parseHashCredentials();
+    if (!hashCreds) return;
+
+    const normalizedWsUrl = hashCreds.wsUrl.trim();
+    const normalizedUsername = hashCreds.username.trim();
+    const normalizedPassword = hashCreds.password;
+
+    if (normalizedWsUrl) setServerUrl(normalizedWsUrl);
+    if (normalizedUsername) setUsername(normalizedUsername);
+    if (normalizedPassword) setPassword(normalizedPassword);
+
+    if (!normalizedWsUrl || !normalizedUsername || !normalizedPassword) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        await connect(
+          normalizedWsUrl,
+          normalizedUsername,
+          normalizedPassword,
+          true,
+        );
+
+        const existing = loadSavedHosts().hosts.find(
+          (h) => h.mode === "direct" && h.wsUrl === normalizedWsUrl,
+        );
+        if (!existing) {
+          const newHost = createDirectHost({
+            wsUrl: normalizedWsUrl,
+            srpUsername: normalizedUsername,
+          });
+          saveHost(newHost);
+        }
+      } catch {
+        // connection error is surfaced by context/local state
+      }
+    })();
+  }, [connect, isAutoResuming]);
 
   // If auto-resume is in progress, show a loading screen
   if (isAutoResuming) {

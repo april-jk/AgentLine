@@ -15,6 +15,9 @@ export async function deleteSecureItem(key: string): Promise<void> {
 export const secureStorageKeys = {
   accessToken: "agentline.access_token",
   controlPlaneUrl: "agentline.control_plane_url",
+  relayWsUrl: "agentline.relay_ws_url",
+  relayUsername: "agentline.relay_username",
+  relayPassword: "agentline.relay_password",
   directServerUrl: "agentline.direct_server_url",
   directUsername: "agentline.direct_username",
   directPassword: "agentline.direct_password",

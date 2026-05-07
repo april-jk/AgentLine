@@ -1,0 +1,156 @@
+import { normalizeHttpBaseUrl } from "../api/client";
+
+export type ForwardMode = "direct" | "relay";
+const DEFAULT_REMOTE_WEB_BASE_URL = "http://127.0.0.1:45734";
+
+export type ForwardingInput =
+  | {
+      mode: "direct";
+      directServerUrl: string;
+      directUsername?: string;
+      directPassword?: string;
+    }
+  | {
+      mode: "relay";
+      controlPlaneUrl: string;
+      relayWsUrl?: string;
+      relayUsername?: string;
+      relayPassword?: string;
+    };
+
+export type ForwardingWebViewSource = {
+  uri: string;
+};
+
+export type ForwardingTarget = {
+  mode: ForwardMode;
+  url: string;
+  title: string;
+  source: ForwardingWebViewSource;
+  injectedJavaScriptBeforeContentLoaded?: string;
+};
+
+function buildModeBootstrapScript(mode: ForwardMode): string {
+  return `
+    window.__AGENTLINE_NATIVE_SHELL__ = true;
+    window.__AGENTLINE_FORWARD_MODE__ = ${JSON.stringify(mode)};
+    true;
+  `;
+}
+
+function normalizeRelayWebBaseUrl(controlPlaneUrl: string): string {
+  const base = normalizeHttpBaseUrl(controlPlaneUrl);
+  if (base.endsWith("/remote/login/relay")) {
+    return base.slice(0, -"/remote/login/relay".length);
+  }
+  if (base.endsWith("/remote")) return base.slice(0, -"/remote".length);
+  return base;
+}
+
+function isLocalRemoteDevBase(baseUrl: string): boolean {
+  return /^(http:\/\/)(127\.0\.0\.1|localhost|10\.0\.2\.2)(:\d+)?$/.test(
+    baseUrl,
+  );
+}
+
+function normalizeRelayLoginUrl(controlPlaneUrl: string): string {
+  const base = normalizeRelayWebBaseUrl(controlPlaneUrl);
+  if (isLocalRemoteDevBase(base)) {
+    return `${base}/login/relay`;
+  }
+  return `${base}/remote/login/relay`;
+}
+
+function normalizeDirectLoginUrl(): string {
+  const base = normalizeHttpBaseUrl(DEFAULT_REMOTE_WEB_BASE_URL);
+  if (isLocalRemoteDevBase(base)) {
+    return `${base}/login/direct`;
+  }
+  return `${base}/remote/login/direct`;
+}
+
+function normalizeDirectWsUrl(rawValue: string): string {
+  const base = normalizeHttpBaseUrl(rawValue);
+  const value = base.replace(/^http/, "ws");
+  if (value.endsWith("/api/ws")) return value;
+  return `${value}/api/ws`;
+}
+
+function normalizeRelayWsUrl(rawValue: string): string {
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return "wss://relay.agentline.com/ws";
+  }
+
+  let value = trimmed;
+  if (value.startsWith("http://")) {
+    value = value.replace("http://", "ws://");
+  } else if (value.startsWith("https://")) {
+    value = value.replace("https://", "wss://");
+  } else if (!value.startsWith("ws://") && !value.startsWith("wss://")) {
+    value = `wss://${value}`;
+  }
+
+  if (!value.endsWith("/ws")) {
+    value = `${value.replace(/\/+$/, "")}/ws`;
+  }
+
+  return value;
+}
+
+function buildRelayHash(
+  input: Extract<ForwardingInput, { mode: "relay" }>,
+): string {
+  const params: string[] = [];
+  const username = input.relayUsername?.trim().toLowerCase();
+  const password = input.relayPassword?.trim();
+  const relayWsUrl = normalizeRelayWsUrl(input.relayWsUrl ?? "");
+
+  if (username) params.push(`u=${encodeURIComponent(username)}`);
+  if (password) params.push(`p=${encodeURIComponent(password)}`);
+  params.push(`r=${encodeURIComponent(relayWsUrl)}`);
+
+  const serialized = params.join("&");
+  return serialized ? `#${serialized}` : "";
+}
+
+function buildDirectHash(
+  input: Extract<ForwardingInput, { mode: "direct" }>,
+): string {
+  const params: string[] = [];
+  const wsUrl = normalizeDirectWsUrl(input.directServerUrl);
+  const username = input.directUsername?.trim();
+  const password = input.directPassword?.trim();
+
+  params.push(`ws=${encodeURIComponent(wsUrl)}`);
+  if (username) params.push(`u=${encodeURIComponent(username)}`);
+  if (password) params.push(`p=${encodeURIComponent(password)}`);
+
+  const serialized = params.join("&");
+  return serialized ? `#${serialized}` : "";
+}
+
+export function resolveForwardingTarget(
+  input: ForwardingInput,
+): ForwardingTarget {
+  if (input.mode === "direct") {
+    const directServerUrl = normalizeHttpBaseUrl(input.directServerUrl);
+    const url = `${normalizeDirectLoginUrl()}${buildDirectHash(input)}`;
+    return {
+      mode: "direct",
+      url: directServerUrl,
+      title: "AgentLine 直连",
+      source: { uri: url },
+      injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript("direct"),
+    };
+  }
+
+  const url = `${normalizeRelayLoginUrl(input.controlPlaneUrl)}${buildRelayHash(input)}`;
+  return {
+    mode: "relay",
+    url,
+    title: "AgentLine 中转",
+    source: { uri: url },
+    injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript("relay"),
+  };
+}

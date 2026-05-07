@@ -1,8 +1,7 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,15 +11,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  ApiClient,
-  type ConnectionMode,
-  normalizeHttpBaseUrl,
-} from "../lib/api/client";
-import {
   type LanScanResult,
   scanLanServers,
   smartScanLanServers,
 } from "../lib/connection/lanScanner";
+import { resolveForwardingTarget } from "../lib/forwarding/layer";
 import {
   getSecureItem,
   secureStorageKeys,
@@ -31,198 +26,268 @@ import { theme } from "../styles/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
-function AppButton({
-  title,
-  onPress,
-  disabled,
-  variant = "primary",
-}: {
-  title: string;
-  onPress: () => void;
-  disabled?: boolean;
-  variant?: "primary" | "ghost";
-}) {
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.button,
-        variant === "primary" ? styles.buttonPrimary : styles.buttonGhost,
-        pressed && !disabled ? styles.buttonPressed : null,
-        disabled ? styles.buttonDisabled : null,
-      ]}
-      onPress={onPress}
-      disabled={disabled}
-    >
-      <Text style={variant === "primary" ? styles.buttonText : styles.buttonGhostText}>
-        {title}
-      </Text>
-    </Pressable>
-  );
+type KnownHost = {
+  url: string;
+  label: string;
+  source: "recent" | "scan";
+  detail?: string;
+};
+
+function normalizeLabelFromUrl(url: string): string {
+  try {
+    const match = url.match(/^https?:\/\/([^/:]+)/);
+    if (match?.[1]) return match[1];
+  } catch {
+    // fall through to raw normalization
+  }
+
+  return url.replace(/^https?:\/\//, "");
+}
+
+function dedupeKnownHosts(
+  recentServers: string[],
+  scanResults: LanScanResult[],
+): KnownHost[] {
+  const seen = new Set<string>();
+  const items: KnownHost[] = [];
+
+  for (const url of recentServers) {
+    if (seen.has(url)) continue;
+    seen.add(url);
+    items.push({
+      url,
+      label: normalizeLabelFromUrl(url),
+      source: "recent",
+      detail: "最近连接",
+    });
+  }
+
+  for (const item of scanResults) {
+    if (seen.has(item.baseUrl)) continue;
+    seen.add(item.baseUrl);
+    items.push({
+      url: item.baseUrl,
+      label: item.host,
+      source: "scan",
+      detail: `${item.host}:${String(item.port)}`,
+    });
+  }
+
+  return items;
 }
 
 export function LoginScreen({ navigation }: Props) {
-  const [mode, setMode] = useState<ConnectionMode>("direct");
-  const [controlPlaneUrl, setControlPlaneUrl] = useState("http://10.0.2.2:4400");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [directServerUrl, setDirectServerUrl] = useState("http://10.0.2.2:45731");
-  const [directUsername, setDirectUsername] = useState("");
-  const [directPassword, setDirectPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [directServerUrl, setDirectServerUrl] = useState(
+    "http://127.0.0.1:45731",
+  );
+  const [directUsername, setDirectUsername] = useState("mobiletest");
+  const [directPassword, setDirectPassword] = useState("mobiletest123");
+
+  const [controlPlaneUrl, setControlPlaneUrl] = useState(
+    "https://agentline.com",
+  );
+  const [relayWsUrl, setRelayWsUrl] = useState("wss://relay.agentline.com/ws");
+  const [relayUsername, setRelayUsername] = useState("");
+  const [relayPassword, setRelayPassword] = useState("");
+
   const [scanPrefix, setScanPrefix] = useState("192.168.1");
   const [scanPort, setScanPort] = useState("45731");
-  const [scanLoading, setScanLoading] = useState(false);
-  const [scanResults, setScanResults] = useState<LanScanResult[]>([]);
-  const [scanProgress, setScanProgress] = useState("");
   const [scanAdvanced, setScanAdvanced] = useState(false);
+  const [relayExpanded, setRelayExpanded] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanProgress, setScanProgress] = useState("");
+  const [scanResults, setScanResults] = useState<LanScanResult[]>([]);
   const [recentServers, setRecentServers] = useState<string[]>([]);
 
   useEffect(() => {
-    const loadRecentServers = async () => {
-      const raw = await getSecureItem(secureStorageKeys.recentDirectServers);
-      if (!raw) return;
-      try {
-        const parsed = JSON.parse(raw) as unknown;
-        if (Array.isArray(parsed)) {
-          const urls = parsed
-            .filter((item): item is string => typeof item === "string")
-            .slice(0, 10);
-          setRecentServers(urls);
+    const bootstrap = async () => {
+      const [
+        savedDirect,
+        savedDirectUsername,
+        savedDirectPassword,
+        savedRelay,
+        savedRecent,
+      ] = await Promise.all([
+        getSecureItem(secureStorageKeys.directServerUrl),
+        getSecureItem(secureStorageKeys.directUsername),
+        getSecureItem(secureStorageKeys.directPassword),
+        getSecureItem(secureStorageKeys.controlPlaneUrl),
+        getSecureItem(secureStorageKeys.recentDirectServers),
+      ]);
+      const [savedRelayWs, savedRelayUsername, savedRelayPassword] =
+        await Promise.all([
+          getSecureItem(secureStorageKeys.relayWsUrl),
+          getSecureItem(secureStorageKeys.relayUsername),
+          getSecureItem(secureStorageKeys.relayPassword),
+        ]);
+
+      if (savedDirect?.trim()) setDirectServerUrl(savedDirect);
+      if (savedDirectUsername?.trim()) setDirectUsername(savedDirectUsername);
+      if (savedDirectPassword?.trim()) setDirectPassword(savedDirectPassword);
+      if (savedRelay?.trim()) setControlPlaneUrl(savedRelay);
+      if (savedRelayWs?.trim()) setRelayWsUrl(savedRelayWs);
+      if (savedRelayUsername?.trim()) setRelayUsername(savedRelayUsername);
+      if (savedRelayPassword?.trim()) setRelayPassword(savedRelayPassword);
+      if (savedRecent) {
+        try {
+          const arr = JSON.parse(savedRecent) as unknown;
+          if (Array.isArray(arr)) {
+            setRecentServers(
+              arr
+                .filter((x): x is string => typeof x === "string")
+                .slice(0, 10),
+            );
+          }
+        } catch {
+          // ignore bad cache
         }
-      } catch {
-        // ignore invalid persisted JSON
       }
     };
-    void loadRecentServers();
+
+    void bootstrap();
   }, []);
 
-  const persistRecentServer = async (serverUrl: string) => {
-    const normalized = normalizeHttpBaseUrl(serverUrl);
-    const merged = [normalized, ...recentServers.filter((x) => x !== normalized)].slice(
+  const knownHosts = useMemo(
+    () => dedupeKnownHosts(recentServers, scanResults),
+    [recentServers, scanResults],
+  );
+
+  const saveRecent = async (url: string) => {
+    const deduped = [url, ...recentServers.filter((x) => x !== url)].slice(
       0,
       10,
     );
-    setRecentServers(merged);
-    await setSecureItem(secureStorageKeys.recentDirectServers, JSON.stringify(merged));
+    setRecentServers(deduped);
+    await setSecureItem(
+      secureStorageKeys.recentDirectServers,
+      JSON.stringify(deduped),
+    );
   };
 
-  const connectToDirectServer = async (serverUrl: string, username?: string) => {
-    const normalizedHttpUrl = normalizeHttpBaseUrl(serverUrl);
-    const autoUsername = username?.trim()
-      ? username.trim()
-      : normalizedHttpUrl.replace(/^https?:\/\//, "");
-    await setSecureItem(secureStorageKeys.directServerUrl, normalizedHttpUrl);
-    await setSecureItem(secureStorageKeys.directUsername, autoUsername);
-    await setSecureItem(secureStorageKeys.directPassword, directPassword.trim());
-    await setSecureItem(secureStorageKeys.connectionMode, "direct");
-    await persistRecentServer(normalizedHttpUrl);
-    setDirectServerUrl(normalizedHttpUrl);
-    setDirectUsername(autoUsername);
-    navigation.replace("HostList");
-  };
-
-  const onRelayLogin = async () => {
+  const openDirectConsole = async (serverUrl = directServerUrl) => {
     try {
-      if (!email.trim() || !password) {
-        Alert.alert("登录失败", "请输入中继账号邮箱和密码");
+      if (!serverUrl.trim()) {
+        Alert.alert("缺少地址", "请填写电脑端 AgentLine 地址");
         return;
       }
-      setSubmitting(true);
-      const client = new ApiClient(controlPlaneUrl.trim());
-      const result = await client.login({ email: email.trim(), password });
-      await setSecureItem(secureStorageKeys.accessToken, result.accessToken);
-      await setSecureItem(secureStorageKeys.controlPlaneUrl, controlPlaneUrl.trim());
+      if (!directUsername.trim()) {
+        Alert.alert("缺少用户名", "请填写直连用户名");
+        return;
+      }
+
+      const target = resolveForwardingTarget({
+        mode: "direct",
+        directServerUrl: serverUrl,
+        directUsername,
+        directPassword,
+      });
+      await setSecureItem(secureStorageKeys.connectionMode, "direct");
+      await setSecureItem(secureStorageKeys.directServerUrl, target.url);
+      await setSecureItem(
+        secureStorageKeys.directUsername,
+        directUsername.trim(),
+      );
+      await setSecureItem(secureStorageKeys.directPassword, directPassword);
+      await saveRecent(target.url);
+      navigation.navigate("Console", target);
+    } catch (error) {
+      Alert.alert(
+        "打开失败",
+        error instanceof Error ? error.message : "未知错误",
+      );
+    }
+  };
+
+  const openRelayConsole = async () => {
+    try {
+      if (!controlPlaneUrl.trim()) {
+        Alert.alert("缺少地址", "请填写中转服务地址");
+        return;
+      }
+
+      const target = resolveForwardingTarget({
+        mode: "relay",
+        controlPlaneUrl,
+        relayWsUrl,
+        relayUsername,
+        relayPassword,
+      });
       await setSecureItem(secureStorageKeys.connectionMode, "relay");
-      navigation.replace("HostList");
+      await setSecureItem(
+        secureStorageKeys.controlPlaneUrl,
+        controlPlaneUrl.trim(),
+      );
+      await setSecureItem(secureStorageKeys.relayWsUrl, relayWsUrl.trim());
+      await setSecureItem(
+        secureStorageKeys.relayUsername,
+        relayUsername.trim().toLowerCase(),
+      );
+      await setSecureItem(secureStorageKeys.relayPassword, relayPassword);
+      navigation.navigate("Console", target);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      Alert.alert("登录失败", message);
-    } finally {
-      setSubmitting(false);
+      Alert.alert(
+        "打开失败",
+        error instanceof Error ? error.message : "未知错误",
+      );
     }
   };
 
-  const onDirectConnect = async () => {
-    try {
-      if (!directServerUrl.trim()) {
-        Alert.alert("配置失败", "请填写直连地址");
-        return;
-      }
-      setSubmitting(true);
-      await connectToDirectServer(directServerUrl, directUsername);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      Alert.alert("配置失败", message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onSmartScanLan = async () => {
+  const onSmartScan = async () => {
     const port = Number(scanPort.trim() || "45731");
     if (!Number.isInteger(port) || port <= 0 || port > 65535) {
       Alert.alert("扫描失败", "端口必须是 1-65535");
       return;
     }
+
+    setScanLoading(true);
+    setScanResults([]);
+    setScanProgress("正在搜索可连接的电脑...");
     try {
-      setScanLoading(true);
-      setScanProgress("正在智能扫描...");
-      setScanResults([]);
       const found = await smartScanLanServers({
         port,
         recentServers,
         onProgress: (progress) => {
           setScanProgress(
             progress.phase === "quick"
-              ? `快速扫描 ${progress.scanned}/${progress.total}`
-              : `扩展扫描 ${progress.scanned}/${progress.total}`,
+              ? `快速搜索 ${progress.scanned}/${progress.total}`
+              : `扩展搜索 ${progress.scanned}/${progress.total}`,
           );
         },
       });
       setScanResults(found);
-      if (found.length === 1) {
-        const only = found[0];
-        if (only) {
-          await connectToDirectServer(only.baseUrl, only.baseUrl);
-        }
-        return;
-      }
-      if (found.length === 0) {
-        Alert.alert(
-          "未发现电脑",
-          "请确保电脑和手机在同一 Wi-Fi，且电脑端 AgentLine 正在运行。",
-        );
+      if (found.length === 1 && found[0]) {
+        setDirectServerUrl(found[0].baseUrl);
+        await saveRecent(found[0].baseUrl);
       }
     } catch {
-      Alert.alert("扫描失败", "智能扫描中断，请重试。");
+      Alert.alert("扫描失败", "请重试");
     } finally {
       setScanLoading(false);
       setScanProgress("");
     }
   };
 
-  const onScanLan = async () => {
+  const onManualScan = async () => {
     const prefix = scanPrefix.trim();
     if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(prefix)) {
-      Alert.alert("扫描失败", "网段前缀格式应为 192.168.1");
+      Alert.alert("扫描失败", "网段格式应为 192.168.1");
       return;
     }
+
     const port = Number(scanPort.trim() || "45731");
     if (!Number.isInteger(port) || port <= 0 || port > 65535) {
       Alert.alert("扫描失败", "端口必须是 1-65535");
       return;
     }
+
+    setScanLoading(true);
+    setScanResults([]);
+    setScanProgress("正在扫描指定网段...");
     try {
-      setScanLoading(true);
-      setScanProgress("正在手动网段扫描...");
-      setScanResults([]);
       const found = await scanLanServers(prefix, port);
       setScanResults(found);
-      if (found.length === 0) {
-        Alert.alert("扫描完成", "未发现可连接的 AgentLine 服务器。");
-      }
     } catch {
-      Alert.alert("扫描失败", "内网扫描中断，请重试。");
+      Alert.alert("扫描失败", "请重试");
     } finally {
       setScanLoading(false);
       setScanProgress("");
@@ -232,192 +297,214 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>AgentLine Mobile</Text>
-        <Text style={styles.subtitle}>Mobile Supervision Panel</Text>
-
-        <View style={styles.modeRow}>
-          <Pressable
-            style={[styles.modeButton, mode === "direct" ? styles.modeActive : null]}
-            onPress={() => setMode("direct")}
-          >
-            <Text style={styles.modeText}>直连服务器</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.modeButton, mode === "relay" ? styles.modeActive : null]}
-            onPress={() => setMode("relay")}
-          >
-            <Text style={styles.modeText}>中继账号</Text>
-          </Pressable>
+        <View style={styles.hero}>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>A</Text>
+          </View>
+          <Text style={styles.title}>AgentLine</Text>
+          <Text style={styles.subtitle}>
+            在同一页里发现、保存并连接你的桌面控制端。
+          </Text>
         </View>
 
-        {mode === "direct" ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>直连配置</Text>
-            <TextInput
-              autoCapitalize="none"
-              placeholder="服务器地址（http://电脑IP:45731）"
-              placeholderTextColor={theme.textMuted}
-              style={styles.input}
-              value={directServerUrl}
-              onChangeText={setDirectServerUrl}
-            />
-            <TextInput
-              autoCapitalize="none"
-              placeholder="显示名称（可选）"
-              placeholderTextColor={theme.textMuted}
-              style={styles.input}
-              value={directUsername}
-              onChangeText={setDirectUsername}
-            />
-            <TextInput
-              secureTextEntry
-              placeholder="密码（可选）"
-              placeholderTextColor={theme.textMuted}
-              style={styles.input}
-              value={directPassword}
-              onChangeText={setDirectPassword}
-            />
-            <AppButton
-              title={submitting ? "配置中..." : "保存并连接"}
-              onPress={onDirectConnect}
-              disabled={submitting}
-            />
+        <View style={styles.band}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>快速连接</Text>
+              <Text style={styles.sectionHint}>
+                优先适配 ADB 反向代理，也支持同网段自动搜索。
+              </Text>
+            </View>
+            <Pressable
+              style={styles.inlineAction}
+              onPress={() => void onSmartScan()}
+              disabled={scanLoading}
+            >
+              <Text style={styles.inlineActionText}>
+                {scanLoading ? "搜索中" : "自动搜索"}
+              </Text>
+            </Pressable>
+          </View>
 
-            <View style={styles.scanPanel}>
-              <Text style={styles.sectionTitle}>一键找电脑</Text>
+          <View style={styles.callout}>
+            <Text style={styles.calloutTitle}>当前推荐</Text>
+            <Text style={styles.calloutBody}>
+              模拟器和 USB 调试优先使用
+              127.0.0.1:45731。局域网场景可改成电脑实际 IP。
+            </Text>
+          </View>
+
+          {scanProgress ? (
+            <Text style={styles.progressText}>{scanProgress}</Text>
+          ) : null}
+
+          {knownHosts.length > 0 ? (
+            <View style={styles.hostList}>
+              {knownHosts.map((host) => (
+                <Pressable
+                  key={host.url}
+                  style={styles.hostRow}
+                  onPress={() => {
+                    setDirectServerUrl(host.url);
+                    void openDirectConsole(host.url);
+                  }}
+                >
+                  <View style={styles.hostMeta}>
+                    <Text style={styles.hostLabel}>{host.label}</Text>
+                    <Text style={styles.hostUrl}>{host.url}</Text>
+                  </View>
+                  <View style={styles.hostBadge}>
+                    <Text style={styles.hostBadgeText}>
+                      {host.source === "scan" ? "发现" : "最近"}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>
+              还没有已发现主机。你可以先自动搜索，也可以直接手填。
+            </Text>
+          )}
+        </View>
+
+        <View style={styles.band}>
+          <Text style={styles.sectionTitle}>直接连接</Text>
+          <Text style={styles.sectionHint}>
+            这里同时承担“保存主机”和“立即进入”，不再跳到另一套模板。
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            value={directServerUrl}
+            onChangeText={setDirectServerUrl}
+            autoCapitalize="none"
+            placeholder="http://127.0.0.1:45731"
+            placeholderTextColor={theme.textMuted}
+          />
+          <TextInput
+            style={styles.input}
+            value={directUsername}
+            onChangeText={setDirectUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="直连用户名"
+            placeholderTextColor={theme.textMuted}
+          />
+          <TextInput
+            style={styles.input}
+            value={directPassword}
+            onChangeText={setDirectPassword}
+            placeholder="直连密码"
+            placeholderTextColor={theme.textMuted}
+            secureTextEntry
+          />
+
+          <Pressable
+            style={styles.primaryButton}
+            onPress={() => void openDirectConsole()}
+          >
+            <Text style={styles.primaryButtonText}>进入电脑控制台</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => setScanAdvanced((value) => !value)}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {scanAdvanced ? "收起网段搜索" : "展开网段搜索"}
+            </Text>
+          </Pressable>
+
+          {scanAdvanced ? (
+            <View style={styles.advancedPane}>
               <TextInput
+                style={styles.input}
+                value={scanPrefix}
+                onChangeText={setScanPrefix}
                 autoCapitalize="none"
-                keyboardType="numeric"
-                placeholder="端口（默认 45731）"
+                placeholder="网段，例如 192.168.1"
                 placeholderTextColor={theme.textMuted}
+              />
+              <TextInput
                 style={styles.input}
                 value={scanPort}
                 onChangeText={setScanPort}
+                keyboardType="numeric"
+                placeholder="端口（默认 45731）"
+                placeholderTextColor={theme.textMuted}
               />
-              <AppButton
-                title={scanLoading ? "扫描中..." : "智能扫描并连接"}
-                onPress={onSmartScanLan}
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => void onManualScan()}
                 disabled={scanLoading}
-              />
-              {scanProgress ? <Text style={styles.progressText}>{scanProgress}</Text> : null}
-              <AppButton
-                title={scanAdvanced ? "收起高级选项" : "高级选项（手动网段）"}
-                onPress={() => setScanAdvanced((value) => !value)}
-                variant="ghost"
-              />
-
-              {scanAdvanced ? (
-                <>
-                  <TextInput
-                    autoCapitalize="none"
-                    placeholder="网段前缀，如 192.168.1"
-                    placeholderTextColor={theme.textMuted}
-                    style={styles.input}
-                    value={scanPrefix}
-                    onChangeText={setScanPrefix}
-                  />
-                  <AppButton
-                    title={scanLoading ? "扫描中..." : "按网段扫描"}
-                    onPress={onScanLan}
-                    disabled={scanLoading}
-                    variant="ghost"
-                  />
-                </>
-              ) : null}
-
-              <FlatList
-                style={styles.scanList}
-                data={scanResults}
-                keyExtractor={(item) => item.baseUrl}
-                scrollEnabled={false}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>
-                    {scanLoading ? "正在扫描..." : "扫描结果会出现在这里"}
-                  </Text>
-                }
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={styles.scanItem}
-                    onPress={async () => {
-                      try {
-                        await connectToDirectServer(item.baseUrl, item.baseUrl);
-                      } catch {
-                        Alert.alert("连接失败", "写入直连配置失败，请重试。");
-                      }
-                    }}
-                  >
-                    <Text style={styles.scanItemTitle}>{item.baseUrl}</Text>
-                    <Text style={styles.scanItemSub}>
-                      host={item.host} · deviceBridge={item.deviceBridge ? "on" : "off"}
-                    </Text>
-                  </Pressable>
-                )}
-              />
-
-              {recentServers.length > 0 ? (
-                <>
-                  <Text style={styles.recentTitle}>最近连接</Text>
-                  <FlatList
-                    horizontal
-                    data={recentServers}
-                    keyExtractor={(item) => item}
-                    showsHorizontalScrollIndicator={false}
-                    renderItem={({ item }) => (
-                      <Pressable
-                        style={styles.recentChip}
-                        onPress={async () => {
-                          try {
-                            await connectToDirectServer(item, item);
-                          } catch {
-                            Alert.alert("连接失败", "连接最近服务器失败。");
-                          }
-                        }}
-                      >
-                        <Text style={styles.recentChipText}>
-                          {item.replace(/^https?:\/\//, "")}
-                        </Text>
-                      </Pressable>
-                    )}
-                  />
-                </>
-              ) : null}
+              >
+                <Text style={styles.secondaryButtonText}>扫描这个网段</Text>
+              </Pressable>
             </View>
-          </View>
-        ) : (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>中继登录</Text>
-            <TextInput
-              autoCapitalize="none"
-              placeholder="控制平面地址（http://host:4400）"
-              placeholderTextColor={theme.textMuted}
-              style={styles.input}
-              value={controlPlaneUrl}
-              onChangeText={setControlPlaneUrl}
-            />
-            <TextInput
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholder="邮箱"
-              placeholderTextColor={theme.textMuted}
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-            />
-            <TextInput
-              secureTextEntry
-              placeholder="密码"
-              placeholderTextColor={theme.textMuted}
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-            />
-            <AppButton
-              title={submitting ? "登录中..." : "登录并拉取设备"}
-              onPress={onRelayLogin}
-              disabled={submitting}
-            />
-          </View>
-        )}
+          ) : null}
+        </View>
+
+        <View style={styles.band}>
+          <Pressable
+            style={styles.sectionHeaderButton}
+            onPress={() => setRelayExpanded((value) => !value)}
+          >
+            <View>
+              <Text style={styles.sectionTitle}>中转连接</Text>
+              <Text style={styles.sectionHint}>
+                需要跨网段时再展开，避免把主路径做复杂。
+              </Text>
+            </View>
+            <Text style={styles.chevron}>
+              {relayExpanded ? "收起" : "展开"}
+            </Text>
+          </Pressable>
+
+          {relayExpanded ? (
+            <View style={styles.relayPane}>
+              <TextInput
+                style={styles.input}
+                value={controlPlaneUrl}
+                onChangeText={setControlPlaneUrl}
+                autoCapitalize="none"
+                placeholder="https://agentline.com"
+                placeholderTextColor={theme.textMuted}
+              />
+              <TextInput
+                style={styles.input}
+                value={relayWsUrl}
+                onChangeText={setRelayWsUrl}
+                autoCapitalize="none"
+                placeholder="wss://relay.agentline.com/ws"
+                placeholderTextColor={theme.textMuted}
+              />
+              <TextInput
+                style={styles.input}
+                value={relayUsername}
+                onChangeText={setRelayUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+                placeholder="relay 用户名"
+                placeholderTextColor={theme.textMuted}
+              />
+              <TextInput
+                style={styles.input}
+                value={relayPassword}
+                onChangeText={setRelayPassword}
+                placeholder="relay 密码"
+                placeholderTextColor={theme.textMuted}
+                secureTextEntry
+              />
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => void openRelayConsole()}
+              >
+                <Text style={styles.secondaryButtonText}>通过中转进入</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -425,155 +512,198 @@ export function LoginScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: theme.bg,
     flex: 1,
+    backgroundColor: theme.bg,
   },
   container: {
-    gap: theme.spaceMd,
-    padding: theme.spaceLg,
+    paddingHorizontal: theme.spaceLg,
+    paddingTop: theme.spaceLg,
     paddingBottom: theme.spaceLg * 2,
+    gap: theme.spaceLg,
+  },
+  hero: {
+    gap: theme.spaceSm,
+    paddingTop: theme.spaceSm,
+  },
+  heroBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0f2e27",
+    borderWidth: 1,
+    borderColor: "#174236",
+  },
+  heroBadgeText: {
+    color: "#33d6a6",
+    fontSize: 24,
+    fontWeight: "800",
   },
   title: {
     color: theme.text,
     fontSize: 28,
-    fontWeight: "700",
-    textAlign: "center",
+    fontWeight: "800",
   },
   subtitle: {
     color: theme.textSecondary,
-    fontSize: 13,
-    marginTop: -6,
-    textAlign: "center",
+    fontSize: 15,
+    lineHeight: 22,
   },
-  modeRow: {
-    flexDirection: "row",
-    gap: theme.spaceSm,
-  },
-  modeButton: {
-    backgroundColor: theme.panel,
-    borderColor: theme.border,
-    borderRadius: theme.radiusMd,
-    borderWidth: 1,
-    flex: 1,
-    paddingVertical: 12,
-  },
-  modeActive: {
-    backgroundColor: theme.panelAlt,
-    borderColor: theme.primary,
-  },
-  modeText: {
-    color: theme.text,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  card: {
-    backgroundColor: theme.panel,
-    borderColor: theme.border,
-    borderRadius: theme.radiusLg,
-    borderWidth: 1,
+  band: {
     gap: theme.spaceSm,
     padding: theme.spaceMd,
+    backgroundColor: theme.panel,
+    borderRadius: theme.radiusMd,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: theme.spaceSm,
+  },
+  sectionHeaderButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: theme.spaceSm,
   },
   sectionTitle: {
     color: theme.text,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
-    marginBottom: 2,
   },
-  input: {
-    backgroundColor: theme.panelAlt,
-    borderColor: theme.border,
-    borderRadius: theme.radiusSm,
-    borderWidth: 1,
-    color: theme.text,
+  sectionHint: {
+    color: theme.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  inlineAction: {
     paddingHorizontal: 12,
-    paddingVertical: 11,
-  },
-  button: {
-    borderRadius: theme.radiusSm,
-    paddingVertical: 12,
-  },
-  buttonPrimary: {
-    backgroundColor: theme.primary,
-  },
-  buttonGhost: {
+    paddingVertical: 8,
     backgroundColor: theme.panelAlt,
+    borderRadius: theme.radiusSm,
+    borderWidth: 1,
     borderColor: theme.border,
-    borderWidth: 1,
   },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: "#0a1725",
-    fontSize: 14,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  buttonGhostText: {
+  inlineActionText: {
     color: theme.text,
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "700",
   },
-  scanPanel: {
-    backgroundColor: theme.bg,
-    borderColor: theme.borderSoft,
-    borderRadius: theme.radiusMd,
-    borderWidth: 1,
-    gap: theme.spaceSm,
-    marginTop: theme.spaceXs,
+  callout: {
     padding: theme.spaceSm,
+    borderRadius: theme.radiusSm,
+    backgroundColor: "#1a2421",
+    borderWidth: 1,
+    borderColor: "#263934",
+    gap: 4,
+  },
+  calloutTitle: {
+    color: "#8ee7c4",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  calloutBody: {
+    color: theme.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
   },
   progressText: {
     color: theme.warning,
     fontSize: 12,
-    textAlign: "center",
   },
-  scanList: {
-    marginTop: 2,
+  hostList: {
+    gap: theme.spaceSm,
+  },
+  hostRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: theme.spaceSm,
+    padding: theme.spaceSm,
+    borderRadius: theme.radiusSm,
+    backgroundColor: theme.panelAlt,
+    borderWidth: 1,
+    borderColor: theme.borderSoft,
+  },
+  hostMeta: {
+    flex: 1,
+    gap: 2,
+  },
+  hostLabel: {
+    color: theme.text,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  hostUrl: {
+    color: theme.textMuted,
+    fontSize: 12,
+  },
+  hostBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#23303b",
+  },
+  hostBadgeText: {
+    color: theme.textSecondary,
+    fontSize: 11,
+    fontWeight: "700",
   },
   emptyText: {
     color: theme.textMuted,
-    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 18,
   },
-  scanItem: {
-    backgroundColor: theme.panel,
+  input: {
+    backgroundColor: theme.panelAlt,
     borderColor: theme.border,
-    borderRadius: theme.radiusSm,
     borderWidth: 1,
-    marginBottom: 8,
-    padding: 10,
-  },
-  scanItemTitle: {
+    borderRadius: theme.radiusSm,
     color: theme.text,
-    fontWeight: "600",
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
-  scanItemSub: {
+  primaryButton: {
+    backgroundColor: "#33d6a6",
+    borderRadius: theme.radiusSm,
+    paddingVertical: 13,
+  },
+  primaryButtonText: {
+    color: "#0d1b17",
+    textAlign: "center",
+    fontWeight: "800",
+    fontSize: 15,
+  },
+  secondaryButton: {
+    backgroundColor: theme.panelAlt,
+    borderColor: theme.border,
+    borderWidth: 1,
+    borderRadius: theme.radiusSm,
+    paddingVertical: 11,
+  },
+  secondaryButtonText: {
+    color: theme.text,
+    textAlign: "center",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  advancedPane: {
+    gap: theme.spaceSm,
+    marginTop: 2,
+  },
+  relayPane: {
+    gap: theme.spaceSm,
+    marginTop: theme.spaceSm,
+  },
+  chevron: {
     color: theme.textSecondary,
-    fontSize: 12,
-    marginTop: 4,
-  },
-  recentTitle: {
-    color: theme.text,
     fontSize: 13,
     fontWeight: "700",
     marginTop: 2,
-  },
-  recentChip: {
-    backgroundColor: theme.panelAlt,
-    borderColor: theme.border,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  recentChipText: {
-    color: theme.textSecondary,
-    fontSize: 12,
   },
 });
