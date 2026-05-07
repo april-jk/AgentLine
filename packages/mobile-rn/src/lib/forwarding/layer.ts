@@ -1,7 +1,9 @@
+import type { ThemeMode } from "../../styles/theme";
 import { normalizeHttpBaseUrl } from "../api/client";
 
 export type ForwardMode = "direct" | "relay";
 const DEFAULT_REMOTE_WEB_BASE_URL = "http://127.0.0.1:45734";
+const DEFAULT_REMOTE_THEME: ThemeMode = "auto";
 
 export type ForwardingInput =
   | {
@@ -9,6 +11,7 @@ export type ForwardingInput =
       directServerUrl: string;
       directUsername?: string;
       directPassword?: string;
+      themeMode?: ThemeMode;
     }
   | {
       mode: "relay";
@@ -16,6 +19,7 @@ export type ForwardingInput =
       relayWsUrl?: string;
       relayUsername?: string;
       relayPassword?: string;
+      themeMode?: ThemeMode;
     };
 
 export type ForwardingWebViewSource = {
@@ -30,10 +34,37 @@ export type ForwardingTarget = {
   injectedJavaScriptBeforeContentLoaded?: string;
 };
 
-function buildModeBootstrapScript(mode: ForwardMode): string {
+function buildModeBootstrapScript(
+  mode: ForwardMode,
+  themeMode: ThemeMode = DEFAULT_REMOTE_THEME,
+): string {
   return `
     window.__AGENTLINE_NATIVE_SHELL__ = true;
     window.__AGENTLINE_FORWARD_MODE__ = ${JSON.stringify(mode)};
+    try {
+      const themeMode = ${JSON.stringify(themeMode)};
+      localStorage.setItem("agentline-theme", themeMode);
+      document.documentElement.setAttribute("data-theme", themeMode);
+
+      const postTheme = () => {
+        try {
+          window.ReactNativeWebView?.postMessage(
+            JSON.stringify({
+              type: "agentline-theme",
+              value:
+                document.documentElement.getAttribute("data-theme") ??
+                themeMode,
+            }),
+          );
+        } catch {}
+      };
+
+      postTheme();
+      new MutationObserver(postTheme).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"],
+      });
+    } catch {}
     true;
   `;
 }
@@ -141,7 +172,10 @@ export function resolveForwardingTarget(
       url: directServerUrl,
       title: "AgentLine 直连",
       source: { uri: url },
-      injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript("direct"),
+      injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript(
+        "direct",
+        input.themeMode,
+      ),
     };
   }
 
@@ -151,6 +185,9 @@ export function resolveForwardingTarget(
     url,
     title: "AgentLine 中转",
     source: { uri: url },
-    injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript("relay"),
+    injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript(
+      "relay",
+      input.themeMode,
+    ),
   };
 }

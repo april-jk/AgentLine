@@ -15,14 +15,19 @@ import {
   scanLanServers,
   smartScanLanServers,
 } from "../lib/connection/lanScanner";
-import { resolveForwardingTarget } from "../lib/forwarding/layer";
+import {
+  type ForwardMode,
+  resolveForwardingTarget,
+} from "../lib/forwarding/layer";
 import {
   getSecureItem,
   secureStorageKeys,
   setSecureItem,
 } from "../lib/storage/secureStorage";
 import type { RootStackParamList } from "../navigation/types";
-import { theme } from "../styles/theme";
+import { useThemePreference } from "../styles/ThemePreferenceContext";
+import type { AppTheme } from "../styles/theme";
+import { useAppTheme } from "../styles/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
@@ -77,6 +82,9 @@ function dedupeKnownHosts(
 }
 
 export function LoginScreen({ navigation }: Props) {
+  const { themeMode } = useThemePreference();
+  const theme = useAppTheme(themeMode);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [directServerUrl, setDirectServerUrl] = useState(
     "http://127.0.0.1:45731",
   );
@@ -93,7 +101,7 @@ export function LoginScreen({ navigation }: Props) {
   const [scanPrefix, setScanPrefix] = useState("192.168.1");
   const [scanPort, setScanPort] = useState("45731");
   const [scanAdvanced, setScanAdvanced] = useState(false);
-  const [relayExpanded, setRelayExpanded] = useState(false);
+  const [entryMode, setEntryMode] = useState<ForwardMode>("direct");
   const [scanLoading, setScanLoading] = useState(false);
   const [scanProgress, setScanProgress] = useState("");
   const [scanResults, setScanResults] = useState<LanScanResult[]>([]);
@@ -180,6 +188,7 @@ export function LoginScreen({ navigation }: Props) {
         directServerUrl: serverUrl,
         directUsername,
         directPassword,
+        themeMode,
       });
       await setSecureItem(secureStorageKeys.connectionMode, "direct");
       await setSecureItem(secureStorageKeys.directServerUrl, target.url);
@@ -211,6 +220,7 @@ export function LoginScreen({ navigation }: Props) {
         relayWsUrl,
         relayUsername,
         relayPassword,
+        themeMode,
       });
       await setSecureItem(secureStorageKeys.connectionMode, "relay");
       await setSecureItem(
@@ -297,65 +307,41 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.hero}>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>A</Text>
-          </View>
-          <Text style={styles.title}>AgentLine</Text>
-          <Text style={styles.subtitle}>
-            在同一页里发现、保存并连接你的桌面控制端。
-          </Text>
-        </View>
-
-        <View style={styles.band}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>快速连接</Text>
-              <Text style={styles.sectionHint}>
-                优先适配 ADB 反向代理，也支持同网段自动搜索。
-              </Text>
+        <View style={styles.surface}>
+          <View style={styles.logoBlock}>
+            <View style={styles.logoMark}>
+              <Text style={styles.logoMarkText}>A</Text>
             </View>
-            <Pressable
-              style={styles.inlineAction}
-              onPress={() => void onSmartScan()}
-              disabled={scanLoading}
-            >
-              <Text style={styles.inlineActionText}>
-                {scanLoading ? "搜索中" : "自动搜索"}
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.callout}>
-            <Text style={styles.calloutTitle}>当前推荐</Text>
-            <Text style={styles.calloutBody}>
-              模拟器和 USB 调试优先使用
-              127.0.0.1:45731。局域网场景可改成电脑实际 IP。
+            <Text style={styles.logoWordmark}>
+              <Text style={styles.logoWordmarkAccent}>Agent</Text>
+              <Text style={styles.logoWordmarkBase}>Line</Text>
             </Text>
           </View>
 
-          {scanProgress ? (
-            <Text style={styles.progressText}>{scanProgress}</Text>
-          ) : null}
+          <Text style={styles.sectionSubtitle}>
+            {knownHosts.length > 0 ? "已保存主机" : "选择连接方式"}
+          </Text>
 
           {knownHosts.length > 0 ? (
             <View style={styles.hostList}>
               {knownHosts.map((host) => (
                 <Pressable
                   key={host.url}
-                  style={styles.hostRow}
+                  style={styles.hostItem}
                   onPress={() => {
                     setDirectServerUrl(host.url);
                     void openDirectConsole(host.url);
                   }}
                 >
-                  <View style={styles.hostMeta}>
-                    <Text style={styles.hostLabel}>{host.label}</Text>
-                    <Text style={styles.hostUrl}>{host.url}</Text>
+                  <View style={styles.hostItemMain}>
+                    <View style={styles.hostDot} />
+                    <Text style={styles.hostName}>{host.label}</Text>
+                    <Text style={styles.hostModeBadge}>direct</Text>
                   </View>
-                  <View style={styles.hostBadge}>
-                    <Text style={styles.hostBadgeText}>
-                      {host.source === "scan" ? "发现" : "最近"}
+                  <View style={styles.hostItemMeta}>
+                    <Text style={styles.hostMetaText}>{host.url}</Text>
+                    <Text style={styles.hostMetaText}>
+                      {host.detail ?? "最近连接"}
                     </Text>
                   </View>
                 </Pressable>
@@ -363,347 +349,398 @@ export function LoginScreen({ navigation }: Props) {
             </View>
           ) : (
             <Text style={styles.emptyText}>
-              还没有已发现主机。你可以先自动搜索，也可以直接手填。
+              还没有已保存主机。你可以先自动搜索，也可以手动添加。
             </Text>
           )}
-        </View>
-
-        <View style={styles.band}>
-          <Text style={styles.sectionTitle}>直接连接</Text>
-          <Text style={styles.sectionHint}>
-            这里同时承担“保存主机”和“立即进入”，不再跳到另一套模板。
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            value={directServerUrl}
-            onChangeText={setDirectServerUrl}
-            autoCapitalize="none"
-            placeholder="http://127.0.0.1:45731"
-            placeholderTextColor={theme.textMuted}
-          />
-          <TextInput
-            style={styles.input}
-            value={directUsername}
-            onChangeText={setDirectUsername}
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="直连用户名"
-            placeholderTextColor={theme.textMuted}
-          />
-          <TextInput
-            style={styles.input}
-            value={directPassword}
-            onChangeText={setDirectPassword}
-            placeholder="直连密码"
-            placeholderTextColor={theme.textMuted}
-            secureTextEntry
-          />
 
           <Pressable
-            style={styles.primaryButton}
-            onPress={() => void openDirectConsole()}
+            style={styles.utilityButton}
+            onPress={() => void onSmartScan()}
+            disabled={scanLoading}
           >
-            <Text style={styles.primaryButtonText}>进入电脑控制台</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.secondaryButton}
-            onPress={() => setScanAdvanced((value) => !value)}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {scanAdvanced ? "收起网段搜索" : "展开网段搜索"}
+            <Text style={styles.utilityButtonText}>
+              {scanLoading ? "正在搜索..." : "自动搜索局域网主机"}
             </Text>
           </Pressable>
 
-          {scanAdvanced ? (
-            <View style={styles.advancedPane}>
-              <TextInput
-                style={styles.input}
-                value={scanPrefix}
-                onChangeText={setScanPrefix}
-                autoCapitalize="none"
-                placeholder="网段，例如 192.168.1"
-                placeholderTextColor={theme.textMuted}
-              />
-              <TextInput
-                style={styles.input}
-                value={scanPort}
-                onChangeText={setScanPort}
-                keyboardType="numeric"
-                placeholder="端口（默认 45731）"
-                placeholderTextColor={theme.textMuted}
-              />
-              <Pressable
-                style={styles.secondaryButton}
-                onPress={() => void onManualScan()}
-                disabled={scanLoading}
-              >
-                <Text style={styles.secondaryButtonText}>扫描这个网段</Text>
-              </Pressable>
-            </View>
+          {scanProgress ? (
+            <Text style={styles.statusText}>{scanProgress}</Text>
           ) : null}
-        </View>
 
-        <View style={styles.band}>
+          <Text style={styles.sectionSubtitle}>添加新主机</Text>
+
           <Pressable
-            style={styles.sectionHeaderButton}
-            onPress={() => setRelayExpanded((value) => !value)}
+            style={[
+              styles.modeOption,
+              entryMode === "relay" ? styles.modeOptionActive : null,
+            ]}
+            onPress={() => setEntryMode("relay")}
           >
-            <View>
-              <Text style={styles.sectionTitle}>中转连接</Text>
-              <Text style={styles.sectionHint}>
-                需要跨网段时再展开，避免把主路径做复杂。
-              </Text>
-            </View>
-            <Text style={styles.chevron}>
-              {relayExpanded ? "收起" : "展开"}
+            <Text style={styles.modeOptionTitle}>通过中继连接</Text>
+            <Text style={styles.modeOptionDesc}>
+              通过中继服务器从任意位置连接，无需端口转发。
             </Text>
           </Pressable>
 
-          {relayExpanded ? (
-            <View style={styles.relayPane}>
-              <TextInput
-                style={styles.input}
-                value={controlPlaneUrl}
-                onChangeText={setControlPlaneUrl}
-                autoCapitalize="none"
-                placeholder="https://agentline.com"
-                placeholderTextColor={theme.textMuted}
-              />
-              <TextInput
-                style={styles.input}
-                value={relayWsUrl}
-                onChangeText={setRelayWsUrl}
-                autoCapitalize="none"
-                placeholder="wss://relay.agentline.com/ws"
-                placeholderTextColor={theme.textMuted}
-              />
-              <TextInput
-                style={styles.input}
-                value={relayUsername}
-                onChangeText={setRelayUsername}
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="relay 用户名"
-                placeholderTextColor={theme.textMuted}
-              />
-              <TextInput
-                style={styles.input}
-                value={relayPassword}
-                onChangeText={setRelayPassword}
-                placeholder="relay 密码"
-                placeholderTextColor={theme.textMuted}
-                secureTextEntry
-              />
+          {entryMode === "relay" ? (
+            <View style={styles.formCard}>
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>控制平面地址</Text>
+                <TextInput
+                  style={styles.input}
+                  value={controlPlaneUrl}
+                  onChangeText={setControlPlaneUrl}
+                  autoCapitalize="none"
+                  placeholder="https://agentline.com"
+                  placeholderTextColor={theme.textMuted}
+                />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>Relay WebSocket</Text>
+                <TextInput
+                  style={styles.input}
+                  value={relayWsUrl}
+                  onChangeText={setRelayWsUrl}
+                  autoCapitalize="none"
+                  placeholder="wss://relay.agentline.com/ws"
+                  placeholderTextColor={theme.textMuted}
+                />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>用户名</Text>
+                <TextInput
+                  style={styles.input}
+                  value={relayUsername}
+                  onChangeText={setRelayUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="relay 用户名"
+                  placeholderTextColor={theme.textMuted}
+                />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>密码</Text>
+                <TextInput
+                  style={styles.input}
+                  value={relayPassword}
+                  onChangeText={setRelayPassword}
+                  placeholder="relay 密码"
+                  placeholderTextColor={theme.textMuted}
+                  secureTextEntry
+                />
+              </View>
               <Pressable
-                style={styles.secondaryButton}
+                style={styles.primaryButton}
                 onPress={() => void openRelayConsole()}
               >
-                <Text style={styles.secondaryButtonText}>通过中转进入</Text>
+                <Text style={styles.primaryButtonText}>连接</Text>
               </Pressable>
             </View>
           ) : null}
+
+          <Pressable
+            style={[
+              styles.modeOption,
+              entryMode === "direct" ? styles.modeOptionActive : null,
+            ]}
+            onPress={() => setEntryMode("direct")}
+          >
+            <Text style={styles.modeOptionTitle}>直接连接</Text>
+            <Text style={styles.modeOptionDesc}>
+              通过 WebSocket 地址直接连接，适用于局域网或 Tailscale。
+            </Text>
+          </Pressable>
+
+          {entryMode === "direct" ? (
+            <View style={styles.formCard}>
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>电脑端地址</Text>
+                <TextInput
+                  style={styles.input}
+                  value={directServerUrl}
+                  onChangeText={setDirectServerUrl}
+                  autoCapitalize="none"
+                  placeholder="http://127.0.0.1:45731"
+                  placeholderTextColor={theme.textMuted}
+                />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>用户名</Text>
+                <TextInput
+                  style={styles.input}
+                  value={directUsername}
+                  onChangeText={setDirectUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="直连用户名"
+                  placeholderTextColor={theme.textMuted}
+                />
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>密码</Text>
+                <TextInput
+                  style={styles.input}
+                  value={directPassword}
+                  onChangeText={setDirectPassword}
+                  placeholder="直连密码"
+                  placeholderTextColor={theme.textMuted}
+                  secureTextEntry
+                />
+              </View>
+              <Pressable
+                style={styles.primaryButton}
+                onPress={() => void openDirectConsole()}
+              >
+                <Text style={styles.primaryButtonText}>连接</Text>
+              </Pressable>
+              <Pressable
+                style={styles.textAction}
+                onPress={() => setScanAdvanced((value) => !value)}
+              >
+                <Text style={styles.textActionText}>
+                  {scanAdvanced ? "隐藏高级选项" : "显示高级选项"}
+                </Text>
+              </Pressable>
+              {scanAdvanced ? (
+                <View style={styles.advancedPane}>
+                  <TextInput
+                    style={styles.input}
+                    value={scanPrefix}
+                    onChangeText={setScanPrefix}
+                    autoCapitalize="none"
+                    placeholder="网段，例如 192.168.1"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={scanPort}
+                    onChangeText={setScanPort}
+                    keyboardType="numeric"
+                    placeholder="端口（默认 45731）"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                  <Pressable
+                    style={styles.secondaryButton}
+                    onPress={() => void onManualScan()}
+                    disabled={scanLoading}
+                  >
+                    <Text style={styles.secondaryButtonText}>扫描这个网段</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          <Text style={styles.footerHint}>
+            可优先选择上方已保存的主机，ADB 调试和模拟器场景优先使用
+            `127.0.0.1:45731`。
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.bg,
-  },
-  container: {
-    paddingHorizontal: theme.spaceLg,
-    paddingTop: theme.spaceLg,
-    paddingBottom: theme.spaceLg * 2,
-    gap: theme.spaceLg,
-  },
-  hero: {
-    gap: theme.spaceSm,
-    paddingTop: theme.spaceSm,
-  },
-  heroBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0f2e27",
-    borderWidth: 1,
-    borderColor: "#174236",
-  },
-  heroBadgeText: {
-    color: "#33d6a6",
-    fontSize: 24,
-    fontWeight: "800",
-  },
-  title: {
-    color: theme.text,
-    fontSize: 28,
-    fontWeight: "800",
-  },
-  subtitle: {
-    color: theme.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  band: {
-    gap: theme.spaceSm,
-    padding: theme.spaceMd,
-    backgroundColor: theme.panel,
-    borderRadius: theme.radiusMd,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: theme.spaceSm,
-  },
-  sectionHeaderButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: theme.spaceSm,
-  },
-  sectionTitle: {
-    color: theme.text,
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  sectionHint: {
-    color: theme.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  inlineAction: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: theme.panelAlt,
-    borderRadius: theme.radiusSm,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  inlineActionText: {
-    color: theme.text,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  callout: {
-    padding: theme.spaceSm,
-    borderRadius: theme.radiusSm,
-    backgroundColor: "#1a2421",
-    borderWidth: 1,
-    borderColor: "#263934",
-    gap: 4,
-  },
-  calloutTitle: {
-    color: "#8ee7c4",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  calloutBody: {
-    color: theme.textSecondary,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  progressText: {
-    color: theme.warning,
-    fontSize: 12,
-  },
-  hostList: {
-    gap: theme.spaceSm,
-  },
-  hostRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: theme.spaceSm,
-    padding: theme.spaceSm,
-    borderRadius: theme.radiusSm,
-    backgroundColor: theme.panelAlt,
-    borderWidth: 1,
-    borderColor: theme.borderSoft,
-  },
-  hostMeta: {
-    flex: 1,
-    gap: 2,
-  },
-  hostLabel: {
-    color: theme.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  hostUrl: {
-    color: theme.textMuted,
-    fontSize: 12,
-  },
-  hostBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#23303b",
-  },
-  hostBadgeText: {
-    color: theme.textSecondary,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  emptyText: {
-    color: theme.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  input: {
-    backgroundColor: theme.panelAlt,
-    borderColor: theme.border,
-    borderWidth: 1,
-    borderRadius: theme.radiusSm,
-    color: theme.text,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-  },
-  primaryButton: {
-    backgroundColor: "#33d6a6",
-    borderRadius: theme.radiusSm,
-    paddingVertical: 13,
-  },
-  primaryButtonText: {
-    color: "#0d1b17",
-    textAlign: "center",
-    fontWeight: "800",
-    fontSize: 15,
-  },
-  secondaryButton: {
-    backgroundColor: theme.panelAlt,
-    borderColor: theme.border,
-    borderWidth: 1,
-    borderRadius: theme.radiusSm,
-    paddingVertical: 11,
-  },
-  secondaryButtonText: {
-    color: theme.text,
-    textAlign: "center",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  advancedPane: {
-    gap: theme.spaceSm,
-    marginTop: 2,
-  },
-  relayPane: {
-    gap: theme.spaceSm,
-    marginTop: theme.spaceSm,
-  },
-  chevron: {
-    color: theme.textSecondary,
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 2,
-  },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.bg,
+    },
+    container: {
+      paddingHorizontal: theme.spaceLg,
+      paddingTop: theme.spaceLg,
+      paddingBottom: theme.spaceXl * 2,
+    },
+    surface: {
+      width: "100%",
+      maxWidth: 360,
+      alignSelf: "center",
+      gap: theme.spaceMd,
+    },
+    logoBlock: {
+      alignItems: "center",
+      gap: theme.spaceMd,
+      paddingTop: theme.spaceXl,
+      paddingBottom: theme.spaceLg,
+    },
+    logoMark: {
+      width: 44,
+      height: 44,
+      borderRadius: theme.radiusLg,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.panelAlt,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    logoMarkText: {
+      color: theme.brandTeal,
+      fontSize: 24,
+      fontWeight: "800",
+    },
+    logoWordmark: {
+      fontSize: 22,
+      fontWeight: "800",
+    },
+    logoWordmarkAccent: {
+      color: theme.brandTeal,
+    },
+    logoWordmarkBase: {
+      color: theme.text,
+    },
+    sectionSubtitle: {
+      color: theme.text,
+      fontSize: 17,
+      fontWeight: "700",
+      textAlign: "center",
+    },
+    hostList: {
+      gap: theme.spaceSm,
+    },
+    hostItem: {
+      gap: theme.spaceXs,
+      padding: theme.spaceMd,
+      borderRadius: theme.radiusMd,
+      backgroundColor: theme.panelAlt,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+    },
+    hostItemMain: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spaceSm,
+    },
+    hostDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: theme.success,
+    },
+    hostName: {
+      color: theme.text,
+      fontSize: 14,
+      fontWeight: "500",
+      flex: 1,
+    },
+    hostModeBadge: {
+      color: theme.textMuted,
+      fontSize: 11,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: theme.panelAlt,
+      overflow: "hidden",
+    },
+    hostItemMeta: {
+      paddingLeft: 16,
+      gap: 2,
+    },
+    hostMetaText: {
+      color: theme.textMuted,
+      fontSize: 11,
+    },
+    emptyText: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      lineHeight: 21,
+      textAlign: "center",
+    },
+    utilityButton: {
+      paddingVertical: theme.spaceMd,
+      alignItems: "center",
+    },
+    utilityButtonText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      fontWeight: "500",
+    },
+    statusText: {
+      color: theme.textMuted,
+      fontSize: 12,
+      textAlign: "center",
+    },
+    modeOption: {
+      gap: theme.spaceXs,
+      padding: theme.spaceMd,
+      borderRadius: theme.radiusMd,
+      backgroundColor: theme.panelAlt,
+      borderWidth: 1,
+      borderColor: theme.borderSoft,
+    },
+    modeOptionActive: {
+      borderColor: theme.brandTeal,
+    },
+    modeOptionTitle: {
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: "500",
+    },
+    modeOptionDesc: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    formCard: {
+      gap: theme.spaceSm,
+      marginTop: -4,
+    },
+    formGroup: {
+      gap: 6,
+    },
+    fieldLabel: {
+      color: theme.textMuted,
+      fontSize: 12,
+    },
+    input: {
+      backgroundColor: theme.input,
+      borderColor: theme.borderInput,
+      borderWidth: 1,
+      borderRadius: theme.radiusMd,
+      color: theme.text,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+    },
+    primaryButton: {
+      backgroundColor: theme.brandTeal,
+      borderRadius: theme.radiusMd,
+      paddingVertical: 14,
+    },
+    primaryButtonText: {
+      color: "#f3fbf8",
+      textAlign: "center",
+      fontWeight: "800",
+      fontSize: 15,
+    },
+    secondaryButton: {
+      backgroundColor: theme.input,
+      borderColor: theme.border,
+      borderWidth: 1,
+      borderRadius: theme.radiusMd,
+      paddingVertical: 12,
+    },
+    secondaryButtonText: {
+      color: theme.text,
+      textAlign: "center",
+      fontWeight: "700",
+      fontSize: 14,
+    },
+    advancedPane: {
+      gap: theme.spaceSm,
+    },
+    textAction: {
+      alignItems: "flex-start",
+      paddingVertical: theme.spaceXs,
+    },
+    textActionText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+    },
+    footerHint: {
+      color: theme.textMuted,
+      fontSize: 13,
+      lineHeight: 20,
+      textAlign: "center",
+      marginTop: theme.spaceLg,
+    },
+  });
