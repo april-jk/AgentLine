@@ -482,20 +482,6 @@ async function startServer() {
         config.controlPlaneDeviceName ?? `${os.hostname()} (${os.platform()})`,
       deviceType: config.controlPlaneDeviceType,
       heartbeatIntervalMs: config.controlPlaneHeartbeatIntervalMs,
-      hostEndpointProvider: () => {
-        const network = networkBindingService.getNetworkConfig();
-        if (!network.enabled || !network.host) {
-          return null;
-        }
-        const host = network.host;
-        const port = network.port ?? networkBindingService.getLocalhostPort();
-        return {
-          host,
-          port,
-          boundToAllInterfaces: host === "0.0.0.0" || host === "::",
-          localhostOnly: false,
-        };
-      },
     },
     remoteAccessService,
     onRelayConfigChanged: () =>

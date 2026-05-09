@@ -27,30 +27,6 @@ export interface AuthSession {
 
 export type DeviceRelayState = "offline" | "waiting" | "paired";
 
-export interface MachineOwnerView {
-  userId: string;
-  role: "owner";
-  status: "active";
-}
-
-export interface MachineEndpointView {
-  kind: "relay";
-  routeId: string;
-  relayUsername: string;
-  relayState: DeviceRelayState;
-  lastSeenAt: string;
-}
-
-export interface MachineLanEndpointView {
-  kind: "lan";
-  address: string;
-  port: number;
-  boundToAllInterfaces?: boolean;
-  localhostOnly?: boolean;
-  lastSeenAt: string;
-  expiresAt?: string;
-}
-
 export interface AccountDevice {
   id: string;
   userId: string;
@@ -65,25 +41,6 @@ export interface AccountDevice {
 
 export interface AccountDeviceView extends AccountDevice {
   relayState: DeviceRelayState;
-  machineId: string;
-  owner: MachineOwnerView;
-  machine: {
-    id: string;
-    routeId: string;
-    owner: MachineOwnerView;
-    hostService?: {
-      listening?: boolean;
-      boundToAllInterfaces?: boolean;
-      localhostOnly?: boolean;
-    };
-    endpoints: {
-      relay: MachineEndpointView;
-      lan?: MachineLanEndpointView | null;
-    };
-    heartbeat: {
-      lastSeenAt: string;
-    };
-  };
 }
 
 interface UserRow {
@@ -160,47 +117,6 @@ function toDevice(row: DeviceRow): AccountDevice {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastSeenAt: row.last_seen_at,
-  };
-}
-
-function toOwner(userId: string): MachineOwnerView {
-  return {
-    userId,
-    role: "owner",
-    status: "active",
-  };
-}
-
-export function toMachineCompatibleDeviceView(
-  device: AccountDevice,
-  relayState: DeviceRelayState,
-): AccountDeviceView {
-  const owner = toOwner(device.userId);
-  const relayEndpoint: MachineEndpointView = {
-    kind: "relay",
-    routeId: device.relayUsername,
-    relayUsername: device.relayUsername,
-    relayState,
-    lastSeenAt: device.lastSeenAt,
-  };
-
-  return {
-    ...device,
-    relayState,
-    machineId: device.id,
-    owner,
-    machine: {
-      id: device.id,
-      routeId: device.relayUsername,
-      owner,
-      endpoints: {
-        relay: relayEndpoint,
-        lan: null,
-      },
-      heartbeat: {
-        lastSeenAt: device.lastSeenAt,
-      },
-    },
   };
 }
 
@@ -452,7 +368,7 @@ export class RelayControlPlaneService {
       const state = activeByUsername.get(device.relayUsername);
       const relayState: DeviceRelayState =
         state === "waiting" || state === "paired" ? state : "offline";
-      return toMachineCompatibleDeviceView(device, relayState);
+      return { ...device, relayState };
     });
   }
 

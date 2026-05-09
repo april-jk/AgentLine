@@ -6,13 +6,6 @@ interface ControlPlaneBridgeDevice {
   deviceName: string;
 }
 
-interface ControlPlaneLanEndpoint {
-  host: string;
-  port: number;
-  boundToAllInterfaces: boolean;
-  localhostOnly: boolean;
-}
-
 interface RegisterDeviceResponse {
   device: ControlPlaneBridgeDevice;
 }
@@ -42,7 +35,6 @@ export interface ControlPlaneBridgeConfig {
   deviceName: string;
   deviceType: string;
   heartbeatIntervalMs: number;
-  hostEndpointProvider?: () => ControlPlaneLanEndpoint | null;
 }
 
 export interface ControlPlaneBridgeState {
@@ -183,51 +175,10 @@ export class ControlPlaneBridgeService {
   }
 
   private async sendHeartbeat(deviceId: string): Promise<HeartbeatResponse> {
-    const nowIso = new Date().toISOString();
-    const lanEndpoint = this.config.hostEndpointProvider?.() ?? null;
-    const expiresAt = new Date(
-      Date.now() + this.config.heartbeatIntervalMs * 2,
-    ).toISOString();
-
     const response = await this.request<HeartbeatResponse>(
       `/api/v1/devices/${encodeURIComponent(deviceId)}/heartbeat`,
       {
         method: "POST",
-        body: JSON.stringify({
-          owner: {
-            role: "owner",
-            status: "active",
-          },
-          machine: {
-            id: deviceId,
-            routeId: this.state.relayUsername,
-            hostService: {
-              listening: true,
-              boundToAllInterfaces: lanEndpoint?.boundToAllInterfaces ?? false,
-              localhostOnly: lanEndpoint?.localhostOnly ?? true,
-            },
-            endpoints: {
-              lan: lanEndpoint
-                ? {
-                    kind: "lan",
-                    address: lanEndpoint.host,
-                    port: lanEndpoint.port,
-                    boundToAllInterfaces: lanEndpoint.boundToAllInterfaces,
-                    localhostOnly: lanEndpoint.localhostOnly,
-                    lastSeenAt: nowIso,
-                    expiresAt,
-                  }
-                : null,
-              relay: {
-                kind: "relay",
-                routeId: this.state.relayUsername,
-                relayUrl: this.config.relayUrl,
-                lastSeenAt: nowIso,
-                expiresAt,
-              },
-            },
-          },
-        }),
       },
     );
     this.state.lastHeartbeatAt = new Date().toISOString();

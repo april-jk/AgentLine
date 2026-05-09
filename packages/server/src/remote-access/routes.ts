@@ -43,9 +43,8 @@ export function createRemoteAccessRoutes(
 
   /**
    * POST /api/remote-access/configure
-   * Configure host-access password (SRP verifier).
-   * If relay is configured, relay username is used as SRP identity.
-   * Otherwise, a local SRP identity is used for direct/offline auth.
+   * Configure remote access with password.
+   * Relay must be configured first (relay username is used as SRP identity).
    * Body: { password: string }
    */
   app.post("/configure", async (c) => {

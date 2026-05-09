@@ -52,11 +52,4 @@ describe("RemoteAccessService file permissions", () => {
     const stat = await fs.stat(filePath);
     expect(stat.mode & 0o777).toBe(0o600);
   });
-
-  it("supports host-access SRP config without relay and assigns local identity", async () => {
-    await service.configure("password123");
-    expect(service.isHostAccessEnabled()).toBe(true);
-    expect(service.getUsername()).toBe("local-host");
-    expect(service.getCredentials()).toBeTruthy();
-  });
 });
