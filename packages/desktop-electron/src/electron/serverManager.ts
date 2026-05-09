@@ -256,7 +256,7 @@ export class ServerManager extends EventEmitter {
     const sharedEnv: NodeJS.ProcessEnv = {
       ...process.env,
       PORT: String(this.port),
-      HOST: "127.0.0.1",
+      HOST: "0.0.0.0",
       CLI_HOST_OVERRIDE: "true",
       MAINTENANCE_PORT: String(this.port + 1),
       VITE_PORT: String(this.port + 2),
