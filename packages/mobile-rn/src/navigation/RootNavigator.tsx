@@ -22,6 +22,7 @@ export function RootNavigator() {
         },
         headerShadowVisible: false,
         headerTintColor: theme.text,
+        statusBarTranslucent: false,
         headerTitleStyle: {
           color: theme.text,
           fontWeight: "700",

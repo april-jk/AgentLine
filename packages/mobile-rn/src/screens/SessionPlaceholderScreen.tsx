@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { normalizeHttpBaseUrl } from "../lib/api/client";
 import type { RootStackParamList } from "../navigation/types";
@@ -208,7 +209,10 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
   }, [route.params.mode, route.params.source.uri, route.params.url]);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView
+      style={styles.container}
+      edges={["top", "left", "right", "bottom"]}
+    >
       {isResolvingSource ? (
         <View style={styles.centerOverlay}>
           <ActivityIndicator color={theme.primary} />
@@ -244,7 +248,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
           <Text style={styles.errorText}>{loadError}</Text>
         </View>
       ) : null}
-    </View>
+    </SafeAreaView>
   );
 }
 
