@@ -13,6 +13,10 @@ export type RootStackParamList = {
     scanPrefix: string;
     scanPort: string;
   };
+  RecentHosts: {
+    currentServerUrl: string;
+    recentServers: string[];
+  };
   Console: {
     mode: ForwardMode;
     url: string;

@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoginScreen } from "../screens/LoginScreen";
+import { RecentHostsScreen } from "../screens/RecentHostsScreen";
 import { SearchHostsScreen } from "../screens/SearchHostsScreen";
 import { SessionPlaceholderScreen } from "../screens/SessionPlaceholderScreen";
 import { useThemePreference } from "../styles/ThemePreferenceContext";
@@ -40,6 +41,14 @@ export function RootNavigator() {
         component={SearchHostsScreen}
         options={{
           title: "搜索主机",
+          presentation: "modal",
+        }}
+      />
+      <Stack.Screen
+        name="RecentHosts"
+        component={RecentHostsScreen}
+        options={{
+          title: "历史连接",
           presentation: "modal",
         }}
       />

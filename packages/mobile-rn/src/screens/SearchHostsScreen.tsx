@@ -26,7 +26,6 @@ type Props = NativeStackScreenProps<RootStackParamList, "SearchHosts">;
 type KnownHost = {
   url: string;
   label: string;
-  source: "recent" | "scan";
   detail?: string;
 };
 
@@ -66,23 +65,9 @@ function normalizeSubnetPrefix(value: string): string {
   return prefix;
 }
 
-function dedupeKnownHosts(
-  recentServers: string[],
-  scanResults: LanScanResult[],
-): KnownHost[] {
+function dedupeKnownHosts(scanResults: LanScanResult[]): KnownHost[] {
   const seen = new Set<string>();
   const items: KnownHost[] = [];
-
-  for (const url of recentServers) {
-    if (seen.has(url)) continue;
-    seen.add(url);
-    items.push({
-      url,
-      label: normalizeLabelFromUrl(url),
-      source: "recent",
-      detail: "最近连接",
-    });
-  }
 
   for (const item of scanResults) {
     if (seen.has(item.baseUrl)) continue;
@@ -90,7 +75,6 @@ function dedupeKnownHosts(
     items.push({
       url: item.baseUrl,
       label: item.host,
-      source: "scan",
       detail: `${item.host}:${String(item.port)}`,
     });
   }
@@ -136,10 +120,7 @@ export function SearchHostsScreen({ navigation, route }: Props) {
     [scanPrefix],
   );
 
-  const knownHosts = useMemo(
-    () => dedupeKnownHosts(recentServers, scanResults),
-    [recentServers, scanResults],
-  );
+  const knownHosts = useMemo(() => dedupeKnownHosts(scanResults), [scanResults]);
 
   useEffect(() => {
     void runSmartScan();
@@ -331,7 +312,7 @@ export function SearchHostsScreen({ navigation, route }: Props) {
                           ]}
                         />
                         <Text style={styles.hostName}>{host.label}</Text>
-                        <Text style={styles.hostModeBadge}>{host.source}</Text>
+                        <Text style={styles.hostModeBadge}>scan</Text>
                       </View>
                       <View style={styles.hostItemMeta}>
                         <Text style={styles.hostMetaText}>{host.url}</Text>
@@ -345,10 +326,22 @@ export function SearchHostsScreen({ navigation, route }: Props) {
               </View>
             ) : (
               <Text style={styles.emptyText}>
-                还没有搜索结果。先运行自动搜索，或者打开高级扫描。
+                还没有扫描结果。先运行自动搜索，或者打开高级扫描。
               </Text>
             )}
           </View>
+
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() =>
+              navigation.navigate("RecentHosts", {
+                currentServerUrl: selectedHostUrl || currentServerUrl,
+                recentServers,
+              })
+            }
+          >
+            <Text style={styles.secondaryButtonText}>查看历史连接</Text>
+          </Pressable>
 
           <View style={styles.footerActions}>
             <Pressable
