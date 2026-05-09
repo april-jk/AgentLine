@@ -8,16 +8,12 @@ import {
   ServerManager,
   type ServerStatus,
 } from "./serverManager.js";
+import { DESKTOP_DISCOVERY_PORT_CANDIDATES } from "../../../shared/dist/desktop-discovery.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const packageRoot = path.resolve(__dirname, "../..");
 const repoRoot = path.resolve(packageRoot, "../..");
-
-// Use uncommon, desktop-dedicated ports to avoid clashing with common
-// development ports (3000/3400/5173/etc). Probe a small port range so we don't
-// collide with stale dev sessions from previous runs.
-const DASHBOARD_PORT_CANDIDATES = [45731, 45732, 45733, 45734, 45735, 45736];
 
 interface ServerRuntimeState {
   backendReachable: boolean;
@@ -65,7 +61,7 @@ let autoRecoverCount = 0;
 let lastRecoverAt: number | undefined;
 let lastRecoverReason: string | undefined;
 let lastRecoverError: string | undefined;
-let dashboardPort = DASHBOARD_PORT_CANDIDATES[0];
+let dashboardPort: number = DESKTOP_DISCOVERY_PORT_CANDIDATES[0];
 let serverManager: ServerManager | null = null;
 
 const runtimeRoot = path.join(process.resourcesPath, "runtime", "agentline");
@@ -138,7 +134,7 @@ const portIsAvailable = (port: number): Promise<boolean> =>
   });
 
 const resolveDashboardPort = async (): Promise<number> => {
-  for (const candidate of DASHBOARD_PORT_CANDIDATES) {
+  for (const candidate of DESKTOP_DISCOVERY_PORT_CANDIDATES) {
     const [dashboardOk, maintenanceOk, viteOk] = await Promise.all([
       portIsAvailable(candidate),
       portIsAvailable(candidate + 1),

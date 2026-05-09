@@ -824,11 +824,19 @@ export const api = {
     attachments?: UploadedFile[],
     tempId?: string,
   ) =>
-    fetchJSON<{
-      processId: string;
-      permissionMode: PermissionMode;
-      modeVersion: number;
-    }>(`/projects/${projectId}/sessions/${sessionId}/resume`, {
+    fetchJSON<
+      | {
+          queued?: false;
+          processId: string;
+          permissionMode: PermissionMode;
+          modeVersion: number;
+        }
+      | {
+          queued: true;
+          queueId: string;
+          position: number;
+        }
+    >(`/projects/${projectId}/sessions/${sessionId}/resume`, {
       method: "POST",
       body: JSON.stringify({
         message,

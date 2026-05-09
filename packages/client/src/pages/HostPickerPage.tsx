@@ -8,35 +8,24 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
-import {
-  type SavedHost,
-  createDirectHost,
-  createRelayHost,
-  getHostByRelayUsername,
-  getHostByWsUrl,
-  loadSavedHosts,
-  removeHost,
-  saveHost,
-} from "../lib/hostStorage";
+import { type SavedHost, loadSavedHosts, removeHost } from "../lib/hostStorage";
 
 type HostStatus = "online" | "offline" | "checking" | "unknown";
-type EntryMode = "relay" | "direct";
 
 interface HostStatusMap {
   [hostId: string]: HostStatus;
 }
 
-const DEFAULT_RELAY_URL = "wss://relay.agentline.com/ws";
-
 export function HostPickerPage() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const {
     isAutoResuming,
     connectViaRelay,
-    connect,
     connectDirectWithSession,
     setCurrentHostId,
     error: connectionError,
@@ -44,19 +33,7 @@ export function HostPickerPage() {
   const [hosts, setHosts] = useState<SavedHost[]>([]);
   const [hostStatuses, setHostStatuses] = useState<HostStatusMap>({});
   const [connectingHostId, setConnectingHostId] = useState<string | null>(null);
-  const [entryMode, setEntryMode] = useState<EntryMode>("relay");
   const [error, setError] = useState<string | null>(null);
-
-  const [relayUsername, setRelayUsername] = useState("");
-  const [relayPassword, setRelayPassword] = useState("");
-  const [relayUrl, setRelayUrl] = useState(DEFAULT_RELAY_URL);
-  const [showRelayAdvanced, setShowRelayAdvanced] = useState(false);
-
-  const [directServerUrl, setDirectServerUrl] = useState(
-    "ws://localhost:3400/api/ws",
-  );
-  const [directUsername, setDirectUsername] = useState("");
-  const [directPassword, setDirectPassword] = useState("");
 
   useEffect(() => {
     const data = loadSavedHosts();
@@ -166,10 +143,12 @@ export function HostPickerPage() {
               session: host.session,
             });
           } else {
-            setEntryMode("relay");
-            setRelayUsername(host.relayUsername);
-            setRelayUrl(host.relayUrl);
-            setShowRelayAdvanced(host.relayUrl !== DEFAULT_RELAY_URL);
+            navigate("/login/relay", {
+              state: {
+                relayUsername: host.relayUsername,
+                relayUrl: host.relayUrl,
+              },
+            });
           }
         } else {
           if (!host.wsUrl) {
@@ -184,9 +163,12 @@ export function HostPickerPage() {
               host.session,
             );
           } else {
-            setEntryMode("direct");
-            setDirectServerUrl(host.wsUrl);
-            setDirectUsername(host.srpUsername);
+            navigate("/login/direct", {
+              state: {
+                serverUrl: host.wsUrl,
+                username: host.srpUsername,
+              },
+            });
           }
         }
       } catch (err) {
@@ -199,7 +181,7 @@ export function HostPickerPage() {
         setConnectingHostId(null);
       }
     },
-    [connectDirectWithSession, connectViaRelay, setCurrentHostId, t],
+    [connectDirectWithSession, connectViaRelay, navigate, setCurrentHostId, t],
   );
 
   const handleDeleteHost = useCallback(
@@ -212,107 +194,6 @@ export function HostPickerPage() {
     },
     [t],
   );
-
-  const handleRelaySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!relayUsername.trim()) {
-      setError(t("relayLoginErrorUsernameRequired"));
-      return;
-    }
-    if (!relayPassword) {
-      setError(t("relayLoginErrorPasswordRequired"));
-      return;
-    }
-
-    const username = relayUsername.trim().toLowerCase();
-    const effectiveRelayUrl = relayUrl.trim() || DEFAULT_RELAY_URL;
-
-    let host = getHostByRelayUsername(username);
-    if (!host) {
-      host = createRelayHost({
-        relayUrl: effectiveRelayUrl,
-        relayUsername: username,
-        srpUsername: username,
-      });
-      saveHost(host);
-      setHosts(loadSavedHosts().hosts);
-    }
-    setCurrentHostId(host.id);
-
-    try {
-      await connectViaRelay({
-        relayUrl: effectiveRelayUrl,
-        relayUsername: username,
-        srpUsername: username,
-        srpPassword: relayPassword,
-        rememberMe: true,
-        onStatusChange: () => {},
-      });
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("relayLoginErrorConnectionFailed"),
-      );
-    }
-  };
-
-  const handleDirectSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!directServerUrl.trim()) {
-      setError(t("directLoginErrorServerUrlRequired"));
-      return;
-    }
-    if (!directUsername.trim()) {
-      setError(t("directLoginErrorUsernameRequired"));
-      return;
-    }
-    if (!directPassword) {
-      setError(t("directLoginErrorPasswordRequired"));
-      return;
-    }
-
-    let wsUrl = directServerUrl.trim();
-    if (wsUrl.startsWith("http://")) {
-      wsUrl = wsUrl.replace("http://", "ws://");
-    } else if (wsUrl.startsWith("https://")) {
-      wsUrl = wsUrl.replace("https://", "wss://");
-    } else if (!wsUrl.startsWith("ws://") && !wsUrl.startsWith("wss://")) {
-      wsUrl = `ws://${wsUrl}`;
-    }
-    if (!wsUrl.endsWith("/api/ws")) {
-      wsUrl = `${wsUrl.replace(/\/$/, "")}/api/ws`;
-    }
-
-    try {
-      let hostIdToRemember: string;
-      const existing = getHostByWsUrl(wsUrl);
-      if (existing) {
-        hostIdToRemember = existing.id;
-      } else {
-        const newHost = createDirectHost({
-          wsUrl,
-          srpUsername: directUsername.trim(),
-        });
-        saveHost(newHost);
-        setHosts(loadSavedHosts().hosts);
-        hostIdToRemember = newHost.id;
-      }
-      setCurrentHostId(hostIdToRemember);
-
-      await connect(wsUrl, directUsername.trim(), directPassword, true);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t("directLoginErrorPasswordRequired"),
-      );
-    }
-  };
 
   if (isAutoResuming) {
     return (
@@ -408,167 +289,13 @@ export function HostPickerPage() {
             </p>
           )}
 
-          <div className="host-picker-mode-switch" role="tablist">
-            <button
-              type="button"
-              className={`host-picker-mode-tab ${entryMode === "direct" ? "host-picker-mode-tab-active" : ""}`}
-              onClick={() => setEntryMode("direct")}
-              data-testid="direct-mode-button"
-            >
-              {t("hostPickerDirectTitle")}
-            </button>
-            <button
-              type="button"
-              className={`host-picker-mode-tab ${entryMode === "relay" ? "host-picker-mode-tab-active" : ""}`}
-              onClick={() => setEntryMode("relay")}
-              data-testid="relay-mode-button"
-            >
-              {t("hostPickerRelayTitle")}
-            </button>
-          </div>
-
-          {entryMode === "direct" ? (
-            <form
-              className="login-form host-picker-inline-form host-picker-form-panel"
-              onSubmit={handleDirectSubmit}
-            >
-              <div className="host-picker-form-header">
-                <div>
-                  <h3 className="host-picker-form-title">
-                    {t("hostPickerDirectTitle")}
-                  </h3>
-                  <p className="host-picker-form-description">
-                    {t("hostPickerDirectDescription")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="login-field">
-                <label htmlFor="serverUrl">{t("directLoginServerUrl")}</label>
-                <input
-                  id="serverUrl"
-                  type="text"
-                  value={directServerUrl}
-                  onChange={(e) => setDirectServerUrl(e.target.value)}
-                  placeholder="ws://localhost:3400/api/ws"
-                  autoComplete="url"
-                />
-                <p className="login-field-hint">
-                  {t("directLoginServerUrlHint")}
-                </p>
-              </div>
-
-              <div className="host-picker-form-columns">
-                <div className="login-field">
-                  <label htmlFor="username">{t("directLoginUsername")}</label>
-                  <input
-                    id="username"
-                    type="text"
-                    value={directUsername}
-                    onChange={(e) => setDirectUsername(e.target.value)}
-                    placeholder={t("directLoginUsernamePlaceholder")}
-                    autoComplete="username"
-                  />
-                </div>
-
-                <div className="login-field">
-                  <label htmlFor="password">{t("directLoginPassword")}</label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={directPassword}
-                    onChange={(e) => setDirectPassword(e.target.value)}
-                    placeholder={t("directLoginPasswordPlaceholder")}
-                    autoComplete="current-password"
-                  />
-                </div>
-              </div>
-
-              <button type="submit" className="login-button">
-                {t("directLoginConnect")}
-              </button>
-            </form>
-          ) : (
-            <form
-              className="login-form host-picker-inline-form host-picker-form-panel"
-              onSubmit={handleRelaySubmit}
-            >
-              <div className="host-picker-form-header">
-                <div>
-                  <h3 className="host-picker-form-title">
-                    {t("hostPickerRelayTitle")}
-                  </h3>
-                  <p className="host-picker-form-description">
-                    {t("hostPickerRelayDescription")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="host-picker-form-columns">
-                <div className="login-field">
-                  <label htmlFor="relayUsername">
-                    {t("relayLoginUsername")}
-                  </label>
-                  <input
-                    id="relayUsername"
-                    type="text"
-                    value={relayUsername}
-                    onChange={(e) => setRelayUsername(e.target.value)}
-                    placeholder={t("relayLoginUsernamePlaceholder")}
-                    autoComplete="username"
-                    autoCapitalize="none"
-                  />
-                </div>
-
-                <div className="login-field">
-                  <label htmlFor="relayPassword">
-                    {t("relayLoginPassword")}
-                  </label>
-                  <input
-                    id="relayPassword"
-                    type="password"
-                    value={relayPassword}
-                    onChange={(e) => setRelayPassword(e.target.value)}
-                    placeholder={t("relayLoginPasswordPlaceholder")}
-                    autoComplete="current-password"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="login-advanced-toggle"
-                onClick={() => setShowRelayAdvanced((value) => !value)}
-              >
-                {showRelayAdvanced
-                  ? t("relayLoginHideAdvanced")
-                  : t("relayLoginShowAdvanced")}
-              </button>
-
-              {showRelayAdvanced ? (
-                <div className="login-field">
-                  <label htmlFor="relayUrl">
-                    {t("relayLoginCustomRelayUrl")}
-                  </label>
-                  <input
-                    id="relayUrl"
-                    type="text"
-                    value={relayUrl}
-                    onChange={(e) => setRelayUrl(e.target.value)}
-                    placeholder={DEFAULT_RELAY_URL}
-                    autoComplete="url"
-                  />
-                  <p className="login-field-hint">
-                    {t("relayLoginCustomRelayUrlHint")}
-                  </p>
-                </div>
-              ) : null}
-
-              <button type="submit" className="login-button">
-                {t("relayLoginConnect")}
-              </button>
-            </form>
-          )}
+          <button
+            type="button"
+            className="login-button host-picker-add-button"
+            onClick={() => navigate("/login/new")}
+          >
+            {t("hostPickerAddNewHost")}
+          </button>
         </section>
 
         <p className="login-hint host-picker-footer-hint">

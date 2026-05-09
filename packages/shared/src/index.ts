@@ -6,6 +6,12 @@ export {
   getFilename,
 } from "./ideMetadata.js";
 
+export {
+  DEFAULT_DESKTOP_DISCOVERY_PORT,
+  DESKTOP_DISCOVERY_PORT_CANDIDATES,
+  buildDesktopDiscoveryPorts,
+} from "./desktop-discovery.js";
+
 // File path detection (shared between server and client)
 export type { DetectedFilePath, TextSegment } from "./filePathDetection.js";
 export {

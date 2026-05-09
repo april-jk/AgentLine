@@ -118,11 +118,15 @@ function parseBaseUrlParts(base: string): {
   };
 }
 
+function isLoopbackOrEmulatorHost(host: string): boolean {
+  return host === "127.0.0.1" || host === "localhost" || host === "10.0.2.2";
+}
+
 function normalizeDirectLoginUrl(directServerUrl: string): string {
   const base = normalizeDirectWebBaseUrl(directServerUrl);
   const parsed = parseBaseUrlParts(base);
-  if (parsed) {
-    return `${parsed.protocol}//${parsed.host}:${String(parsed.port + 3)}/login/direct`;
+  if (parsed && isLoopbackOrEmulatorHost(parsed.host)) {
+    return `${parsed.protocol}//${parsed.host}:${String(parsed.port + 2)}/login/direct`;
   }
   if (isLocalRemoteDevBase(base)) {
     return `${base}/login/direct`;

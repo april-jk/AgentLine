@@ -513,6 +513,111 @@ describe("CodexProvider Event Normalization", () => {
   });
 });
 
+describe("CodexProvider resume parameters", () => {
+  it("keeps persisted model when resuming existing sessions", () => {
+    const provider = new CodexProvider() as unknown as {
+      buildThreadResumeParams: (
+        options: {
+          cwd: string;
+          resumeSessionId?: string;
+          model?: string;
+          codexResumeHistory?: Array<Record<string, unknown>>;
+          codexResumePath?: string;
+        },
+        sessionId: string,
+        policy: { approvalPolicy: "on-request"; sandbox: "workspace-write" },
+      ) => Record<string, unknown>;
+    };
+
+    const params = provider.buildThreadResumeParams(
+      {
+        cwd: "/tmp/project",
+        resumeSessionId: "sess-1",
+        model: "gpt-5.4",
+      },
+      "sess-1",
+      { approvalPolicy: "on-request", sandbox: "workspace-write" },
+    );
+
+    expect(params).toMatchObject({
+      threadId: "sess-1",
+      cwd: "/tmp/project",
+      approvalPolicy: "on-request",
+      sandbox: "workspace-write",
+    });
+    expect(params).not.toHaveProperty("model");
+  });
+
+  it("embeds persisted history when provided for resume compatibility", () => {
+    const provider = new CodexProvider() as unknown as {
+      buildThreadResumeParams: (
+        options: {
+          cwd: string;
+          resumeSessionId?: string;
+          codexResumeHistory?: Array<Record<string, unknown>>;
+        },
+        sessionId: string,
+        policy: { approvalPolicy: "on-request"; sandbox: "workspace-write" },
+      ) => Record<string, unknown>;
+    };
+
+    const history = [
+      {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text: "hello" }],
+      },
+    ];
+
+    const params = provider.buildThreadResumeParams(
+      {
+        cwd: "/tmp/project",
+        resumeSessionId: "sess-2",
+        codexResumeHistory: history,
+      },
+      "sess-2",
+      { approvalPolicy: "on-request", sandbox: "workspace-write" },
+    );
+
+    expect(params.history).toEqual(history);
+  });
+
+  it("prefers rollout path over history for same-thread resume", () => {
+    const provider = new CodexProvider() as unknown as {
+      buildThreadResumeParams: (
+        options: {
+          cwd: string;
+          resumeSessionId?: string;
+          codexResumeHistory?: Array<Record<string, unknown>>;
+          codexResumePath?: string;
+        },
+        sessionId: string,
+        policy: { approvalPolicy: "on-request"; sandbox: "workspace-write" },
+      ) => Record<string, unknown>;
+    };
+
+    const params = provider.buildThreadResumeParams(
+      {
+        cwd: "/tmp/project",
+        resumeSessionId: "sess-3",
+        codexResumePath: "/tmp/codex/rollout-sess-3.jsonl",
+        codexResumeHistory: [
+          {
+            type: "message",
+            role: "user",
+            content: [{ type: "input_text", text: "hello" }],
+          },
+        ],
+      },
+      "sess-3",
+      { approvalPolicy: "on-request", sandbox: "workspace-write" },
+    );
+
+    expect(params.path).toBe("/tmp/codex/rollout-sess-3.jsonl");
+    expect(params).not.toHaveProperty("history");
+  });
+});
+
 describe("CodexProvider Configuration", () => {
   it("should accept custom timeout", () => {
     const config: CodexProviderConfig = {

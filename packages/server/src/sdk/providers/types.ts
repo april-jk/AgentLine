@@ -6,6 +6,7 @@ import type {
 } from "@agentline/shared";
 import type { MessageQueue } from "../messageQueue.js";
 import type { CanUseTool, SDKMessage, UserMessage } from "../types.js";
+import type { ResponseItem } from "./codex-protocol/generated/ResponseItem.js";
 
 /**
  * Provider names - extensible for future providers.
@@ -65,6 +66,16 @@ export interface StartSessionOptions {
   codexThreadEphemeral?: boolean;
   /** Codex-only: opt into raw app-server events when supported. */
   codexExperimentalRawEvents?: boolean;
+  /**
+   * Codex-only: explicit persisted history to resume from when thread-id lookup
+   * is unavailable or blocked. Used to recover external sessions reliably.
+   */
+  codexResumeHistory?: ResponseItem[];
+  /**
+   * Codex-only: absolute rollout JSONL path for path-based resume. This keeps
+   * AgentLine and Codex clients attached to the same persisted thread.
+   */
+  codexResumePath?: string;
   /** Global instructions to append to system prompt (from server settings) */
   globalInstructions?: string;
 }

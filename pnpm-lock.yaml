@@ -146,6 +146,9 @@ importers:
 
   packages/desktop-electron:
     dependencies:
+      '@agentline/shared':
+        specifier: workspace:*
+        version: link:../shared
       react:
         specifier: ^19.2.0
         version: 19.2.4
@@ -186,6 +189,12 @@ importers:
 
   packages/mobile-rn:
     dependencies:
+      '@agentline/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@babel/runtime':
+        specifier: ^7.29.2
+        version: 7.29.2
       '@react-navigation/native':
         specifier: ^7.1.10
         version: 7.2.2(react-native@0.79.6(@babel/core@7.29.0)(@react-native-community/cli@20.1.3(typescript@5.8.3))(@types/react@19.0.14)(react@19.0.0))(react@19.0.0)
@@ -916,10 +925,6 @@ packages:
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0-0
-
-  '@babel/runtime@7.28.4':
-    resolution: {integrity: sha512-Q/N6JNWvIvPnLDvjlE1OUBLPQHH6l3CltCEsHIujp45zQUSSh8K+gHnaEX45yAT1nyngnINhvWtzN+Nb9D8RAQ==}
-    engines: {node: '>=6.9.0'}
 
   '@babel/runtime@7.29.2':
     resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
@@ -7074,8 +7079,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@babel/runtime@7.28.4': {}
-
   '@babel/runtime@7.29.2': {}
 
   '@babel/template@7.28.6':
@@ -8586,7 +8589,7 @@ snapshots:
 
   '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
-      '@babel/runtime': 7.28.4
+      '@babel/runtime': 7.29.2
       '@testing-library/dom': 10.4.1
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)

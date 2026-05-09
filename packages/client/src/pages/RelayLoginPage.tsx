@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
@@ -58,15 +58,23 @@ type ConnectionStatus =
 
 export function RelayLoginPage() {
   const { t } = useI18n();
+  const location = useLocation();
+  const locationState =
+    (location.state as
+      | {
+          relayUsername?: string;
+          relayUrl?: string;
+        }
+      | undefined) ?? {};
   const { connectViaRelay, isAutoResuming, setCurrentHostId } =
     useRemoteConnection();
   const [searchParams] = useSearchParams();
 
   // Form state - relay username is also used as SRP identity
   // Pre-fill from query parameters: ?u=username&r=relay-url
-  const initialRelayUrl = searchParams.get("r") ?? "";
+  const initialRelayUrl = locationState.relayUrl ?? searchParams.get("r") ?? "";
   const [relayUsername, setRelayUsername] = useState(
-    () => searchParams.get("u") ?? "",
+    () => locationState.relayUsername ?? searchParams.get("u") ?? "",
   );
   const [srpPassword, setSrpPassword] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(!!initialRelayUrl);

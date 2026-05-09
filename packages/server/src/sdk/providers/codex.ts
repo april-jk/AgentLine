@@ -888,7 +888,9 @@ export class CodexProvider implements AgentProvider {
               name: this.getCodexClientName(),
               version: "dev",
             },
-            capabilities: null,
+            capabilities: {
+              experimentalApi: true,
+            },
           },
         })}\n`,
       );
@@ -1003,6 +1005,39 @@ export class CodexProvider implements AgentProvider {
     });
   }
 
+  private buildThreadResumeParams(
+    options: StartSessionOptions,
+    sessionId: string,
+    policy: {
+      approvalPolicy: CodexAskForApproval;
+      sandbox: CodexSandboxMode;
+    },
+  ): ThreadResumeParams {
+    const params: ThreadResumeParams = {
+      threadId: options.resumeSessionId ?? sessionId,
+      cwd: options.cwd,
+      approvalPolicy: policy.approvalPolicy,
+      sandbox: policy.sandbox,
+    };
+
+    if (options.codexResumePath) {
+      params.path = options.codexResumePath;
+    } else if (
+      options.codexResumeHistory &&
+      options.codexResumeHistory.length > 0
+    ) {
+      params.history = options.codexResumeHistory;
+    }
+
+    // Existing Codex threads should keep their persisted model. Forcing a
+    // different model on resume can break external or older sessions.
+    if (!options.resumeSessionId && options.model) {
+      params.model = options.model;
+    }
+
+    return params;
+  }
+
   /**
    * Start a new Codex session.
    */
@@ -1111,7 +1146,9 @@ export class CodexProvider implements AgentProvider {
           name: this.getCodexClientName(),
           version: "dev",
         },
-        capabilities: null,
+        capabilities: {
+          experimentalApi: true,
+        },
       });
       appServer.notify("initialized");
 
@@ -1119,13 +1156,11 @@ export class CodexProvider implements AgentProvider {
         options.permissionMode,
       );
 
-      const threadResumeParams: ThreadResumeParams = {
-        threadId: options.resumeSessionId ?? sessionId,
-        model: options.model ?? null,
-        cwd: options.cwd,
-        approvalPolicy: policy.approvalPolicy,
-        sandbox: policy.sandbox,
-      };
+      const threadResumeParams = this.buildThreadResumeParams(
+        options,
+        sessionId,
+        policy,
+      );
       const threadStartParams: ThreadStartParams = {
         model: options.model ?? null,
         cwd: options.cwd,

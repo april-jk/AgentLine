@@ -9,6 +9,7 @@ import {
 } from "@agentline/shared";
 import type { AgentActivity, PendingInputType } from "@agentline/shared";
 import { getLogger } from "../logging/logger.js";
+import type { ResponseItem } from "../sdk/providers/codex-protocol/generated/ResponseItem.js";
 import { getProvider } from "../sdk/providers/index.js";
 import type { AgentProvider } from "../sdk/providers/types.js";
 import type {
@@ -80,6 +81,10 @@ export interface ModelSettings {
   executor?: string;
   /** Environment variables to set on remote (for testing: CLAUDE_SESSIONS_DIR) */
   remoteEnv?: Record<string, string>;
+  /** Codex-only persisted thread history used to resume legacy/external sessions safely */
+  codexResumeHistory?: ResponseItem[];
+  /** Codex-only rollout JSONL path used for same-thread resume */
+  codexResumePath?: string;
   /** Global instructions to append to system prompt (from server settings) */
   globalInstructions?: string;
   /** Permission rules for tool filtering (deny/allow patterns) */
@@ -554,6 +559,8 @@ export class Supervisor {
       effort: modelSettings?.effort,
       executor: modelSettings?.executor,
       remoteEnv: modelSettings?.remoteEnv,
+      codexResumeHistory: modelSettings?.codexResumeHistory,
+      codexResumePath: modelSettings?.codexResumePath,
       globalInstructions: modelSettings?.globalInstructions,
       onToolApproval: async (toolName, input, opts) => {
         if (!processHolder.process) {
@@ -655,6 +662,8 @@ export class Supervisor {
       effort: modelSettings?.effort,
       executor: modelSettings?.executor,
       remoteEnv: modelSettings?.remoteEnv,
+      codexResumeHistory: modelSettings?.codexResumeHistory,
+      codexResumePath: modelSettings?.codexResumePath,
       globalInstructions: modelSettings?.globalInstructions,
       onToolApproval: async (toolName, input, opts) => {
         if (!processHolder.process) {

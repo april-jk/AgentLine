@@ -17,6 +17,7 @@ import type { NotificationService } from "../notifications/index.js";
 import type { CodexSessionScanner } from "../projects/codex-scanner.js";
 import type { GeminiSessionScanner } from "../projects/gemini-scanner.js";
 import type { ProjectScanner } from "../projects/scanner.js";
+import type { ResponseItem } from "../sdk/providers/codex-protocol/generated/ResponseItem.js";
 import { getProjectDirFromCwd, syncSessions } from "../sdk/session-sync.js";
 import type { PermissionMode, SDKMessage, UserMessage } from "../sdk/types.js";
 import type { ModelInfoService } from "../services/ModelInfoService.js";
@@ -93,6 +94,36 @@ function isCodexProviderName(
   provider: ProviderName | string | undefined,
 ): provider is "codex" | "codex-oss" {
   return provider === "codex" || provider === "codex-oss";
+}
+
+async function loadCodexResumeOptions(
+  deps: SessionsDeps,
+  projectPath: string,
+  providerName: ProviderName | undefined,
+  sessionId: string,
+): Promise<{
+  codexResumePath?: string;
+  codexResumeHistory?: ResponseItem[];
+}> {
+  if (!isCodexProviderName(providerName) || !deps.codexReaderFactory) {
+    return {};
+  }
+
+  try {
+    const reader = deps.codexReaderFactory(projectPath);
+    const codexResumePath =
+      (await reader.getResumePath(sessionId)) ?? undefined;
+    if (codexResumePath) {
+      return { codexResumePath };
+    }
+
+    return {
+      codexResumeHistory:
+        (await reader.getResumeHistory(sessionId)) ?? undefined,
+    };
+  } catch {
+    return {};
+  }
 }
 
 export interface SessionsDeps {
@@ -1107,6 +1138,9 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         project.provider;
     }
 
+    const { codexResumePath, codexResumeHistory } =
+      await loadCodexResumeOptions(deps, project.path, providerName, sessionId);
+
     const result = await deps.supervisor.resumeSession(
       sessionId,
       project.path,
@@ -1118,6 +1152,8 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         effort,
         providerName,
         executor,
+        codexResumePath,
+        codexResumeHistory,
         globalInstructions,
         permissions: body.permissions,
       },

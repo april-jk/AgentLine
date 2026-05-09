@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
@@ -48,6 +48,14 @@ function parseHashCredentials(): {
 
 export function DirectLoginPage() {
   const { t } = useI18n();
+  const location = useLocation();
+  const locationState =
+    (location.state as
+      | {
+          serverUrl?: string;
+          username?: string;
+        }
+      | undefined) ?? {};
   const {
     connect,
     isConnecting,
@@ -63,9 +71,11 @@ export function DirectLoginPage() {
   // Form state - pre-fill from stored credentials
   // All hooks must be before any conditional returns
   const [serverUrl, setServerUrl] = useState(
-    storedUrl ?? "ws://localhost:3400/api/ws",
+    locationState.serverUrl ?? storedUrl ?? "ws://localhost:3400/api/ws",
   );
-  const [username, setUsername] = useState(storedUsername ?? "");
+  const [username, setUsername] = useState(
+    locationState.username ?? storedUsername ?? "",
+  );
   const [password, setPassword] = useState("");
   // Always default to "remember me" - logout feature can be added later
   const [rememberMe, setRememberMe] = useState(true);

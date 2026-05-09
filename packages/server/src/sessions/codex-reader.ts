@@ -30,6 +30,7 @@ import {
   parseCodexSessionEntry,
 } from "@agentline/shared";
 import { canonicalizeProjectPath } from "../projects/paths.js";
+import type { ResponseItem } from "../sdk/providers/codex-protocol/generated/ResponseItem.js";
 import type {
   ContentBlock,
   ContextUsage,
@@ -234,6 +235,44 @@ export class CodexSessionReader implements ISessionReader {
         },
       },
     };
+  }
+
+  async getResumeHistory(sessionId: string): Promise<ResponseItem[] | null> {
+    const sessionFile = await this.findSessionFile(sessionId);
+    if (!sessionFile) return null;
+
+    const lines = await readJsonlLines(sessionFile.filePath);
+    const entries: CodexSessionEntry[] = [];
+    for (const line of lines) {
+      const entry = parseCodexSessionEntry(line);
+      if (entry) {
+        entries.push(entry);
+      }
+    }
+
+    const history: ResponseItem[] = [];
+    const hasResponseItemUser = this.hasResponseItemUserMessages(entries);
+
+    for (const entry of entries) {
+      if (entry.type === "response_item") {
+        history.push(entry.payload as ResponseItem);
+        continue;
+      }
+
+      if (entry.type === "event_msg" && !hasResponseItemUser) {
+        const synthesized = this.convertUserEventToResponseItem(entry);
+        if (synthesized) {
+          history.push(synthesized);
+        }
+      }
+    }
+
+    return history.length > 0 ? history : null;
+  }
+
+  async getResumePath(sessionId: string): Promise<string | null> {
+    const sessionFile = await this.findSessionFile(sessionId);
+    return sessionFile?.filePath ?? null;
   }
 
   async getSessionSummaryIfChanged(
@@ -729,6 +768,25 @@ export class CodexSessionReader implements ISessionReader {
         entry.payload.type === "message" &&
         entry.payload.role === "user",
     );
+  }
+
+  private convertUserEventToResponseItem(
+    entry: CodexEventMsgEntry,
+  ): ResponseItem | null {
+    if (entry.payload.type !== "user_message") {
+      return null;
+    }
+
+    return {
+      type: "message",
+      role: "user",
+      content: [
+        {
+          type: "input_text",
+          text: entry.payload.message,
+        },
+      ],
+    };
   }
 
   /**

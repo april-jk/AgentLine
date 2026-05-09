@@ -6665,6 +6665,36 @@ a.sidebar-nav-item {
   margin: 0;
 }
 
+.host-picker-add-button {
+  width: 100%;
+}
+
+.host-picker-scan-panel {
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+
+.host-picker-scan-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.host-picker-utility-option {
+  width: 100%;
+}
+
+.host-picker-item-selected {
+  border-color: var(--app-agent-teal);
+  background: var(--bg-hover);
+}
+
+.host-picker-selected-cta {
+  width: 100%;
+}
+
 .login-back-link {
   display: inline-flex;
   align-items: center;
@@ -6677,6 +6707,13 @@ a.sidebar-nav-item {
 
 .login-back-link:hover {
   color: var(--text-primary);
+}
+
+.login-back-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
 .login-advanced-toggle {

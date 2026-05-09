@@ -380,8 +380,12 @@ function SessionPageContent({
           currentAttachments.length > 0 ? currentAttachments : undefined,
           tempId,
         );
-        // Update status to trigger SSE connection
-        setStatus({ owner: "self", processId: result.processId });
+        if (result.queued) {
+          setProcessState("idle");
+        } else {
+          // Update status to trigger SSE connection
+          setStatus({ owner: "self", processId: result.processId });
+        }
       } else {
         // Queue to existing process with current permission mode and thinking setting
         const thinking = getThinkingSetting();
@@ -427,7 +431,11 @@ function SessionPageContent({
             currentAttachments.length > 0 ? currentAttachments : undefined,
             tempId,
           );
-          setStatus({ owner: "self", processId: result.processId });
+          if (!result.queued) {
+            setStatus({ owner: "self", processId: result.processId });
+          } else {
+            setProcessState("idle");
+          }
           draftControlsRef.current?.clearDraft();
           return;
         } catch (retryErr) {

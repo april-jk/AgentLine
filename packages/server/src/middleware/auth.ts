@@ -28,6 +28,8 @@ export interface AuthMiddlewareOptions {
   authDisabled?: boolean;
   /** Desktop auth token from Tauri app. Acts as minimum auth floor when no other auth is configured. */
   desktopAuthToken?: string;
+  /** Whether unauthenticated websocket upgrades may enter SRP auth handling. */
+  allowWsSrpUpgrade?: () => boolean;
 }
 
 /**
@@ -66,10 +68,18 @@ function hasValidDesktopToken(
 export function createAuthMiddleware(
   options: AuthMiddlewareOptions,
 ): MiddlewareHandler {
-  const { authService, authDisabled = false, desktopAuthToken } = options;
+  const {
+    authService,
+    authDisabled = false,
+    desktopAuthToken,
+    allowWsSrpUpgrade,
+  } = options;
 
   return async (c, next) => {
     const path = c.req.path;
+    const isWsUpgrade =
+      path === "/api/ws" &&
+      c.req.header("upgrade")?.toLowerCase() === "websocket";
 
     // Skip auth for health check (always open for readiness probes)
     if (path === "/health") {
@@ -96,6 +106,14 @@ export function createAuthMiddleware(
     // Using a Symbol ensures this cannot be forged by external HTTP requests.
     if (c.env[WS_INTERNAL_AUTHENTICATED]) {
       c.set("authenticated", true);
+      await next();
+      return;
+    }
+
+    // Remote clients authenticate inside the websocket via SRP. Let the upgrade
+    // reach the WS handler once remote access is enabled; the WS policy will
+    // decide whether SRP is required for the actual connection.
+    if (isWsUpgrade && allowWsSrpUpgrade?.()) {
       await next();
       return;
     }

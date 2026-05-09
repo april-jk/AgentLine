@@ -18,6 +18,7 @@
     "dist:linux": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --linux AppImage deb"
   },
   "dependencies": {
+    "@agentline/shared": "workspace:*",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

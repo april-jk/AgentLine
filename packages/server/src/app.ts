@@ -213,6 +213,8 @@ export function createApp(options: AppOptions): AppResult {
         authService: options.authService,
         authDisabled: options.authDisabled,
         desktopAuthToken: options.desktopAuthToken,
+        allowWsSrpUpgrade: () =>
+          options.remoteAccessService?.isEnabled() ?? false,
       }),
     );
   }

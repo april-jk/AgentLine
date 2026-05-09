@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../../../shared/dist/desktop-discovery.js";
 
 type ServerState = "stopped" | "starting" | "running" | "stopping" | "error";
 
@@ -208,7 +209,10 @@ export function App() {
           />
           <strong>{statusText}</strong>
         </div>
-        <p>Dashboard URL: http://127.0.0.1:{status?.port ?? 45731}</p>
+        <p>
+          Dashboard URL: http://127.0.0.1:
+          {status?.port ?? DEFAULT_DESKTOP_DISCOVERY_PORT}
+        </p>
         <p>PID: {status?.pid ?? "-"}</p>
         <p>Port: {status?.port ?? 3400}</p>
         <p>Message: {status?.message ?? "-"}</p>
