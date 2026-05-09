@@ -1,17 +1,11 @@
 import { readFile, writeFile } from "node:fs/promises";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { BrowserWindow, Menu, Tray, app, ipcMain, nativeImage } from "electron";
 import {
-  BrowserWindow,
-  Menu,
-  Tray,
-  app,
-  ipcMain,
-  nativeImage,
-} from "electron";
-import {
-  ServerManager,
   type ControlPlaneConfig,
+  ServerManager,
   type ServerStatus,
 } from "./serverManager.js";
 
@@ -21,10 +15,9 @@ const packageRoot = path.resolve(__dirname, "../..");
 const repoRoot = path.resolve(packageRoot, "../..");
 
 // Use uncommon, desktop-dedicated ports to avoid clashing with common
-// development ports (3000/3400/5173/etc).
-const DASHBOARD_PORT = 45731;
-const DASHBOARD_URL = `http://127.0.0.1:${DASHBOARD_PORT}`;
-const DASHBOARD_HEALTH_URL = `${DASHBOARD_URL}/health`;
+// development ports (3000/3400/5173/etc). Probe a small port range so we don't
+// collide with stale dev sessions from previous runs.
+const DASHBOARD_PORT_CANDIDATES = [45731, 45732, 45733, 45734, 45735, 45736];
 
 interface ServerRuntimeState {
   backendReachable: boolean;
@@ -72,9 +65,14 @@ let autoRecoverCount = 0;
 let lastRecoverAt: number | undefined;
 let lastRecoverReason: string | undefined;
 let lastRecoverError: string | undefined;
+let dashboardPort = DASHBOARD_PORT_CANDIDATES[0];
+let serverManager: ServerManager | null = null;
 
 const runtimeRoot = path.join(process.resourcesPath, "runtime", "agentline");
-const desktopConfigPath = path.join(app.getPath("userData"), "desktop-config.json");
+const desktopConfigPath = path.join(
+  app.getPath("userData"),
+  "desktop-config.json",
+);
 
 let desktopConfig: DesktopAppConfig = {};
 
@@ -108,17 +106,54 @@ const loadDesktopConfig = async (): Promise<void> => {
 };
 
 const saveDesktopConfig = async (): Promise<void> => {
-  await writeFile(desktopConfigPath, JSON.stringify(desktopConfig, null, 2), "utf-8");
+  await writeFile(
+    desktopConfigPath,
+    JSON.stringify(desktopConfig, null, 2),
+    "utf-8",
+  );
 };
 
-const serverManager = new ServerManager({
-  repoRoot,
-  runtimeRoot,
-  packaged: app.isPackaged,
-  dataDir: path.join(app.getPath("userData"), "agentline-data"),
-  port: DASHBOARD_PORT,
-  controlPlane: desktopConfig.controlPlane,
-});
+const getServerManager = (): ServerManager => {
+  if (!serverManager) {
+    throw new Error("Server manager not initialized");
+  }
+  return serverManager;
+};
+
+const getDashboardBaseUrl = (): string => `http://127.0.0.1:${dashboardPort}`;
+
+const getDashboardUrl = (): string => getServerManager().getDashboardUrl();
+
+const isDashboardLocation = (url: string): boolean =>
+  url === getDashboardBaseUrl() || url.startsWith(`${getDashboardBaseUrl()}/`);
+
+const portIsAvailable = (port: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.once("error", () => resolve(false));
+    probe.listen(port, "127.0.0.1", () => {
+      probe.close(() => resolve(true));
+    });
+  });
+
+const resolveDashboardPort = async (): Promise<number> => {
+  for (const candidate of DASHBOARD_PORT_CANDIDATES) {
+    const [dashboardOk, maintenanceOk, viteOk] = await Promise.all([
+      portIsAvailable(candidate),
+      portIsAvailable(candidate + 1),
+      portIsAvailable(candidate + 2),
+    ]);
+
+    if (dashboardOk && maintenanceOk && viteOk) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    "Unable to find a free dashboard/maintenance/Vite port triple.",
+  );
+};
 
 const broadcastStatus = (status: ServerStatus): void => {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -131,10 +166,25 @@ const sleep = (ms: number): Promise<void> =>
 
 const isDashboardReachable = async (): Promise<boolean> => {
   try {
-    const response = await fetch(DASHBOARD_HEALTH_URL, {
+    const response = await fetch(`${getDashboardBaseUrl()}/health`, {
       signal: AbortSignal.timeout(1500),
     });
     return response.ok;
+  } catch {
+    return false;
+  }
+};
+
+const isDashboardContentReady = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(getDashboardUrl(), {
+      signal: AbortSignal.timeout(1500),
+    });
+    if (!response.ok) {
+      return false;
+    }
+    const body = await response.text();
+    return !body.includes("Vite dev server not available");
   } catch {
     return false;
   }
@@ -160,7 +210,7 @@ const fetchControlPlaneBridgeStatus = async (): Promise<unknown> => {
   }
 
   const response = await fetch(
-    `${DASHBOARD_URL}/api/remote-access/control-plane/status`,
+    `${getDashboardBaseUrl()}/api/remote-access/control-plane/status`,
     {
       signal: AbortSignal.timeout(2000),
       headers: {
@@ -221,15 +271,15 @@ const loginToControlPlane = async (
     deviceType: "desktop-electron",
   };
   await saveDesktopConfig();
-  serverManager.updateControlPlaneConfig(desktopConfig.controlPlane);
-  await serverManager.restart();
+  getServerManager().updateControlPlaneConfig(desktopConfig.controlPlane);
+  await getServerManager().restart();
   return getControlPlanePublicConfig();
 };
 
 const waitForDashboard = async (): Promise<boolean> => {
   const maxAttempts = 40;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    if (await isDashboardReachable()) {
+    if (await isDashboardContentReady()) {
       return true;
     }
     await sleep(250);
@@ -240,7 +290,7 @@ const waitForDashboard = async (): Promise<boolean> => {
 const ensureBackendReady = async (): Promise<boolean> => {
   const maxBootstrapAttempts = 3;
   for (let attempt = 1; attempt <= maxBootstrapAttempts; attempt += 1) {
-    await serverManager.start();
+    await getServerManager().start();
     const healthy = await waitForDashboard();
     if (healthy) {
       return true;
@@ -265,7 +315,7 @@ const tryAttachDashboard = async (): Promise<void> => {
     return;
   }
   const currentUrl = mainWindow.webContents.getURL();
-  if (currentUrl.startsWith(DASHBOARD_URL)) {
+  if (isDashboardLocation(currentUrl)) {
     return;
   }
 
@@ -274,7 +324,7 @@ const tryAttachDashboard = async (): Promise<void> => {
     return;
   }
 
-  await mainWindow.loadURL(DASHBOARD_URL);
+  await mainWindow.loadURL(getDashboardUrl());
 };
 
 const openMainProgram = async (): Promise<void> => {
@@ -305,11 +355,10 @@ const recoverServer = async (reason: string): Promise<void> => {
   recoverInFlight = true;
   try {
     console.warn(`[desktop-electron] Recover server triggered: ${reason}`);
-    await serverManager.restart();
+    await getServerManager().restart();
     await tryAttachDashboard();
   } catch (error) {
-    lastRecoverError =
-      error instanceof Error ? error.message : String(error);
+    lastRecoverError = error instanceof Error ? error.message : String(error);
     console.error(
       `[desktop-electron] Recover server failed: ${error instanceof Error ? error.message : String(error)}`,
     );
@@ -339,20 +388,8 @@ const createWindow = async (): Promise<void> => {
     },
   );
 
-  const devUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devUrl) {
-    await mainWindow.loadURL(devUrl);
-  } else {
-    const dashboardReady = await waitForDashboard();
-    if (dashboardReady) {
-      await mainWindow.loadURL(DASHBOARD_URL);
-    } else {
-      console.error(
-        "[desktop-electron] Dashboard health check timeout, fallback to local control panel renderer.",
-      );
-      await mainWindow.loadFile(path.resolve(__dirname, "../../dist/index.html"));
-    }
-  }
+  await waitForDashboard();
+  await mainWindow.loadURL(getDashboardUrl());
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -389,7 +426,7 @@ const createTray = (): void => {
     {
       label: "Restart Server",
       click: () => {
-        void serverManager.restart();
+        void getServerManager().restart();
       },
     },
     { type: "separator" },
@@ -408,16 +445,20 @@ const createTray = (): void => {
 };
 
 const registerIpcHandlers = (): void => {
-  ipcMain.handle("server:get-status", () => serverManager.getStatus());
+  ipcMain.handle("server:get-status", () => getServerManager().getStatus());
   ipcMain.handle("server:get-runtime-state", () => getRuntimeState());
-  ipcMain.handle("server:start", () => serverManager.start());
-  ipcMain.handle("server:stop", () => serverManager.stop());
-  ipcMain.handle("server:restart", () => serverManager.restart());
+  ipcMain.handle("server:start", () => getServerManager().start());
+  ipcMain.handle("server:stop", () => getServerManager().stop());
+  ipcMain.handle("server:restart", () => getServerManager().restart());
   ipcMain.handle("server:open-dashboard", async () => {
     await openMainProgram();
   });
-  ipcMain.handle("control-plane:get-config", () => getControlPlanePublicConfig());
-  ipcMain.handle("control-plane:get-status", () => fetchControlPlaneBridgeStatus());
+  ipcMain.handle("control-plane:get-config", () =>
+    getControlPlanePublicConfig(),
+  );
+  ipcMain.handle("control-plane:get-status", () =>
+    fetchControlPlaneBridgeStatus(),
+  );
   ipcMain.handle(
     "control-plane:login",
     async (_event, payload: ControlPlaneLoginPayload) =>
@@ -426,17 +467,27 @@ const registerIpcHandlers = (): void => {
   ipcMain.handle("control-plane:clear", async () => {
     desktopConfig.controlPlane = undefined;
     await saveDesktopConfig();
-    serverManager.updateControlPlaneConfig({});
-    await serverManager.restart();
+    getServerManager().updateControlPlaneConfig({});
+    await getServerManager().restart();
     return getControlPlanePublicConfig();
   });
 };
 
 app.whenReady().then(async () => {
   await loadDesktopConfig();
-  serverManager.updateControlPlaneConfig(desktopConfig.controlPlane ?? {});
+  dashboardPort = await resolveDashboardPort();
+  serverManager = new ServerManager({
+    repoRoot,
+    runtimeRoot,
+    packaged: app.isPackaged,
+    dataDir: path.join(app.getPath("userData"), "agentline-data"),
+    port: dashboardPort,
+    controlPlane: desktopConfig.controlPlane,
+  });
+
+  getServerManager().updateControlPlaneConfig(desktopConfig.controlPlane ?? {});
   registerIpcHandlers();
-  serverManager.on("status", (status) => {
+  getServerManager().on("status", (status) => {
     broadcastStatus(status);
     if (status.state === "error") {
       void recoverServer(status.message ?? "unknown server error");
@@ -477,7 +528,9 @@ app.on("before-quit", async () => {
     clearInterval(dashboardAttachTimer);
     dashboardAttachTimer = null;
   }
-  await serverManager.stop();
+  if (serverManager) {
+    await getServerManager().stop();
+  }
 });
 
 app.on("window-all-closed", () => {

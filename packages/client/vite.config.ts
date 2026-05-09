@@ -11,9 +11,13 @@ const noFrontendReload = process.env.NO_FRONTEND_RELOAD === "true";
 const vitePort = process.env.VITE_PORT
   ? Number.parseInt(process.env.VITE_PORT, 10)
   : 3402;
+const viteStrictPort = process.env.VITE_STRICT_PORT === "true";
 
-// VITE_HOST: Set to "true" to bind to all interfaces (needed in Docker containers)
-const viteHost = process.env.VITE_HOST === "true" ? true : undefined;
+// VITE_HOST: Set to "true" to bind to all interfaces, or to a concrete host
+// like "127.0.0.1" when adb reverse must reach the dev server over IPv4.
+const viteHostEnv = process.env.VITE_HOST?.trim();
+const viteHost =
+  viteHostEnv === "true" ? true : viteHostEnv ? viteHostEnv : undefined;
 
 function getGitVersion(): string {
   try {
@@ -45,8 +49,9 @@ export default defineConfig({
   },
   server: {
     port: vitePort,
+    strictPort: viteStrictPort,
     host: viteHost,
-    allowedHosts: ["localhost", ".agentline.com"],
+    allowedHosts: ["localhost", "127.0.0.1", "10.0.2.2", ".agentline.com"],
     // HMR configuration for reverse proxy setup
     // When accessed through backend proxy (port 3400) or Tailscale, HMR needs to
     // connect back through the same proxy path, not directly to Vite's port

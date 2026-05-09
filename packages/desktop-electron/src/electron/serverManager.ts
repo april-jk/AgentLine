@@ -1,4 +1,5 @@
 import { type ChildProcessByStdio, spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { access } from "node:fs/promises";
 import path from "node:path";
@@ -42,6 +43,13 @@ export interface ControlPlaneConfig {
   heartbeatIntervalMs?: number;
 }
 
+interface LaunchConfig {
+  command: string;
+  args: string[];
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+}
+
 export class ServerManager extends EventEmitter {
   private readonly repoRoot: string;
   private readonly runtimeRoot: string | null;
@@ -49,7 +57,9 @@ export class ServerManager extends EventEmitter {
   private readonly packaged: boolean;
   private readonly port: number;
   private controlPlane: ControlPlaneConfig;
+  private readonly desktopAuthToken: string;
   private child: ManagedChildProcess | null = null;
+  private childUsesProcessGroup = false;
   private status: ServerStatus;
 
   constructor(options: ServerManagerOptions) {
@@ -60,6 +70,7 @@ export class ServerManager extends EventEmitter {
     this.packaged = options.packaged;
     this.port = options.port ?? SERVER_PORT;
     this.controlPlane = options.controlPlane ?? {};
+    this.desktopAuthToken = randomBytes(32).toString("hex");
     this.status = {
       state: "stopped",
       pid: null,
@@ -75,6 +86,14 @@ export class ServerManager extends EventEmitter {
     return { ...this.controlPlane };
   }
 
+  getDesktopAuthToken(): string {
+    return this.desktopAuthToken;
+  }
+
+  getDashboardUrl(): string {
+    return `http://127.0.0.1:${this.port}/?desktop_token=${encodeURIComponent(this.desktopAuthToken)}`;
+  }
+
   updateControlPlaneConfig(next: ControlPlaneConfig): void {
     this.controlPlane = { ...next };
   }
@@ -84,21 +103,18 @@ export class ServerManager extends EventEmitter {
       return this.getStatus();
     }
 
-    const serverEntry = this.packaged
-      ? path.join(this.runtimeRoot ?? "", "dist/index.js")
-      : path.join(this.repoRoot, "packages/server/dist/index.js");
-    const workingDir = this.packaged
-      ? (this.runtimeRoot ?? this.repoRoot)
-      : this.repoRoot;
+    const launchConfig = this.createLaunchConfig();
 
     try {
-      await access(serverEntry);
+      if (this.packaged) {
+        await access(launchConfig.args[0] ?? "");
+      }
     } catch {
       this.updateStatus({
         state: "error",
         pid: null,
         port: this.port,
-        message: `Server entry not found: ${serverEntry}`,
+        message: `Server entry not found: ${launchConfig.args[0] ?? "unknown"}`,
       });
       return this.getStatus();
     }
@@ -110,43 +126,19 @@ export class ServerManager extends EventEmitter {
       message: "Starting server...",
     });
 
-    const child: ManagedChildProcess = spawn(process.execPath, [serverEntry], {
-      cwd: workingDir,
-      env: {
-        ...process.env,
-        PORT: String(this.port),
-        MAINTENANCE_PORT: String(this.port + 1),
-        VITE_PORT: String(this.port + 2),
-        AGENTLINE_DATA_DIR: this.dataDir,
-        NODE_ENV: "production",
-        ...(this.packaged ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
-        ...(this.controlPlane.baseUrl
-          ? { CONTROL_PLANE_BASE_URL: this.controlPlane.baseUrl }
-          : {}),
-        ...(this.controlPlane.accessToken
-          ? { CONTROL_PLANE_ACCESS_TOKEN: this.controlPlane.accessToken }
-          : {}),
-        ...(this.controlPlane.relayWsUrl
-          ? { CONTROL_PLANE_RELAY_WS_URL: this.controlPlane.relayWsUrl }
-          : {}),
-        ...(this.controlPlane.deviceName
-          ? { CONTROL_PLANE_DEVICE_NAME: this.controlPlane.deviceName }
-          : {}),
-        ...(this.controlPlane.deviceType
-          ? { CONTROL_PLANE_DEVICE_TYPE: this.controlPlane.deviceType }
-          : {}),
-        ...(this.controlPlane.heartbeatIntervalMs
-          ? {
-              CONTROL_PLANE_HEARTBEAT_INTERVAL_MS: String(
-                this.controlPlane.heartbeatIntervalMs,
-              ),
-            }
-          : {}),
+    const child: ManagedChildProcess = spawn(
+      launchConfig.command,
+      launchConfig.args,
+      {
+        cwd: launchConfig.cwd,
+        env: launchConfig.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        detached: process.platform !== "win32",
       },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    );
 
     this.child = child;
+    this.childUsesProcessGroup = process.platform !== "win32";
 
     child.stdout.on("data", (chunk) => {
       process.stdout.write(`[desktop-electron][server] ${chunk}`);
@@ -167,6 +159,7 @@ export class ServerManager extends EventEmitter {
 
     child.once("error", (error) => {
       this.child = null;
+      this.childUsesProcessGroup = false;
       this.updateStatus({
         state: "error",
         pid: null,
@@ -177,6 +170,7 @@ export class ServerManager extends EventEmitter {
 
     child.once("exit", (code, signal) => {
       this.child = null;
+      this.childUsesProcessGroup = false;
       const wasStopping = this.status.state === "stopping";
       const message = wasStopping
         ? "Server stopped"
@@ -212,12 +206,12 @@ export class ServerManager extends EventEmitter {
       message: "Stopping server...",
     });
 
-    child.kill("SIGTERM");
+    this.killManagedProcess("SIGTERM");
 
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
         if (this.child) {
-          this.child.kill("SIGKILL");
+          this.killManagedProcess("SIGKILL");
         }
         resolve();
       }, 5000);
@@ -239,5 +233,84 @@ export class ServerManager extends EventEmitter {
   private updateStatus(status: ServerStatus): void {
     this.status = status;
     this.emit("status", this.getStatus());
+  }
+
+  private killManagedProcess(signal: NodeJS.Signals): void {
+    if (!this.child?.pid) {
+      return;
+    }
+
+    try {
+      if (this.childUsesProcessGroup) {
+        process.kill(-this.child.pid, signal);
+        return;
+      }
+    } catch {
+      // Fall back to the direct child kill below.
+    }
+
+    this.child.kill(signal);
+  }
+
+  private createLaunchConfig(): LaunchConfig {
+    const sharedEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      PORT: String(this.port),
+      HOST: "127.0.0.1",
+      CLI_HOST_OVERRIDE: "true",
+      MAINTENANCE_PORT: String(this.port + 1),
+      VITE_PORT: String(this.port + 2),
+      VITE_STRICT_PORT: "true",
+      VITE_HOST: "127.0.0.1",
+      AGENTLINE_DATA_DIR: this.dataDir,
+      DESKTOP_AUTH_TOKEN: this.desktopAuthToken,
+      OPEN_BROWSER: "false",
+      ...(this.controlPlane.baseUrl
+        ? { CONTROL_PLANE_BASE_URL: this.controlPlane.baseUrl }
+        : {}),
+      ...(this.controlPlane.accessToken
+        ? { CONTROL_PLANE_ACCESS_TOKEN: this.controlPlane.accessToken }
+        : {}),
+      ...(this.controlPlane.relayWsUrl
+        ? { CONTROL_PLANE_RELAY_WS_URL: this.controlPlane.relayWsUrl }
+        : {}),
+      ...(this.controlPlane.deviceName
+        ? { CONTROL_PLANE_DEVICE_NAME: this.controlPlane.deviceName }
+        : {}),
+      ...(this.controlPlane.deviceType
+        ? { CONTROL_PLANE_DEVICE_TYPE: this.controlPlane.deviceType }
+        : {}),
+      ...(this.controlPlane.heartbeatIntervalMs
+        ? {
+            CONTROL_PLANE_HEARTBEAT_INTERVAL_MS: String(
+              this.controlPlane.heartbeatIntervalMs,
+            ),
+          }
+        : {}),
+    };
+
+    if (this.packaged) {
+      const serverEntry = path.join(this.runtimeRoot ?? "", "dist/index.js");
+      return {
+        command: process.execPath,
+        args: [serverEntry],
+        cwd: this.runtimeRoot ?? this.repoRoot,
+        env: {
+          ...sharedEnv,
+          NODE_ENV: "production",
+          ELECTRON_RUN_AS_NODE: "1",
+        },
+      };
+    }
+
+    return {
+      command: process.execPath,
+      args: [path.join(this.repoRoot, "scripts/dev.js")],
+      cwd: this.repoRoot,
+      env: {
+        ...sharedEnv,
+        NODE_ENV: "development",
+      },
+    };
   }
 }
