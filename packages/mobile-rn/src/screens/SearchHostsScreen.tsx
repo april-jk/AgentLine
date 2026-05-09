@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../../../shared/dist/desktop-discovery.js";
 import {
   type LanScanResult,
   scanLanServers,
@@ -38,6 +39,31 @@ function normalizeLabelFromUrl(url: string): string {
   }
 
   return url.replace(/^https?:\/\//, "");
+}
+
+function isRoutableLanPrefix(prefix: string): boolean {
+  const match = prefix.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return false;
+  }
+  const a = Number(match[1] ?? -1);
+  const b = Number(match[2] ?? -1);
+  const c = Number(match[3] ?? -1);
+  if (![a, b, c].every((part) => Number.isInteger(part))) return false;
+  if ([a, b, c].some((part) => part < 0 || part > 255)) return false;
+  if (a === 127 || a === 0) return false;
+  if (a === 169 && b === 254) return false;
+  return true;
+}
+
+function normalizeSubnetPrefix(value: string): string {
+  const match = value
+    .trim()
+    .replace(/\.$/, "")
+    .match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})(?:\.\d{1,3})?$/);
+  const prefix = match?.[1] ?? "";
+  if (!isRoutableLanPrefix(prefix)) return "192.168.1";
+  return prefix;
 }
 
 function dedupeKnownHosts(
@@ -72,6 +98,21 @@ function dedupeKnownHosts(
   return items;
 }
 
+function resolveSelectedHostUrl(
+  currentSelected: string,
+  currentServerUrl: string,
+  scanResults: LanScanResult[],
+): string {
+  if (scanResults.length <= 0) {
+    return currentServerUrl || currentSelected;
+  }
+
+  const urls = new Set(scanResults.map((item) => item.baseUrl));
+  if (currentSelected && urls.has(currentSelected)) return currentSelected;
+  if (currentServerUrl && urls.has(currentServerUrl)) return currentServerUrl;
+  return scanResults[0]?.baseUrl ?? currentSelected;
+}
+
 export function SearchHostsScreen({ navigation, route }: Props) {
   const { themeMode } = useThemePreference();
   const theme = useAppTheme(themeMode);
@@ -90,6 +131,10 @@ export function SearchHostsScreen({ navigation, route }: Props) {
   const [scanProgress, setScanProgress] = useState("");
   const [scanResults, setScanResults] = useState<LanScanResult[]>([]);
   const [selectedHostUrl, setSelectedHostUrl] = useState(currentServerUrl);
+  const effectiveScanPrefix = useMemo(
+    () => normalizeSubnetPrefix(scanPrefix),
+    [scanPrefix],
+  );
 
   const knownHosts = useMemo(
     () => dedupeKnownHosts(recentServers, scanResults),
@@ -101,7 +146,9 @@ export function SearchHostsScreen({ navigation, route }: Props) {
   }, []);
 
   const runSmartScan = async () => {
-    const port = Number(scanPort.trim() || "45731");
+    const port = Number(
+      scanPort.trim() || String(DEFAULT_DESKTOP_DISCOVERY_PORT),
+    );
     if (!Number.isInteger(port) || port <= 0 || port > 65535) {
       setScanProgress("端口必须是 1-65535");
       return;
@@ -114,20 +161,17 @@ export function SearchHostsScreen({ navigation, route }: Props) {
       const found = await smartScanLanServers({
         port,
         recentServers,
+        preferredSubnetPrefix: effectiveScanPrefix,
         onProgress: (progress) => {
           setScanProgress(
-            progress.phase === "quick"
-              ? `快速搜索 ${progress.scanned}/${progress.total}`
-              : `扩展搜索 ${progress.scanned}/${progress.total}`,
+            `扫描 ${progress.subnetPrefix}.0/24 (${progress.scanned}/${progress.total})`,
           );
         },
       });
       setScanResults(found);
-      if (found[0]) {
-        setSelectedHostUrl((current) => current || found[0]?.baseUrl || "");
-      } else {
-        setSelectedHostUrl((current) => currentServerUrl || current);
-      }
+      setSelectedHostUrl((current) =>
+        resolveSelectedHostUrl(current, currentServerUrl, found),
+      );
       setScanProgress(
         found.length > 0
           ? `找到 ${String(found.length)} 台可连接电脑`
@@ -147,7 +191,9 @@ export function SearchHostsScreen({ navigation, route }: Props) {
       return;
     }
 
-    const port = Number(scanPort.trim() || "45731");
+    const port = Number(
+      scanPort.trim() || String(DEFAULT_DESKTOP_DISCOVERY_PORT),
+    );
     if (!Number.isInteger(port) || port <= 0 || port > 65535) {
       setScanProgress("端口必须是 1-65535");
       return;
@@ -159,9 +205,9 @@ export function SearchHostsScreen({ navigation, route }: Props) {
     try {
       const found = await scanLanServers(prefix, port);
       setScanResults(found);
-      if (found[0]) {
-        setSelectedHostUrl((current) => current || found[0]?.baseUrl || "");
-      }
+      setSelectedHostUrl((current) =>
+        resolveSelectedHostUrl(current, currentServerUrl, found),
+      );
       setScanProgress(
         found.length > 0
           ? `找到 ${String(found.length)} 台可连接电脑`
@@ -189,7 +235,7 @@ export function SearchHostsScreen({ navigation, route }: Props) {
           <View style={styles.headerBlock}>
             <Text style={styles.title}>搜索局域网主机</Text>
             <Text style={styles.subtitle}>
-              自动搜索会优先检查常见地址，也可以切到高级扫描指定网段。
+              默认只扫描当前网段 {effectiveScanPrefix}.0/24。跨网段或复杂网络请使用高级扫描。
             </Text>
           </View>
 
@@ -212,6 +258,9 @@ export function SearchHostsScreen({ navigation, route }: Props) {
                 <Text style={styles.primaryButtonText}>开始自动搜索</Text>
               )}
             </Pressable>
+            <Text style={styles.statusText}>
+              当前自动扫描网段：{effectiveScanPrefix}.0/24
+            </Text>
           </View>
 
           {scanProgress ? (
@@ -234,7 +283,7 @@ export function SearchHostsScreen({ navigation, route }: Props) {
                 value={scanPrefix}
                 onChangeText={setScanPrefix}
                 autoCapitalize="none"
-                placeholder="网段，例如 192.168.1"
+                placeholder="指定网段，例如 192.168.10"
                 placeholderTextColor={theme.textMuted}
               />
               <TextInput
@@ -242,7 +291,9 @@ export function SearchHostsScreen({ navigation, route }: Props) {
                 value={scanPort}
                 onChangeText={setScanPort}
                 keyboardType="numeric"
-                placeholder="端口（默认 45731）"
+                placeholder={`端口（默认 ${String(
+                  DEFAULT_DESKTOP_DISCOVERY_PORT,
+                )}）`}
                 placeholderTextColor={theme.textMuted}
               />
               <Pressable
@@ -250,7 +301,9 @@ export function SearchHostsScreen({ navigation, route }: Props) {
                 onPress={() => void runManualScan()}
                 disabled={scanLoading}
               >
-                <Text style={styles.secondaryButtonText}>扫描这个网段</Text>
+                <Text style={styles.secondaryButtonText}>
+                  扫描 {effectiveScanPrefix}.0/24
+                </Text>
               </Pressable>
             </View>
           ) : null}

@@ -41,6 +41,32 @@ function parseBaseUrlParts(base: string): {
   };
 }
 
+function buildLocalHostCandidates(host: string): string[] {
+  if (host === "10.0.2.2") return ["127.0.0.1", "10.0.2.2"];
+  if (host === "127.0.0.1") return ["127.0.0.1", "10.0.2.2"];
+  if (host === "localhost") return ["127.0.0.1", "localhost", "10.0.2.2"];
+  return [host];
+}
+
+function buildDirectHashForCandidate(
+  sourceUri: string,
+  protocol: string,
+  host: string,
+  serverPort: number,
+): string {
+  const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
+  const hash = getHash(sourceUri);
+  const rawParams = hash.startsWith("#") ? hash.slice(1) : hash;
+  const parts = rawParams
+    .split("&")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => !part.startsWith("ws="));
+  parts.push(`ws=${encodeURIComponent(`${wsProtocol}//${host}:${String(serverPort)}/api/ws`)}`);
+  const serialized = parts.join("&");
+  return serialized ? `#${serialized}` : "";
+}
+
 function buildDirectCandidateUrls(
   sourceUri: string,
   serverUrl: string,
@@ -53,15 +79,31 @@ function buildDirectCandidateUrls(
   const parsed = parseBaseUrlParts(base);
   if (parsed) {
     const { protocol, host, port: currentPort } = parsed;
-    const devPorts = [currentPort + 3, 3403, 45734, currentPort + 2, 3402];
+    const devPorts = [
+      currentPort + 2,
+      3402,
+      45733,
+      currentPort + 3,
+      3403,
+      45734,
+    ];
+    const candidateHosts = buildLocalHostCandidates(host);
 
-    for (const port of devPorts) {
-      if (!Number.isInteger(port) || port <= 0 || port > 65535) continue;
-      pushCandidate(
-        targets,
-        seen,
-        `${protocol}//${host}:${String(port)}/login/direct${hash}`,
+    for (const candidateHost of candidateHosts) {
+      const candidateHash = buildDirectHashForCandidate(
+        sourceUri,
+        protocol,
+        candidateHost,
+        currentPort,
       );
+      for (const port of devPorts) {
+        if (!Number.isInteger(port) || port <= 0 || port > 65535) continue;
+        pushCandidate(
+          targets,
+          seen,
+          `${protocol}//${candidateHost}:${String(port)}/login/direct${candidateHash}`,
+        );
+      }
     }
   }
 

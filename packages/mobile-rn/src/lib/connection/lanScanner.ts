@@ -1,7 +1,8 @@
 import {
-  DirectServerClient,
-  normalizeHttpBaseUrl,
-} from "../api/client";
+  DEFAULT_DESKTOP_DISCOVERY_PORT,
+  buildDesktopDiscoveryPorts,
+} from "../../../../shared/dist/desktop-discovery.js";
+import { DirectServerClient, normalizeHttpBaseUrl } from "../api/client";
 
 export type LanScanResult = {
   baseUrl: string;
@@ -14,10 +15,74 @@ export type LanScanResult = {
 export type SmartScanProgress = {
   scanned: number;
   total: number;
-  phase: "quick" | "expanded";
+  phase: "current-subnet";
+  subnetPrefix: string;
 };
 
-const DESKTOP_DEDICATED_PORT = 45731;
+function parseBaseUrl(baseUrl: string): { host: string; port: number } | null {
+  const match = baseUrl.match(/^https?:\/\/([^/:]+)(?::(\d+))?/i);
+  if (!match?.[1]) return null;
+  const port = Number(match[2] ?? DEFAULT_DESKTOP_DISCOVERY_PORT);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) return null;
+  return { host: match[1], port };
+}
+
+function normalizeHostForDisplay(host: string, fallbackHost: string): string {
+  const normalized = host.trim();
+  if (
+    !normalized ||
+    normalized === "unknown" ||
+    normalized === "0.0.0.0" ||
+    normalized === "::" ||
+    normalized === "localhost"
+  ) {
+    return fallbackHost;
+  }
+  return normalized;
+}
+
+function extractSubnetPrefix(host: string): string | null {
+  const match = host.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/);
+  return match?.[1] ?? null;
+}
+
+function isRoutableLanPrefix(prefix: string): boolean {
+  const match = prefix.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return false;
+  }
+  const a = Number(match[1] ?? -1);
+  const b = Number(match[2] ?? -1);
+  const c = Number(match[3] ?? -1);
+  if (![a, b, c].every((part) => Number.isInteger(part))) return false;
+  if ([a, b, c].some((part) => part < 0 || part > 255)) return false;
+  if (a === 127 || a === 0) return false;
+  if (a === 169 && b === 254) return false;
+  return true;
+}
+
+function resolvePreferredSubnetPrefix(options?: {
+  preferredSubnetPrefix?: string;
+  recentServers?: string[];
+}): string {
+  const explicit = options?.preferredSubnetPrefix?.trim();
+  if (
+    explicit &&
+    /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(explicit) &&
+    isRoutableLanPrefix(explicit)
+  ) {
+    return explicit;
+  }
+
+  const recent = options?.recentServers ?? [];
+  for (const url of recent) {
+    const host = parseBaseUrl(normalizeHttpBaseUrl(url))?.host ?? "";
+    const prefix = extractSubnetPrefix(host);
+    if (prefix && isRoutableLanPrefix(prefix)) return prefix;
+  }
+
+  return "192.168.1";
+}
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -37,13 +102,16 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 async function probeServer(baseUrl: string): Promise<LanScanResult | null> {
   try {
     const client = new DirectServerClient(baseUrl);
+    const parsed = parseBaseUrl(client.getBaseUrl());
     const health = await withTimeout(client.getHealth(), 900);
     if (health.status !== "ok") return null;
     const info = await withTimeout(client.getServerInfo(), 1200);
+    const fallbackHost = parsed?.host ?? "unknown";
+    const fallbackPort = parsed?.port ?? DEFAULT_DESKTOP_DISCOVERY_PORT;
     return {
       baseUrl: client.getBaseUrl(),
-      host: info?.host ?? "unknown",
-      port: info?.port ?? 3400,
+      host: normalizeHostForDisplay(info?.host ?? "", fallbackHost),
+      port: info?.port ?? fallbackPort,
       installId: info?.installId,
       deviceBridge: info?.capabilities?.deviceBridge,
     };
@@ -109,60 +177,75 @@ export async function scanLanServers(
 export async function smartScanLanServers(options?: {
   port?: number;
   recentServers?: string[];
+  preferredSubnetPrefix?: string;
   onProgress?: (progress: SmartScanProgress) => void;
 }): Promise<LanScanResult[]> {
-  const preferredPort = options?.port ?? 3400;
-  const quickPorts = Array.from(new Set([preferredPort, DESKTOP_DEDICATED_PORT]));
+  const preferredPort = options?.port ?? DEFAULT_DESKTOP_DISCOVERY_PORT;
+  const quickPorts = buildDesktopDiscoveryPorts(preferredPort);
   const recent = options?.recentServers ?? [];
+  const preferredSubnetPrefix = resolvePreferredSubnetPrefix({
+    preferredSubnetPrefix: options?.preferredSubnetPrefix,
+    recentServers: recent,
+  });
+
+  const recentHostCandidates = dedupeUrls(
+    recent.flatMap((url) => {
+      const parsed = parseBaseUrl(normalizeHttpBaseUrl(url));
+      if (!parsed) return [];
+      return quickPorts.map((port) =>
+        normalizeHttpBaseUrl(`http://${parsed.host}:${String(port)}`),
+      );
+    }),
+  );
 
   const quickCandidates = dedupeUrls(
     quickPorts.flatMap((port) => [
-      ...recent,
+      ...recentHostCandidates,
       `http://127.0.0.1:${String(port)}`,
       `http://localhost:${String(port)}`,
-      `http://192.168.1.2:${String(port)}`,
-      `http://192.168.1.3:${String(port)}`,
-      `http://192.168.1.4:${String(port)}`,
-      `http://192.168.1.5:${String(port)}`,
-      `http://192.168.1.10:${String(port)}`,
-      `http://192.168.1.100:${String(port)}`,
-      `http://192.168.1.101:${String(port)}`,
-      `http://192.168.1.102:${String(port)}`,
-      `http://192.168.0.2:${String(port)}`,
-      `http://192.168.0.3:${String(port)}`,
-      `http://192.168.0.10:${String(port)}`,
-      `http://10.0.0.2:${String(port)}`,
-      `http://10.0.0.10:${String(port)}`,
-      `http://10.0.1.2:${String(port)}`,
-      `http://10.0.1.10:${String(port)}`,
-      `http://10.0.2.2:${String(port)}`,
-      `http://172.16.0.2:${String(port)}`,
-      `http://172.16.1.2:${String(port)}`,
+      `http://${preferredSubnetPrefix}.2:${String(port)}`,
+      `http://${preferredSubnetPrefix}.3:${String(port)}`,
+      `http://${preferredSubnetPrefix}.4:${String(port)}`,
+      `http://${preferredSubnetPrefix}.5:${String(port)}`,
+      `http://${preferredSubnetPrefix}.10:${String(port)}`,
+      `http://${preferredSubnetPrefix}.100:${String(port)}`,
+      `http://${preferredSubnetPrefix}.101:${String(port)}`,
+      `http://${preferredSubnetPrefix}.102:${String(port)}`,
     ]),
   );
 
   const quickResults = await scanCandidates(quickCandidates, {
     concurrency: 12,
     onProgress: ({ scanned, total }) =>
-      options?.onProgress?.({ scanned, total, phase: "quick" }),
+      options?.onProgress?.({
+        scanned,
+        total,
+        phase: "current-subnet",
+        subnetPrefix: preferredSubnetPrefix,
+      }),
   });
   if (quickResults.length > 0) {
     return quickResults.sort((a, b) => a.baseUrl.localeCompare(b.baseUrl));
   }
 
-  const expandedCandidates = dedupeUrls([
-    ...buildSubnetCandidates("192.168.1", preferredPort),
-    ...buildSubnetCandidates("192.168.0", preferredPort),
-    ...buildSubnetCandidates("10.0.0", preferredPort),
-    ...buildSubnetCandidates("10.0.1", preferredPort),
-    ...buildSubnetCandidates("172.16.0", preferredPort),
-    ...buildSubnetCandidates("172.16.1", preferredPort),
-  ]);
+  for (const port of quickPorts) {
+    const subnetCandidates = dedupeUrls(
+      buildSubnetCandidates(preferredSubnetPrefix, port),
+    );
+    const subnetResults = await scanCandidates(subnetCandidates, {
+      concurrency: 28,
+      onProgress: ({ scanned, total }) =>
+        options?.onProgress?.({
+          scanned,
+          total,
+          phase: "current-subnet",
+          subnetPrefix: preferredSubnetPrefix,
+        }),
+    });
+    if (subnetResults.length > 0) {
+      return subnetResults.sort((a, b) => a.baseUrl.localeCompare(b.baseUrl));
+    }
+  }
 
-  const expandedResults = await scanCandidates(expandedCandidates, {
-    concurrency: 28,
-    onProgress: ({ scanned, total }) =>
-      options?.onProgress?.({ scanned, total, phase: "expanded" }),
-  });
-  return expandedResults.sort((a, b) => a.baseUrl.localeCompare(b.baseUrl));
+  return [];
 }

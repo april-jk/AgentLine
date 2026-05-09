@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../../../shared/dist/desktop-discovery.js";
 import type { LanScanResult } from "../lib/connection/lanScanner";
 import {
   type ForwardMode,
@@ -43,6 +44,35 @@ function normalizeLabelFromUrl(url: string): string {
   }
 
   return url.replace(/^https?:\/\//, "");
+}
+
+function getPortFromUrl(url: string): string {
+  const match = url.match(/:(\d+)(?:\/|$)/);
+  return match?.[1] ?? String(DEFAULT_DESKTOP_DISCOVERY_PORT);
+}
+
+function isRoutableLanPrefix(prefix: string): boolean {
+  const match = prefix.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return false;
+  }
+  const a = Number(match[1] ?? -1);
+  const b = Number(match[2] ?? -1);
+  const c = Number(match[3] ?? -1);
+  if (![a, b, c].every((part) => Number.isInteger(part))) return false;
+  if ([a, b, c].some((part) => part < 0 || part > 255)) return false;
+  if (a === 127 || a === 0) return false;
+  if (a === 169 && b === 254) return false;
+  return true;
+}
+
+function getSubnetPrefixFromUrl(url: string): string | null {
+  const match = url
+    .trim()
+    .match(/^https?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}(?::\d+)?/i);
+  const prefix = match?.[1] ?? null;
+  if (!prefix || !isRoutableLanPrefix(prefix)) return null;
+  return prefix;
 }
 
 function dedupeKnownHosts(
@@ -82,7 +112,7 @@ export function LoginScreen({ navigation, route }: Props) {
   const theme = useAppTheme(themeMode);
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [directServerUrl, setDirectServerUrl] = useState(
-    "http://127.0.0.1:45731",
+    `http://127.0.0.1:${String(DEFAULT_DESKTOP_DISCOVERY_PORT)}`,
   );
   const [directUsername, setDirectUsername] = useState("mobiletest");
   const [directPassword, setDirectPassword] = useState("mobiletest123");
@@ -95,7 +125,9 @@ export function LoginScreen({ navigation, route }: Props) {
   const [relayPassword, setRelayPassword] = useState("");
 
   const [scanPrefix, setScanPrefix] = useState("192.168.1");
-  const [scanPort, setScanPort] = useState("45731");
+  const [scanPort, setScanPort] = useState(
+    String(DEFAULT_DESKTOP_DISCOVERY_PORT),
+  );
   const [scanAdvanced, setScanAdvanced] = useState(false);
   const [entryMode, setEntryMode] = useState<ForwardMode>("direct");
   const [recentServers, setRecentServers] = useState<string[]>([]);
@@ -326,8 +358,8 @@ export function LoginScreen({ navigation, route }: Props) {
               navigation.navigate("SearchHosts", {
                 currentServerUrl: directServerUrl,
                 recentServers,
-                scanPrefix,
-                scanPort,
+                scanPrefix: getSubnetPrefixFromUrl(directServerUrl) ?? scanPrefix,
+                scanPort: getPortFromUrl(directServerUrl),
               })
             }
           >
@@ -436,7 +468,9 @@ export function LoginScreen({ navigation, route }: Props) {
                   value={directServerUrl}
                   onChangeText={setDirectServerUrl}
                   autoCapitalize="none"
-                  placeholder="http://127.0.0.1:45731"
+                  placeholder={`http://127.0.0.1:${String(
+                    DEFAULT_DESKTOP_DISCOVERY_PORT,
+                  )}`}
                   placeholderTextColor={theme.textMuted}
                 />
               </View>
@@ -492,7 +526,9 @@ export function LoginScreen({ navigation, route }: Props) {
                     value={scanPort}
                     onChangeText={setScanPort}
                     keyboardType="numeric"
-                    placeholder="端口（默认 45731）"
+                    placeholder={`端口（默认 ${String(
+                      DEFAULT_DESKTOP_DISCOVERY_PORT,
+                    )}）`}
                     placeholderTextColor={theme.textMuted}
                   />
                   <Pressable
@@ -501,7 +537,8 @@ export function LoginScreen({ navigation, route }: Props) {
                       navigation.navigate("SearchHosts", {
                         currentServerUrl: directServerUrl,
                         recentServers,
-                        scanPrefix,
+                        scanPrefix:
+                          getSubnetPrefixFromUrl(directServerUrl) ?? scanPrefix,
                         scanPort,
                       })
                     }
@@ -514,8 +551,8 @@ export function LoginScreen({ navigation, route }: Props) {
           ) : null}
 
           <Text style={styles.footerHint}>
-            可优先选择上方已保存的主机，ADB 调试和模拟器场景优先使用
-            `127.0.0.1:45731`。
+            可优先选择上方已保存的主机，ADB 调试和模拟器场景优先使用{" "}
+            {`127.0.0.1:${String(DEFAULT_DESKTOP_DISCOVERY_PORT)}`}。
           </Text>
         </View>
       </ScrollView>
