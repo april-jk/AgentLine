@@ -1,8 +1,8 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
+import { WebView, type WebViewNavigation } from "react-native-webview";
 import { normalizeHttpBaseUrl } from "../lib/api/client";
 import type { RootStackParamList } from "../navigation/types";
 import { useThemePreference } from "../styles/ThemePreferenceContext";
@@ -160,10 +160,21 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
   const [isResolvingSource, setIsResolvingSource] = useState(
     route.params.mode === "direct",
   );
+  const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
+  const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
     navigation.setOptions({ title: route.params.title });
   }, [navigation, route.params.title]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+      if (!canGoBackInWebView) return;
+      event.preventDefault();
+      webViewRef.current?.goBack();
+    });
+    return unsubscribe;
+  }, [navigation, canGoBackInWebView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -221,10 +232,14 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
         </View>
       ) : (
         <WebView
+          ref={webViewRef}
           source={{ uri: resolvedUri }}
           injectedJavaScriptBeforeContentLoaded={
             route.params.injectedJavaScriptBeforeContentLoaded
           }
+          onNavigationStateChange={(state: WebViewNavigation) => {
+            setCanGoBackInWebView(state.canGoBack);
+          }}
           onError={(event) => {
             setLoadError(event.nativeEvent.description || "页面加载失败");
           }}
