@@ -242,7 +242,8 @@ export function createWsRelayRoutes(
         const hasSessionCookieAuth = c.get("authenticatedViaSession") === true;
         const requestHostname = getRequestHostname(c);
         const connectionPolicy = deriveWsConnectionPolicy({
-          remoteAccessEnabled: remoteAccessService?.isEnabled() ?? false,
+          remoteAccessEnabled:
+            remoteAccessService?.isHostAccessEnabled() ?? false,
           hasSessionCookieAuth,
           isRelayConnection: false,
           isLoopbackConnection:

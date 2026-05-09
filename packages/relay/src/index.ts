@@ -6,7 +6,10 @@ import { cors } from "hono/cors";
 import { WebSocketServer } from "ws";
 import { loadConfig } from "./config.js";
 import { ConnectionManager } from "./connections.js";
-import { RelayControlPlaneService } from "./control-plane.js";
+import {
+  RelayControlPlaneService,
+  toMachineCompatibleDeviceView,
+} from "./control-plane.js";
 import { createDb } from "./db.js";
 import { createLogger } from "./logger.js";
 import { UsernameRegistry } from "./registry.js";
@@ -70,6 +73,108 @@ function getBearerToken(authHeader: string | undefined): string | null {
   if (!scheme || !token) return null;
   if (scheme.toLowerCase() !== "bearer") return null;
   return token.trim();
+}
+
+function deriveRelayState(
+  connectionManager: ConnectionManager,
+  relayUsername: string,
+): "offline" | "waiting" | "paired" {
+  const active = connectionManager
+    .getActiveServers()
+    .find((server) => server.username === relayUsername);
+  if (!active) return "offline";
+  return active.state === "paired" ? "paired" : "waiting";
+}
+
+interface ParsedHeartbeatPayload {
+  lanEndpoint:
+    | {
+        kind: "lan";
+        address: string;
+        port: number;
+        boundToAllInterfaces?: boolean;
+        localhostOnly?: boolean;
+        lastSeenAt: string;
+        expiresAt?: string;
+      }
+    | null;
+  hostService:
+    | {
+        listening?: boolean;
+        boundToAllInterfaces?: boolean;
+        localhostOnly?: boolean;
+      }
+    | null;
+}
+
+function parseHeartbeatPayload(raw: unknown): ParsedHeartbeatPayload {
+  const payload =
+    typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
+  const machine =
+    typeof payload.machine === "object" && payload.machine !== null
+      ? (payload.machine as Record<string, unknown>)
+      : {};
+  const endpoints =
+    typeof machine.endpoints === "object" && machine.endpoints !== null
+      ? (machine.endpoints as Record<string, unknown>)
+      : {};
+  const lanRaw =
+    typeof endpoints.lan === "object" && endpoints.lan !== null
+      ? (endpoints.lan as Record<string, unknown>)
+      : null;
+  const hostServiceRaw =
+    typeof machine.hostService === "object" && machine.hostService !== null
+      ? (machine.hostService as Record<string, unknown>)
+      : null;
+
+  const lanEndpoint =
+    lanRaw &&
+    typeof lanRaw.address === "string" &&
+    typeof lanRaw.port === "number" &&
+    Number.isFinite(lanRaw.port)
+      ? {
+          kind: "lan" as const,
+          address: lanRaw.address,
+          port: lanRaw.port,
+          boundToAllInterfaces:
+            typeof lanRaw.boundToAllInterfaces === "boolean"
+              ? lanRaw.boundToAllInterfaces
+              : undefined,
+          localhostOnly:
+            typeof lanRaw.localhostOnly === "boolean"
+              ? lanRaw.localhostOnly
+              : undefined,
+          lastSeenAt:
+            typeof lanRaw.lastSeenAt === "string"
+              ? lanRaw.lastSeenAt
+              : new Date().toISOString(),
+          expiresAt:
+            typeof lanRaw.expiresAt === "string" ? lanRaw.expiresAt : undefined,
+        }
+      : null;
+
+  const hostService =
+    hostServiceRaw &&
+    (typeof hostServiceRaw.listening === "boolean" ||
+      typeof hostServiceRaw.boundToAllInterfaces === "boolean" ||
+      typeof hostServiceRaw.localhostOnly === "boolean")
+      ? {
+          listening:
+            typeof hostServiceRaw.listening === "boolean"
+              ? hostServiceRaw.listening
+              : undefined,
+          boundToAllInterfaces:
+            typeof hostServiceRaw.boundToAllInterfaces === "boolean"
+              ? hostServiceRaw.boundToAllInterfaces
+              : undefined,
+          localhostOnly:
+            typeof hostServiceRaw.localhostOnly === "boolean"
+              ? hostServiceRaw.localhostOnly
+              : undefined,
+        }
+      : null;
+
+  return { lanEndpoint, hostService };
 }
 
 // Health check endpoint
@@ -211,7 +316,11 @@ app.post("/api/v1/devices/register", async (c) => {
       deviceName,
       deviceType,
     });
-    return c.json({ device }, 200);
+    const relayState = deriveRelayState(connectionManager, device.relayUsername);
+    return c.json(
+      { device: toMachineCompatibleDeviceView(device, relayState) },
+      200,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "bad_request";
     if (message === "unauthorized") {
@@ -221,7 +330,7 @@ app.post("/api/v1/devices/register", async (c) => {
   }
 });
 
-app.post("/api/v1/devices/:deviceId/heartbeat", (c) => {
+app.post("/api/v1/devices/:deviceId/heartbeat", async (c) => {
   const token = getBearerToken(c.req.header("authorization"));
   if (!token) {
     return c.json({ error: "unauthorized" }, 401);
@@ -230,8 +339,26 @@ app.post("/api/v1/devices/:deviceId/heartbeat", (c) => {
   try {
     const auth = controlPlane.authenticate(token);
     const deviceId = c.req.param("deviceId");
+    const rawPayload = await c.req.json().catch(() => null);
+    const heartbeatPayload = parseHeartbeatPayload(rawPayload);
     const device = controlPlane.touchDevice({ userId: auth.user.id, deviceId });
-    return c.json({ device }, 200);
+    const relayState = deriveRelayState(connectionManager, device.relayUsername);
+    const view = toMachineCompatibleDeviceView(device, relayState);
+    const enriched =
+      heartbeatPayload.lanEndpoint || heartbeatPayload.hostService
+        ? {
+            ...view,
+            machine: {
+              ...view.machine,
+              hostService: heartbeatPayload.hostService ?? undefined,
+              endpoints: {
+                ...view.machine.endpoints,
+                lan: heartbeatPayload.lanEndpoint ?? null,
+              },
+            },
+          }
+        : view;
+    return c.json({ device: enriched }, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : "bad_request";
     if (message === "device_not_found") {
