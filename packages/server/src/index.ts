@@ -447,15 +447,24 @@ async function startServer() {
   // Determine if we're in production mode (no Vite dev server)
   const isProduction = process.env.NODE_ENV === "production";
   const isDev = !isProduction;
+  const isRemoteFrontendPath = (pathname: string): boolean =>
+    pathname === "/remote" || pathname.startsWith("/remote/");
 
   // Frontend serving setup - create proxy before app so it can be passed in
   let frontendProxy: ReturnType<typeof createFrontendProxy> | undefined;
+  let remoteFrontendProxy: ReturnType<typeof createFrontendProxy> | undefined;
 
   if (config.serveFrontend && isDev) {
     // Development: proxy to Vite dev server
     frontendProxy = createFrontendProxy({ vitePort: config.vitePort });
+    remoteFrontendProxy = createFrontendProxy({
+      vitePort: config.remoteVitePort,
+    });
     console.log(
       `[Frontend] Proxying to Vite at http://localhost:${config.vitePort}`,
+    );
+    console.log(
+      `[Frontend] Proxying /remote/* to remote Vite at http://localhost:${config.remoteVitePort}`,
     );
   }
 
@@ -698,16 +707,38 @@ async function startServer() {
 
   // Add frontend proxy as the final catch-all (AFTER all API routes including uploads)
   if (frontendProxy) {
-    const proxy = frontendProxy;
+    const defaultProxy = frontendProxy;
+    const remoteProxy = remoteFrontendProxy;
     app.all("*", (c) => {
       const { incoming, outgoing } = c.env;
-      proxy.web(incoming, outgoing);
+      const selectedProxy =
+        remoteProxy && isRemoteFrontendPath(c.req.path)
+          ? remoteProxy
+          : defaultProxy;
+      selectedProxy.web(incoming, outgoing);
       return RESPONSE_ALREADY_SENT;
     });
   }
 
   // Production: serve static files (must be added after API routes)
   if (config.serveFrontend && isProduction) {
+    const remoteDistExists = fs.existsSync(config.remoteClientDistPath);
+    if (remoteDistExists) {
+      const remoteRoutes = createStaticRoutes({
+        distPath: config.remoteClientDistPath,
+        basePath: "/remote",
+        spaFallbackFile: "remote.html",
+      });
+      app.route("/remote", remoteRoutes);
+      console.log(
+        `[Frontend] Serving /remote from ${config.remoteClientDistPath}`,
+      );
+    } else {
+      console.warn(
+        `[Frontend] Warning: remote dist not found at ${config.remoteClientDistPath}. Run 'pnpm --filter @agentline/client build:remote' first.`,
+      );
+    }
+
     const distExists = fs.existsSync(config.clientDistPath);
     if (distExists) {
       const staticRoutes = createStaticRoutes({
@@ -770,6 +801,10 @@ async function startServer() {
 
     attachUnifiedUpgradeHandler(server, {
       frontendProxy,
+      resolveFrontendProxy: (urlPath) =>
+        remoteFrontendProxy && isRemoteFrontendPath(urlPath)
+          ? remoteFrontendProxy
+          : frontendProxy,
       isApiPath: (urlPath) => urlPath.startsWith("/api"),
       app,
       wss,

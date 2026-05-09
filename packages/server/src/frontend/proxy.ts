@@ -59,7 +59,10 @@ export interface FrontendProxy {
 export function createFrontendProxy(
   options: FrontendProxyOptions = {},
 ): FrontendProxy {
-  const { vitePort = 5555, viteHost = "localhost" } = options;
+  const viteHostEnv = process.env.VITE_HOST?.trim();
+  const defaultViteHost =
+    viteHostEnv && viteHostEnv !== "true" ? viteHostEnv : "localhost";
+  const { vitePort = 5555, viteHost = defaultViteHost } = options;
   const target = `http://${viteHost}:${vitePort}`;
 
   /**
@@ -295,6 +298,8 @@ interface HonoAppLike {
 export interface UnifiedUpgradeOptions {
   /** The frontend proxy for Vite (optional, for dev mode) */
   frontendProxy?: FrontendProxy;
+  /** Optional resolver to choose frontend proxy by URL path */
+  resolveFrontendProxy?: (path: string) => FrontendProxy | undefined;
   /** Function to check if a path is an API path */
   isApiPath: (path: string) => boolean;
   /** The Hono app for routing API WebSocket requests */
@@ -322,7 +327,7 @@ export function attachUnifiedUpgradeHandler(
   server: UpgradeableServer,
   options: UnifiedUpgradeOptions,
 ) {
-  const { frontendProxy, isApiPath, app, wss } = options;
+  const { frontendProxy, resolveFrontendProxy, isApiPath, app, wss } = options;
 
   server.on("upgrade", (req, socket, head) => {
     const connId = ++connectionCounter;
@@ -354,10 +359,11 @@ export function attachUnifiedUpgradeHandler(
 
     // For non-API paths: proxy to Vite (if frontend proxy is enabled)
     if (!isApiPath(urlPath)) {
-      if (frontendProxy) {
+      const targetProxy = resolveFrontendProxy?.(urlPath) ?? frontendProxy;
+      if (targetProxy) {
         debugLog("Upgrade", `[${connId}] Proxying to Vite`);
         handled = true;
-        frontendProxy.ws(req, socket, head);
+        targetProxy.ws(req, socket, head);
       } else {
         closeSocket(
           "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n",

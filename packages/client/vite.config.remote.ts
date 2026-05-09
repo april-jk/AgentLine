@@ -28,6 +28,15 @@ function getGitVersion(): string {
 const remoteDevPort = process.env.REMOTE_PORT
   ? Number.parseInt(process.env.REMOTE_PORT, 10)
   : 3403;
+const remoteHostEnv =
+  process.env.REMOTE_HOST?.trim() || process.env.VITE_HOST?.trim();
+const remoteHost =
+  remoteHostEnv === "true"
+    ? true
+    : remoteHostEnv
+      ? remoteHostEnv
+      : true;
+const remoteBase = process.env.REMOTE_BASE?.trim() || "/";
 
 // In watch mode (staging), don't empty the output dir to avoid race conditions
 const isWatchMode = process.argv.includes("--watch");
@@ -43,19 +52,26 @@ function serveRemoteHtml(): Plugin {
     configureServer(server) {
       // Add middleware BEFORE Vite's internal middleware (no return statement)
       server.middlewares.use((req, _res, next) => {
+        const originalUrl = req.url ?? "/";
+        const hasRemotePrefix =
+          originalUrl.startsWith("/remote/") || originalUrl === "/remote";
+        const normalizedUrl = hasRemotePrefix
+          ? originalUrl.slice("/remote".length) || "/"
+          : originalUrl;
+
         // Skip actual file requests (assets, source files)
         if (
-          req.url?.startsWith("/@") || // Vite internal
-          req.url?.startsWith("/src/") || // Source files
-          req.url?.startsWith("/node_modules/") || // Node modules
-          req.url?.includes(".") // Files with extensions
+          normalizedUrl.startsWith("/@") || // Vite internal
+          normalizedUrl.startsWith("/src/") || // Source files
+          normalizedUrl.startsWith("/node_modules/") || // Node modules
+          normalizedUrl.includes(".") // Files with extensions
         ) {
           return next();
         }
 
         // For SPA routes, serve remote.html
         // This handles /projects, /settings, etc.
-        req.url = "/remote.html";
+        req.url = hasRemotePrefix ? "/remote/remote.html" : "/remote.html";
         next();
       });
     },
@@ -64,6 +80,7 @@ function serveRemoteHtml(): Plugin {
 
 export default defineConfig({
   clearScreen: false,
+  base: remoteBase,
   plugins: [serveRemoteHtml(), react(), cspPlugin({ isRemote: true })],
   resolve: {
     conditions: ["source"],
@@ -89,8 +106,8 @@ export default defineConfig({
     port: remoteDevPort === 0 ? undefined : remoteDevPort,
     strictPort: remoteDevPort !== 0,
     // Allow connections from any host (for LAN testing)
-    host: true,
+    host: remoteHost,
     // Allow these hosts to connect
-    allowedHosts: ["localhost", ".agentline.com"],
+    allowedHosts: ["localhost", "127.0.0.1", "10.0.2.2", ".agentline.com"],
   },
 });

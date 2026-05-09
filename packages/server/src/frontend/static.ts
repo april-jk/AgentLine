@@ -13,6 +13,8 @@ export interface StaticServeOptions {
   distPath: string;
   /** Optional base path prefix to strip from requests (e.g., "/_stable") */
   basePath?: string;
+  /** SPA fallback HTML file name (default: index.html) */
+  spaFallbackFile?: string;
 }
 
 /**
@@ -23,7 +25,7 @@ export interface StaticServeOptions {
  * - index.html for all other routes (SPA fallback)
  */
 export function createStaticRoutes(options: StaticServeOptions): Hono {
-  const { distPath, basePath } = options;
+  const { distPath, basePath, spaFallbackFile = "index.html" } = options;
   const app = new Hono();
 
   // Check if dist directory exists
@@ -33,8 +35,8 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
     );
   }
 
-  // Path to index.html for SPA fallback (read fresh each request to pick up rebuilds)
-  const indexPath = path.join(distPath, "index.html");
+  // Path to SPA fallback HTML (read fresh each request to pick up rebuilds)
+  const indexPath = path.join(distPath, spaFallbackFile);
 
   // Serve static files
   app.get("*", async (c) => {

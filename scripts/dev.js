@@ -123,6 +123,9 @@ const basePort = process.env.PORT
 const vitePort = process.env.VITE_PORT
   ? Number.parseInt(process.env.VITE_PORT, 10)
   : basePort + 2;
+const remotePort = process.env.REMOTE_PORT
+  ? Number.parseInt(process.env.REMOTE_PORT, 10)
+  : basePort + 3;
 const protocol = process.env.HTTPS_SELF_SIGNED === "true" ? "https" : "http";
 const configuredHost = process.env.HOST?.trim();
 const displayHost =
@@ -135,6 +138,7 @@ console.log(`  Access at: ${protocol}://${displayHost}:${basePort}`);
 console.log(
   `  Ports: server=${basePort}, maintenance=${basePort + 1}, vite=${vitePort}`,
 );
+console.log(`  Remote frontend: /remote/* via Vite on :${remotePort}`);
 console.log(
   `  Note: Vite output on :${vitePort} is internal HMR only; browse ${protocol}://${displayHost}:${basePort}`,
 );
@@ -151,6 +155,8 @@ const env = {
   NO_FRONTEND_RELOAD: noFrontendReload ? "true" : "",
   // Pass vite port to both server and client for consistency
   VITE_PORT: String(vitePort),
+  REMOTE_PORT: String(remotePort),
+  REMOTE_BASE: process.env.REMOTE_BASE || "/remote/",
 };
 
 // Track child processes for cleanup
@@ -212,7 +218,8 @@ function startServer() {
  * Start the client dev server
  */
 function startClient() {
-  const client = spawn(pnpmBin, ["--filter", "client", "dev"], {
+  const clientScript = process.env.CLIENT_DEV_SCRIPT || "dev";
+  const client = spawn(pnpmBin, ["--filter", "client", clientScript], {
     cwd: rootDir,
     env,
     stdio: ["ignore", "pipe", "pipe"],
@@ -241,6 +248,45 @@ function startClient() {
   return client;
 }
 
+/**
+ * Start the remote client dev server.
+ * This serves the /remote/* login/app entry used by mobile direct/relay flows.
+ */
+function startRemoteClient() {
+  const remoteClient = spawn(
+    pnpmBin,
+    ["--filter", "client", "dev:remote"],
+    {
+      cwd: rootDir,
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+      ...shellOption,
+    },
+  );
+
+  forwardWithLineFilter(
+    remoteClient.stdout,
+    process.stdout,
+    isSuppressedViteBannerLine,
+  );
+  forwardWithLineFilter(
+    remoteClient.stderr,
+    process.stderr,
+    isSuppressedViteBannerLine,
+  );
+
+  children.push(remoteClient);
+
+  remoteClient.on("exit", (code) => {
+    if (code !== null && code !== 0) {
+      console.error(`Remote client exited with code ${code}`);
+    }
+  });
+
+  return remoteClient;
+}
+
 // Start both processes
 startServer();
 startClient();
+startRemoteClient();

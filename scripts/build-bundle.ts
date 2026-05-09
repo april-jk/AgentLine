@@ -18,6 +18,7 @@ import * as path from "node:path";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "..");
 const CLIENT_DIST = path.join(ROOT_DIR, "packages/client/dist");
+const CLIENT_REMOTE_DIST = path.join(ROOT_DIR, "packages/client/dist-remote");
 const SERVER_PACKAGE = path.join(ROOT_DIR, "packages/server");
 const SERVER_DIST = path.join(SERVER_PACKAGE, "dist");
 const SHARED_DIST = path.join(ROOT_DIR, "packages/shared/dist");
@@ -72,7 +73,13 @@ function step(name: string, fn: () => void): void {
 step("Clean previous builds", () => {
   log("Removing old dist directories...");
 
-  const dirsToClean = [SHARED_DIST, CLIENT_DIST, SERVER_DIST, STAGING_DIR];
+  const dirsToClean = [
+    SHARED_DIST,
+    CLIENT_DIST,
+    CLIENT_REMOTE_DIST,
+    SERVER_DIST,
+    STAGING_DIR,
+  ];
 
   for (const dir of dirsToClean) {
     if (fs.existsSync(dir)) {
@@ -108,6 +115,28 @@ step("Build client", () => {
   }
 
   log(`  Client built successfully: ${path.relative(ROOT_DIR, CLIENT_DIST)}`);
+});
+
+step("Build remote client", () => {
+  log("Building @agentline/client remote bundle...");
+  execStep("pnpm --filter @agentline/client build:remote");
+
+  if (!fs.existsSync(CLIENT_REMOTE_DIST)) {
+    throw new Error(
+      `Remote client dist not found at ${CLIENT_REMOTE_DIST} after build.`,
+    );
+  }
+
+  const remoteHtml = path.join(CLIENT_REMOTE_DIST, "remote.html");
+  if (!fs.existsSync(remoteHtml)) {
+    throw new Error(
+      "Remote client dist exists but remote.html not found. Incomplete build?",
+    );
+  }
+
+  log(
+    `  Remote client built successfully: ${path.relative(ROOT_DIR, CLIENT_REMOTE_DIST)}`,
+  );
 });
 
 // Build server
@@ -235,6 +264,23 @@ step("Bundle client into staging", () => {
   log("  Client assets bundled into staging");
 });
 
+step("Bundle remote client into staging", () => {
+  const stagingRemoteDist = path.join(STAGING_DIR, "client-dist-remote");
+  log(
+    `Copying remote client dist to ${path.relative(ROOT_DIR, stagingRemoteDist)}...`,
+  );
+
+  fs.mkdirSync(stagingRemoteDist, { recursive: true });
+  copyRecursive(CLIENT_REMOTE_DIST, stagingRemoteDist);
+
+  const copiedRemoteHtml = path.join(stagingRemoteDist, "remote.html");
+  if (!fs.existsSync(copiedRemoteHtml)) {
+    throw new Error("Failed to copy remote client dist: remote.html not found");
+  }
+
+  log("  Remote client assets bundled into staging");
+});
+
 // Generate package.json for publishing (in staging, not modifying original)
 step("Generate package.json for npm", () => {
   log("Generating package.json for npm publishing...");
@@ -257,7 +303,13 @@ step("Generate package.json for npm", () => {
     exports: {
       ".": "./dist/index.js",
     },
-    files: ["dist", "client-dist", "bundled", "README.md"],
+    files: [
+      "dist",
+      "client-dist",
+      "client-dist-remote",
+      "bundled",
+      "README.md",
+    ],
     // Copy dependencies from source, excluding workspace deps
     dependencies: Object.fromEntries(
       Object.entries(sourcePackageJson.dependencies || {}).filter(

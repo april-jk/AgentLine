@@ -41,6 +41,10 @@ function parseBaseUrlParts(base: string): {
   };
 }
 
+function isLoopbackOrEmulatorHost(host: string): boolean {
+  return host === "127.0.0.1" || host === "localhost" || host === "10.0.2.2";
+}
+
 function buildLocalHostCandidates(host: string): string[] {
   if (host === "10.0.2.2") return ["127.0.0.1", "10.0.2.2"];
   if (host === "127.0.0.1") return ["127.0.0.1", "10.0.2.2"];
@@ -79,37 +83,39 @@ function buildDirectCandidateUrls(
   const parsed = parseBaseUrlParts(base);
   if (parsed) {
     const { protocol, host, port: currentPort } = parsed;
-    const devPorts = [
-      currentPort + 2,
-      3402,
-      45733,
-      currentPort + 3,
-      3403,
-      45734,
-    ];
-    const candidateHosts = buildLocalHostCandidates(host);
+    if (isLoopbackOrEmulatorHost(host)) {
+      const devPorts = [
+        currentPort + 2,
+        3402,
+        45733,
+        currentPort + 3,
+        3403,
+        45734,
+      ];
+      const candidateHosts = buildLocalHostCandidates(host);
 
-    for (const candidateHost of candidateHosts) {
-      const candidateHash = buildDirectHashForCandidate(
-        sourceUri,
-        protocol,
-        candidateHost,
-        currentPort,
-      );
-      for (const port of devPorts) {
-        if (!Number.isInteger(port) || port <= 0 || port > 65535) continue;
-        pushCandidate(
-          targets,
-          seen,
-          `${protocol}//${candidateHost}:${String(port)}/login/direct${candidateHash}`,
+      for (const candidateHost of candidateHosts) {
+        const candidateHash = buildDirectHashForCandidate(
+          sourceUri,
+          protocol,
+          candidateHost,
+          currentPort,
         );
+        for (const port of devPorts) {
+          if (!Number.isInteger(port) || port <= 0 || port > 65535) continue;
+          pushCandidate(
+            targets,
+            seen,
+            `${protocol}//${candidateHost}:${String(port)}/login/direct${candidateHash}`,
+          );
+        }
       }
     }
   }
 
-  pushCandidate(targets, seen, sourceUri);
   pushCandidate(targets, seen, `${base}/remote/login/direct${hash}`);
   pushCandidate(targets, seen, `${base}/login/direct${hash}`);
+  pushCandidate(targets, seen, sourceUri);
 
   return targets;
 }
@@ -118,7 +124,7 @@ function isRemoteClientHtml(html: string): boolean {
   return (
     html.includes("AgentLine - Remote") ||
     html.includes("/src/remote-main.tsx") ||
-    html.includes("VITE_IS_REMOTE_CLIENT")
+    html.includes("/remote-main")
   );
 }
 

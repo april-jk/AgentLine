@@ -79,8 +79,12 @@ export interface Config {
   serveFrontend: boolean;
   /** Vite dev server port for frontend proxy */
   vitePort: number;
+  /** Vite dev server port for remote frontend proxy */
+  remoteVitePort: number;
   /** Path to built client dist directory */
   clientDistPath: string;
+  /** Path to built remote client dist directory */
+  remoteClientDistPath: string;
   /** Path to stable (emergency) client dist directory */
   stableDistPath: string;
   /** Maximum upload file size in bytes. 0 = unlimited (default: 100MB) */
@@ -224,6 +228,11 @@ export function loadConfig(): Config {
       process.env.VITE_PORT,
       parseIntOrDefault(process.env.PORT, 3400) + 2,
     ),
+    // Remote Vite port defaults to main port + 3
+    remoteVitePort: parseIntOrDefault(
+      process.env.REMOTE_PORT,
+      parseIntOrDefault(process.env.PORT, 3400) + 3,
+    ),
     // Client dist path: Check bundled location first (npm package), then monorepo (dev)
     clientDistPath:
       process.env.CLIENT_DIST_PATH ??
@@ -235,6 +244,20 @@ export function loadConfig(): Config {
         }
         // In development (monorepo), use ../client/dist
         return path.resolve(import.meta.dirname, "../../client/dist");
+      })(),
+    remoteClientDistPath:
+      process.env.CLIENT_REMOTE_DIST_PATH ??
+      (() => {
+        // When published to npm, remote client assets are bundled into ./client-dist-remote
+        const bundledPath = path.resolve(
+          import.meta.dirname,
+          "../client-dist-remote",
+        );
+        if (fs.existsSync(bundledPath)) {
+          return bundledPath;
+        }
+        // In development (monorepo), use ../client/dist-remote
+        return path.resolve(import.meta.dirname, "../../client/dist-remote");
       })(),
     // Stable (emergency) UI build with /_stable/ base path
     stableDistPath:
