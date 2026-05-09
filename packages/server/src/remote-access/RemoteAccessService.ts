@@ -33,6 +33,8 @@ export interface RemoteAccessState {
   enabled: boolean;
   /** SRP credentials (undefined = not configured) */
   credentials?: {
+    /** SRP identity (username used during SRP handshake) */
+    identity?: string;
     /** SRP salt (hex string) */
     salt: string;
     /** SRP verifier (hex string) */
@@ -79,6 +81,15 @@ export class RemoteAccessService {
 
       if (parsed.version === CURRENT_VERSION) {
         this.state = parsed;
+        // Backward compatibility: older state files don't persist SRP identity.
+        // In those versions, relay username implicitly acted as identity.
+        if (this.state.credentials && !this.state.credentials.identity) {
+          const legacyIdentity = this.state.relay?.username;
+          if (legacyIdentity) {
+            this.state.credentials.identity = legacyIdentity;
+            await this.save();
+          }
+        }
       } else {
         // Future: handle migrations
         this.state = {
@@ -108,6 +119,14 @@ export class RemoteAccessService {
   }
 
   /**
+   * Check if host-access SRP authentication is enabled for direct/relay access.
+   * This requires enabled credentials but does not require relay configuration.
+   */
+  isHostAccessEnabled(): boolean {
+    return this.state.enabled && !!this.state.credentials;
+  }
+
+  /**
    * Check if credentials have been configured (even if disabled).
    */
   isConfigured(): boolean {
@@ -115,10 +134,13 @@ export class RemoteAccessService {
   }
 
   /**
-   * Get the configured username (relay username is SRP identity).
+   * Get the configured SRP identity.
+   * For relay-first configs, this is typically equal to relay username.
    */
   getUsername(): string | null {
-    return this.state.relay?.username ?? null;
+    return (
+      this.state.credentials?.identity ?? this.state.relay?.username ?? null
+    );
   }
 
   /**
@@ -144,30 +166,27 @@ export class RemoteAccessService {
   }
 
   /**
-   * Configure remote access with password.
-   * Uses relay username as SRP identity (must configure relay first).
-   * Generates and stores the SRP verifier (never stores the password).
+   * Configure host-access with password.
+   * If relay is configured, relay username is used for compatibility.
+   * Otherwise a local SRP identity is used to support direct/offline auth.
    */
   async configure(password: string): Promise<void> {
-    // Require relay to be configured first (relay username is SRP identity)
-    if (!this.state.relay) {
-      throw new Error(
-        "Must configure relay first (relay username is used for authentication)",
-      );
-    }
-
-    const username = this.state.relay.username;
+    const identity =
+      this.state.relay?.username ??
+      this.state.credentials?.identity ??
+      "local-host";
 
     // Validate password
     if (!password || password.length < 8) {
       throw new Error("Password must be at least 8 characters");
     }
 
-    // Generate SRP verifier using relay username as identity
-    const { salt, verifier } = await generateVerifier(username, password);
+    // Generate SRP verifier using the selected identity.
+    const { salt, verifier } = await generateVerifier(identity, password);
 
     this.state.enabled = true;
     this.state.credentials = {
+      identity,
       salt,
       verifier,
       createdAt: new Date().toISOString(),

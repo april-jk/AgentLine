@@ -3,8 +3,8 @@
  */
 
 import { Hono } from "hono";
-import type { RelayClientService } from "../services/RelayClientService.js";
 import type { ControlPlaneBridgeService } from "../services/ControlPlaneBridgeService.js";
+import type { RelayClientService } from "../services/RelayClientService.js";
 import type { RemoteAccessService } from "./RemoteAccessService.js";
 import type { RemoteSessionService } from "./RemoteSessionService.js";
 
@@ -43,8 +43,9 @@ export function createRemoteAccessRoutes(
 
   /**
    * POST /api/remote-access/configure
-   * Configure remote access with password.
-   * Relay must be configured first (relay username is used as SRP identity).
+   * Configure host-access password (SRP verifier).
+   * If relay exists, relay username is used as SRP identity.
+   * Otherwise a local SRP identity is used for direct/offline auth.
    * Body: { password: string }
    */
   app.post("/configure", async (c) => {

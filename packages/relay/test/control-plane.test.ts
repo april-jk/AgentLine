@@ -100,6 +100,12 @@ describe("RelayControlPlaneService", () => {
 
     expect(waiting?.relayState).toBe("waiting");
     expect(paired?.relayState).toBe("paired");
+    expect(waiting?.machineId).toBe(waitingDevice.id);
+    expect(waiting?.owner.userId).toBe(user.id);
+    expect(waiting?.machine.routeId).toBe(waitingDevice.relayUsername);
+    expect(waiting?.machine.endpoints.relay.relayUsername).toBe(
+      waitingDevice.relayUsername,
+    );
 
     db.close();
   });

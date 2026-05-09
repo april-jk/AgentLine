@@ -78,6 +78,18 @@ describe("ControlPlaneBridgeService", () => {
       url: "ws://relay.local:4400/ws",
       username: "desk-abc",
     });
+    const heartbeatCall = fetchImpl.mock.calls.find(([input]) =>
+      String(input).endsWith("/api/v1/devices/device-1/heartbeat"),
+    );
+    expect(heartbeatCall).toBeTruthy();
+    const heartbeatBody = JSON.parse(
+      String(heartbeatCall?.[1]?.body ?? "{}"),
+    ) as {
+      owner?: { role?: string; status?: string };
+      machine?: { endpoints?: { relay?: { routeId?: string } } };
+    };
+    expect(heartbeatBody.owner?.role).toBe("owner");
+    expect(heartbeatBody.machine?.endpoints?.relay?.routeId).toBe("desk-abc");
     expect(onRelayConfigChanged).toHaveBeenCalledTimes(1);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
