@@ -826,6 +826,51 @@ describe("Secure WebSocket Transport E2E", () => {
   });
 
   describe("Session Resume Nonce Challenge", () => {
+    it("requires fresh password auth after session revocation and allows retry", async () => {
+      const ws1 = await connectWebSocket();
+      const { baseSessionKey, sessionId } =
+        await performSrpHandshakeWithSession(ws1, TEST_USERNAME, TEST_PASSWORD);
+      await closeWebSocket(ws1);
+
+      // Revoke trusted sessions for this identity (simulates "撤销本机后").
+      await remoteSessionService.invalidateUserSessions(TEST_USERNAME);
+
+      // Resume must fail after revocation.
+      const ws2 = await connectWebSocket();
+      try {
+        const resumeInit: SrpSessionResumeInit = {
+          type: "srp_resume_init",
+          identity: TEST_USERNAME,
+          sessionId,
+        };
+        ws2.send(JSON.stringify(resumeInit));
+
+        const invalid = await waitForMessage<SrpSessionInvalid>(
+          ws2,
+          (msg): msg is SrpSessionInvalid => isSrpSessionInvalid(msg),
+          5000,
+          { allowSrpSessionInvalid: true },
+        );
+        expect(["session_not_found", "invalid_proof"]).toContain(invalid.reason);
+      } finally {
+        await closeWebSocket(ws2);
+      }
+
+      // Retry with full password handshake should still succeed.
+      const ws3 = await connectWebSocket();
+      try {
+        const sessionKey = await performSrpHandshakeV2(
+          ws3,
+          TEST_USERNAME,
+          TEST_PASSWORD,
+        );
+        expect(sessionKey).toBeDefined();
+        expect(sessionKey.length).toBe(32);
+      } finally {
+        await closeWebSocket(ws3);
+      }
+    }, 20000);
+
     it("should resume session with server-issued nonce challenge", async () => {
       const ws1 = await connectWebSocket();
       const { baseSessionKey, sessionId } =

@@ -166,9 +166,13 @@ export function SearchHostsScreen({ navigation, route }: Props) {
   };
 
   const runManualScan = async () => {
-    const prefix = scanPrefix.trim();
+    const prefix = scanPrefix.trim().replace(/\.$/, "");
     if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(prefix)) {
       setScanProgress("网段格式应为 192.168.1");
+      return;
+    }
+    if (!isRoutableLanPrefix(prefix)) {
+      setScanProgress("禁止扫描该网段，请输入可路由局域网网段（例如 192.168.1）");
       return;
     }
 

@@ -27,6 +27,10 @@ function parseBaseUrl(baseUrl: string): { host: string; port: number } | null {
   return { host: match[1], port };
 }
 
+function isLoopbackHost(host: string): boolean {
+  return host === "127.0.0.1" || host === "localhost";
+}
+
 function normalizeHostForDisplay(host: string, fallbackHost: string): string {
   const normalized = host.trim();
   if (
@@ -126,6 +130,11 @@ function dedupeUrls(urls: string[]): string[] {
 
 function buildSubnetCandidates(subnetPrefix: string, port: number): string[] {
   const normalizedPrefix = subnetPrefix.trim().replace(/\.$/, "");
+  if (!isRoutableLanPrefix(normalizedPrefix)) {
+    throw new Error(
+      `Invalid subnet prefix for LAN scan: "${normalizedPrefix}"`,
+    );
+  }
   const candidates: string[] = [];
   for (let i = 1; i <= 254; i += 1) {
     candidates.push(
@@ -170,7 +179,13 @@ export async function scanLanServers(
   subnetPrefix: string,
   port = 3400,
 ): Promise<LanScanResult[]> {
-  const results = await scanCandidates(buildSubnetCandidates(subnetPrefix, port));
+  const normalizedPrefix = subnetPrefix.trim().replace(/\.$/, "");
+  if (!isRoutableLanPrefix(normalizedPrefix)) {
+    throw new Error(`Invalid subnet prefix: "${normalizedPrefix}"`);
+  }
+  const results = await scanCandidates(
+    buildSubnetCandidates(normalizedPrefix, port),
+  );
   return results.sort((a, b) => a.baseUrl.localeCompare(b.baseUrl));
 }
 
@@ -191,7 +206,7 @@ export async function smartScanLanServers(options?: {
   const recentHostCandidates = dedupeUrls(
     recent.flatMap((url) => {
       const parsed = parseBaseUrl(normalizeHttpBaseUrl(url));
-      if (!parsed) return [];
+      if (!parsed || isLoopbackHost(parsed.host)) return [];
       return quickPorts.map((port) =>
         normalizeHttpBaseUrl(`http://${parsed.host}:${String(port)}`),
       );
@@ -201,8 +216,6 @@ export async function smartScanLanServers(options?: {
   const quickCandidates = dedupeUrls(
     quickPorts.flatMap((port) => [
       ...recentHostCandidates,
-      `http://127.0.0.1:${String(port)}`,
-      `http://localhost:${String(port)}`,
       `http://${preferredSubnetPrefix}.2:${String(port)}`,
       `http://${preferredSubnetPrefix}.3:${String(port)}`,
       `http://${preferredSubnetPrefix}.4:${String(port)}`,
