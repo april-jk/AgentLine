@@ -54,9 +54,23 @@ initializeTheme();
 initializeFontSize();
 initializeTabSize();
 
-// Get base URL for router (Vite sets this based on --base flag)
-// Remove trailing slash for BrowserRouter basename
-const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || undefined;
+function resolveRemoteBasename(): string | undefined {
+  // Build-time base URL from Vite (may be "/" in some relay deployments).
+  const configuredBase = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  // Runtime fallback: when served under /remote on relay, force basename /remote
+  // so /remote/login/relay matches login routes instead of /:relayUsername.
+  if (typeof window !== "undefined") {
+    const path = window.location.pathname;
+    if (path === "/remote" || path.startsWith("/remote/")) {
+      return "/remote";
+    }
+  }
+
+  return configuredBase || undefined;
+}
+
+const basename = resolveRemoteBasename();
 
 /**
  * Shared app routes used by both direct mode (ConnectionGate) and
@@ -111,7 +125,7 @@ createRoot(rootElement).render(
               <Route path="/login" element={<HostPickerPage />} />
               <Route
                 path="/login/new"
-                element={<Navigate to="/login/relay" replace />}
+                element={<Navigate to="/login" replace />}
               />
               <Route path="/login/direct" element={<DirectLoginPage />} />
               <Route path="/login/relay" element={<RelayLoginPage />} />
