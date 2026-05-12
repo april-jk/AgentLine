@@ -16,6 +16,8 @@ export interface RelayConfig {
   portFile: string | null;
   /** Data directory for SQLite database (default: ~/.yep-relay/) */
   dataDir: string;
+  /** Optional Postgres URL for control-plane account/device storage */
+  controlPlaneDatabaseUrl?: string;
   /** Ping interval for waiting connections in ms (default: 60000) */
   pingIntervalMs: number;
   /** Pong timeout in ms - drop connection if no pong (default: 30000) */
@@ -50,6 +52,8 @@ export function loadConfig(): RelayConfig {
     port: getEnvNumber("RELAY_PORT", 4400),
     portFile: process.env.RELAY_PORT_FILE ?? null,
     dataDir,
+    controlPlaneDatabaseUrl:
+      process.env.RELAY_CONTROL_PLANE_DATABASE_URL ?? process.env.DATABASE_URL,
     pingIntervalMs: getEnvNumber("RELAY_PING_INTERVAL_MS", 60_000),
     pongTimeoutMs: getEnvNumber("RELAY_PONG_TIMEOUT_MS", 30_000),
     reclaimDays: getEnvNumber("RELAY_RECLAIM_DAYS", 90),

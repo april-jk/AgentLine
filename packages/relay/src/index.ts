@@ -1,8 +1,10 @@
 import { writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import type Database from "better-sqlite3";
 import { getRequestListener } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import type { Pool } from "pg";
 import { WebSocketServer } from "ws";
 import { loadConfig } from "./config.js";
 import { ConnectionManager } from "./connections.js";
@@ -10,7 +12,7 @@ import {
   RelayControlPlaneService,
   toMachineCompatibleDeviceView,
 } from "./control-plane.js";
-import { createDb } from "./db.js";
+import { createControlPlanePostgresPool, createDb } from "./db.js";
 import { createLogger } from "./logger.js";
 import { UsernameRegistry } from "./registry.js";
 import { generateRelayStatsHtml } from "./stats.js";
@@ -25,6 +27,7 @@ const logger = createLogger(config.logging);
 logger.info(
   {
     dataDir: config.dataDir,
+    controlPlaneStore: config.controlPlaneDatabaseUrl ? "postgres" : "sqlite",
     port: config.port,
     logFile: config.logging.logToFile
       ? `${config.logging.logDir}/${config.logging.logFile}`
@@ -36,7 +39,13 @@ logger.info(
 // Initialize database and registry
 const db = createDb(config.dataDir);
 const registry = new UsernameRegistry(db);
-const controlPlane = new RelayControlPlaneService(db);
+let controlPlaneStore: Database.Database | Pool = db;
+if (config.controlPlaneDatabaseUrl) {
+  controlPlaneStore = await createControlPlanePostgresPool(
+    config.controlPlaneDatabaseUrl,
+  );
+}
+const controlPlane = new RelayControlPlaneService(controlPlaneStore);
 
 // Run reclamation on startup
 const reclaimed = registry.reclaimInactive(config.reclaimDays);
@@ -62,7 +71,7 @@ app.use(
   "*",
   cors({
     origin: "*",
-    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
   }),
 );
@@ -219,7 +228,7 @@ app.post("/api/v1/auth/register", async (c) => {
     const email = typeof body?.email === "string" ? body.email : ("" as string);
     const password =
       typeof body?.password === "string" ? body.password : ("" as string);
-    const user = controlPlane.registerUser(email, password);
+    const user = await controlPlane.registerUser(email, password);
     return c.json({ user }, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : "bad_request";
@@ -240,7 +249,7 @@ app.post("/api/v1/auth/login", async (c) => {
     const password =
       typeof body?.password === "string" ? body.password : ("" as string);
 
-    const { user, session } = controlPlane.login(email, password);
+    const { user, session } = await controlPlane.login(email, password);
     return c.json(
       {
         user,
@@ -259,32 +268,76 @@ app.post("/api/v1/auth/login", async (c) => {
   }
 });
 
-app.post("/api/v1/auth/logout", (c) => {
+app.post("/api/v1/auth/logout", async (c) => {
   const token = getBearerToken(c.req.header("authorization"));
   if (!token) {
     return c.json({ error: "unauthorized" }, 401);
   }
 
   try {
-    const auth = controlPlane.authenticate(token);
-    controlPlane.revokeSession(auth.sessionId);
+    const auth = await controlPlane.authenticate(token);
+    await controlPlane.revokeSession(auth.sessionId);
     return c.body(null, 204);
   } catch {
     return c.json({ error: "unauthorized" }, 401);
   }
 });
 
-app.get("/api/v1/me", (c) => {
+app.get("/api/v1/me", async (c) => {
   const token = getBearerToken(c.req.header("authorization"));
   if (!token) {
     return c.json({ error: "unauthorized" }, 401);
   }
 
   try {
-    const auth = controlPlane.authenticate(token);
+    const auth = await controlPlane.authenticate(token);
     return c.json({ user: auth.user });
   } catch {
     return c.json({ error: "unauthorized" }, 401);
+  }
+});
+
+app.patch("/api/v1/me", async (c) => {
+  const token = getBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+
+  try {
+    const auth = await controlPlane.authenticate(token);
+    const body = await c.req.json().catch(() => ({}));
+    const currentPassword =
+      typeof body?.currentPassword === "string" ? body.currentPassword : "";
+    const nextEmail = typeof body?.email === "string" ? body.email : undefined;
+    const nextPassword =
+      typeof body?.newPassword === "string" ? body.newPassword : undefined;
+
+    const user = await controlPlane.updateUser({
+      userId: auth.user.id,
+      currentPassword,
+      nextEmail,
+      nextPassword,
+    });
+    return c.json({ user }, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "bad_request";
+    if (message === "unauthorized") {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    if (message === "invalid_credentials") {
+      return c.json({ error: "invalid_credentials" }, 401);
+    }
+    if (
+      message === "invalid_email" ||
+      message === "password_too_short" ||
+      message === "no_changes_requested"
+    ) {
+      return c.json({ error: message }, 400);
+    }
+    if (message === "email_taken") {
+      return c.json({ error: "email_taken" }, 409);
+    }
+    return c.json({ error: "bad_request" }, 400);
   }
 });
 
@@ -295,7 +348,7 @@ app.post("/api/v1/devices/register", async (c) => {
   }
 
   try {
-    const auth = controlPlane.authenticate(token);
+    const auth = await controlPlane.authenticate(token);
     const body = await c.req.json();
     const installId =
       typeof body?.installId === "string" ? body.installId : ("" as string);
@@ -308,7 +361,7 @@ app.post("/api/v1/devices/register", async (c) => {
         ? body.deviceType
         : ("desktop" as string);
 
-    const device = controlPlane.registerOrUpdateDevice({
+    const device = await controlPlane.registerOrUpdateDevice({
       userId: auth.user.id,
       installId,
       deviceName,
@@ -338,11 +391,14 @@ app.post("/api/v1/devices/:deviceId/heartbeat", async (c) => {
   }
 
   try {
-    const auth = controlPlane.authenticate(token);
+    const auth = await controlPlane.authenticate(token);
     const deviceId = c.req.param("deviceId");
     const rawPayload = await c.req.json().catch(() => null);
     const heartbeatPayload = parseHeartbeatPayload(rawPayload);
-    const device = controlPlane.touchDevice({ userId: auth.user.id, deviceId });
+    const device = await controlPlane.touchDevice({
+      userId: auth.user.id,
+      deviceId,
+    });
     const relayState = deriveRelayState(
       connectionManager,
       device.relayUsername,
@@ -372,15 +428,15 @@ app.post("/api/v1/devices/:deviceId/heartbeat", async (c) => {
   }
 });
 
-app.get("/api/v1/devices", (c) => {
+app.get("/api/v1/devices", async (c) => {
   const token = getBearerToken(c.req.header("authorization"));
   if (!token) {
     return c.json({ error: "unauthorized" }, 401);
   }
 
   try {
-    const auth = controlPlane.authenticate(token);
-    const devices = controlPlane.listDevices(
+    const auth = await controlPlane.authenticate(token);
+    const devices = await controlPlane.listDevices(
       auth.user.id,
       connectionManager.getActiveServers(),
     );
@@ -492,6 +548,9 @@ function shutdown() {
   server.close(async () => {
     clearTimeout(forceExitTimeout);
     await telemetry.close();
+    if ("end" in controlPlaneStore && typeof controlPlaneStore.end === "function") {
+      await controlPlaneStore.end();
+    }
     db.close();
     logger.info("Relay server stopped");
     process.exit(0);

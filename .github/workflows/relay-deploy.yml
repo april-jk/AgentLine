@@ -1,0 +1,45 @@
+name: Deploy Relay to Railway
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/relay/**"
+      - "packages/shared/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/relay-deploy.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy-relay:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4.36.1
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --ci \
+            --service relay \
+            --environment production \
+            --project 52ef98da-1afe-49e7-bf4f-16136178d04f \
+            --path-as-root \
+            .

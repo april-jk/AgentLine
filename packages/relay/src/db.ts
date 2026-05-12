@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
+import { Pool } from "pg";
 
 /**
  * Creates and initializes the SQLite database for username registry.
@@ -159,4 +160,71 @@ export function createTestDb(): Database.Database {
   `);
 
   return db;
+}
+
+export async function createControlPlanePostgresPool(
+  connectionString: string,
+): Promise<Pool> {
+  const pool = new Pool({
+    connectionString,
+    max: 10,
+  });
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      password_salt TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      token_hash TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id
+    ON user_sessions(user_id)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at
+    ON user_sessions(expires_at)
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS devices (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      install_id TEXT NOT NULL,
+      device_name TEXT NOT NULL,
+      device_type TEXT NOT NULL,
+      relay_username TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_seen_at TEXT NOT NULL
+    )
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_user_install
+    ON devices(user_id, install_id)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_devices_user_id
+    ON devices(user_id)
+  `);
+
+  return pool;
 }

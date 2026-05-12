@@ -4,44 +4,44 @@ import { RelayControlPlaneService } from "../src/control-plane.js";
 import { createTestDb } from "../src/db.js";
 
 describe("RelayControlPlaneService", () => {
-  it("registers, logs in, and authenticates a user", () => {
+  it("registers, logs in, and authenticates a user", async () => {
     const db = createTestDb();
     const service = new RelayControlPlaneService(db);
 
-    const user = service.registerUser("user@example.com", "password123");
+    const user = await service.registerUser("user@example.com", "password123");
     expect(user.email).toBe("user@example.com");
 
-    const login = service.login("user@example.com", "password123");
+    const login = await service.login("user@example.com", "password123");
     expect(login.user.id).toBe(user.id);
     expect(login.session.token.length).toBeGreaterThan(10);
 
-    const auth = service.authenticate(login.session.token);
+    const auth = await service.authenticate(login.session.token);
     expect(auth.user.id).toBe(user.id);
 
     db.close();
   });
 
-  it("rejects duplicate emails and invalid credentials", () => {
+  it("rejects duplicate emails and invalid credentials", async () => {
     const db = createTestDb();
     const service = new RelayControlPlaneService(db);
 
-    service.registerUser("user@example.com", "password123");
-    expect(() =>
+    await service.registerUser("user@example.com", "password123");
+    await expect(
       service.registerUser("user@example.com", "password123"),
-    ).toThrow("email_taken");
-    expect(() => service.login("user@example.com", "wrong")).toThrow(
+    ).rejects.toThrow("email_taken");
+    await expect(service.login("user@example.com", "wrong")).rejects.toThrow(
       "invalid_credentials",
     );
 
     db.close();
   });
 
-  it("creates and updates devices per install id", () => {
+  it("creates and updates devices per install id", async () => {
     const db = createTestDb();
     const service = new RelayControlPlaneService(db);
-    const user = service.registerUser("user@example.com", "password123");
+    const user = await service.registerUser("user@example.com", "password123");
 
-    const deviceA = service.registerOrUpdateDevice({
+    const deviceA = await service.registerOrUpdateDevice({
       userId: user.id,
       installId: "install-1",
       deviceName: "MacBook Pro",
@@ -49,7 +49,7 @@ describe("RelayControlPlaneService", () => {
     });
     expect(deviceA.relayUsername.startsWith("dev-")).toBe(true);
 
-    const deviceB = service.registerOrUpdateDevice({
+    const deviceB = await service.registerOrUpdateDevice({
       userId: user.id,
       installId: "install-1",
       deviceName: "Mac mini",
@@ -61,18 +61,18 @@ describe("RelayControlPlaneService", () => {
     db.close();
   });
 
-  it("maps device relay state from active relay servers", () => {
+  it("maps device relay state from active relay servers", async () => {
     const db = createTestDb();
     const service = new RelayControlPlaneService(db);
-    const user = service.registerUser("user@example.com", "password123");
+    const user = await service.registerUser("user@example.com", "password123");
 
-    const waitingDevice = service.registerOrUpdateDevice({
+    const waitingDevice = await service.registerOrUpdateDevice({
       userId: user.id,
       installId: "install-a",
       deviceName: "Desktop A",
       deviceType: "desktop",
     });
-    const pairedDevice = service.registerOrUpdateDevice({
+    const pairedDevice = await service.registerOrUpdateDevice({
       userId: user.id,
       installId: "install-b",
       deviceName: "Desktop B",
@@ -94,7 +94,7 @@ describe("RelayControlPlaneService", () => {
       },
     ];
 
-    const devices = service.listDevices(user.id, activeServers);
+    const devices = await service.listDevices(user.id, activeServers);
     const waiting = devices.find((device) => device.id === waitingDevice.id);
     const paired = devices.find((device) => device.id === pairedDevice.id);
 
