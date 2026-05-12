@@ -3,6 +3,7 @@ import { normalizeHttpBaseUrl } from "../api/client";
 
 export type ForwardMode = "direct" | "relay";
 const DEFAULT_REMOTE_THEME: ThemeMode = "auto";
+const MOBILE_ENTRY_MARKER = "rn-shell-v1";
 
 export type ForwardingInput =
   | {
@@ -68,11 +69,14 @@ function buildModeBootstrapScript(
   `;
 }
 
-function appendMobileEntryBust(url: string): string {
+function appendMobileEntryMarker(url: string): string {
   const [withoutHash, hash = ""] = url.split("#", 2);
+  if (withoutHash.includes("mobile_entry=")) return url;
   const separator = withoutHash.includes("?") ? "&" : "?";
-  const withBust = `${withoutHash}${separator}mobile_entry=${Date.now()}`;
-  return hash ? `${withBust}#${hash}` : withBust;
+  const withMarker =
+    `${withoutHash}${separator}` +
+    `mobile_entry=${encodeURIComponent(MOBILE_ENTRY_MARKER)}`;
+  return hash ? `${withMarker}#${hash}` : withMarker;
 }
 
 function normalizeRelayWebBaseUrl(controlPlaneUrl: string): string {
@@ -209,7 +213,7 @@ export function resolveForwardingTarget(
 ): ForwardingTarget {
   if (input.mode === "direct") {
     const directServerUrl = normalizeHttpBaseUrl(input.directServerUrl);
-    const url = appendMobileEntryBust(
+    const url = appendMobileEntryMarker(
       `${normalizeDirectLoginUrl(input.directServerUrl)}${buildDirectHash(input)}`,
     );
     return {
@@ -224,7 +228,7 @@ export function resolveForwardingTarget(
     };
   }
 
-  const url = appendMobileEntryBust(
+  const url = appendMobileEntryMarker(
     `${normalizeRelayLoginUrl(input.controlPlaneUrl)}${buildRelayHash(input)}`,
   );
   const controlPlaneBaseUrl = normalizeRelayWebBaseUrl(input.controlPlaneUrl);

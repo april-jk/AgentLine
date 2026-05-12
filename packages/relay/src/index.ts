@@ -132,6 +132,27 @@ function inferContentType(filePath: string): string {
   );
 }
 
+function inferCacheControl(assetPath: string, requestedPath: string): string {
+  const extension = extname(assetPath).toLowerCase();
+  if (extension === ".html") return "no-cache";
+
+  const normalizedRequestPath = requestedPath.replace(/^\/+/, "");
+  const isHashedViteAsset = normalizedRequestPath.startsWith("assets/");
+  if (isHashedViteAsset) {
+    // Vite assets are content-hashed, so immutable caching is safe and fast.
+    return "public, max-age=31536000, immutable";
+  }
+
+  if (
+    normalizedRequestPath === "sw.js" ||
+    normalizedRequestPath === "manifest.json"
+  ) {
+    return "no-cache";
+  }
+
+  return "public, max-age=604800, stale-while-revalidate=86400";
+}
+
 function notFoundText(c: Context) {
   return c.body("Not Found", 404, {
     "Cache-Control": "no-store, max-age=0",
@@ -209,7 +230,7 @@ if (resolvedRemoteClientDistDir) {
     if (!assetBuffer) return notFoundText(c);
 
     return c.body(Uint8Array.from(assetBuffer), 200, {
-      "Cache-Control": "public, max-age=86400",
+      "Cache-Control": inferCacheControl(assetPath, requestedPath),
       "Content-Type": inferContentType(assetPath),
     });
   });
@@ -229,7 +250,7 @@ if (resolvedRemoteClientDistDir) {
       if (!assetBuffer) return notFoundText(c);
 
       return c.body(Uint8Array.from(assetBuffer), 200, {
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": inferCacheControl(assetPath, requestedPath),
         "Content-Type": inferContentType(assetPath),
       });
     });
@@ -243,10 +264,7 @@ if (resolvedRemoteClientDistDir) {
     const assetBuffer = await tryReadFile(assetPath);
     if (assetBuffer) {
       return c.body(Uint8Array.from(assetBuffer), 200, {
-        "Cache-Control":
-          extname(assetPath).toLowerCase() === ".html"
-            ? "no-cache"
-            : "public, max-age=86400",
+        "Cache-Control": inferCacheControl(assetPath, requestedPath),
         "Content-Type": inferContentType(assetPath),
       });
     }
