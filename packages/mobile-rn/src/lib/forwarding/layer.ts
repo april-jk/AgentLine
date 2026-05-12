@@ -68,6 +68,13 @@ function buildModeBootstrapScript(
   `;
 }
 
+function appendMobileEntryBust(url: string): string {
+  const [withoutHash, hash = ""] = url.split("#", 2);
+  const separator = withoutHash.includes("?") ? "&" : "?";
+  const withBust = `${withoutHash}${separator}mobile_entry=${Date.now()}`;
+  return hash ? `${withBust}#${hash}` : withBust;
+}
+
 function normalizeRelayWebBaseUrl(controlPlaneUrl: string): string {
   const base = normalizeHttpBaseUrl(controlPlaneUrl);
   if (base.endsWith("/remote/login/relay")) {
@@ -202,7 +209,9 @@ export function resolveForwardingTarget(
 ): ForwardingTarget {
   if (input.mode === "direct") {
     const directServerUrl = normalizeHttpBaseUrl(input.directServerUrl);
-    const url = `${normalizeDirectLoginUrl(input.directServerUrl)}${buildDirectHash(input)}`;
+    const url = appendMobileEntryBust(
+      `${normalizeDirectLoginUrl(input.directServerUrl)}${buildDirectHash(input)}`,
+    );
     return {
       mode: "direct",
       url: directServerUrl,
@@ -215,7 +224,9 @@ export function resolveForwardingTarget(
     };
   }
 
-  const url = `${normalizeRelayLoginUrl(input.controlPlaneUrl)}${buildRelayHash(input)}`;
+  const url = appendMobileEntryBust(
+    `${normalizeRelayLoginUrl(input.controlPlaneUrl)}${buildRelayHash(input)}`,
+  );
   const controlPlaneBaseUrl = normalizeRelayWebBaseUrl(input.controlPlaneUrl);
   return {
     mode: "relay",

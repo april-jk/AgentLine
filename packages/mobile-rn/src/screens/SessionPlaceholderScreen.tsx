@@ -98,6 +98,23 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
             `HTTP ${String(event.nativeEvent.statusCode)}：${stripHash(fixedUri)}`,
           );
         }}
+        onMessage={(event) => {
+          try {
+            const payload = JSON.parse(event.nativeEvent.data) as
+              | { type?: string; status?: string }
+              | undefined;
+            if (payload?.type !== "agentline-style-recovery") return;
+            if (payload.status === "inline") {
+              showStatusToast("样式恢复成功");
+              return;
+            }
+            if (payload.status === "failed") {
+              showStatusToast("样式加载异常");
+            }
+          } catch {
+            // Ignore non-JSON bridge messages
+          }
+        }}
         renderLoading={() => (
           <View style={styles.centerOverlay}>
             <ActivityIndicator color={theme.primary} />

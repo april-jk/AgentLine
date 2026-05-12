@@ -49,6 +49,14 @@ import { VoiceSecretaryPage } from "./pages/VoiceSecretaryPage";
 import { SettingsLayout } from "./pages/settings";
 import "./styles/index.css";
 
+declare global {
+  interface Window {
+    ReactNativeWebView?: {
+      postMessage(message: string): void;
+    };
+  }
+}
+
 // Apply saved preferences before React renders to avoid flash
 initializeTheme();
 initializeFontSize();
@@ -62,11 +70,65 @@ initializeTabSize();
 function ensureRemoteStylesLoaded() {
   if (typeof window === "undefined") return;
 
-  window.setTimeout(() => {
+  const hasThemeVariables = () => {
     const rootStyles = window.getComputedStyle(document.documentElement);
-    const hasThemeVar =
-      rootStyles.getPropertyValue("--text-primary").trim().length > 0;
-    if (hasThemeVar) return;
+    return rootStyles.getPropertyValue("--text-primary").trim().length > 0;
+  };
+
+  const postRecoveryEvent = (status: "bust" | "inline" | "failed") => {
+    try {
+      window.ReactNativeWebView?.postMessage(
+        JSON.stringify({
+          type: "agentline-style-recovery",
+          status,
+        }),
+      );
+    } catch {
+      // no-op: browser mode has no ReactNativeWebView bridge
+    }
+  };
+
+  const injectInlineCssFallback = async (
+    stylesheetLinks: HTMLLinkElement[],
+  ): Promise<boolean> => {
+    for (const link of stylesheetLinks) {
+      const href = link.getAttribute("href");
+      if (!href || !href.includes("/assets/")) continue;
+
+      const fetchUrl = `${href}${href.includes("?") ? "&" : "?"}inline=${Date.now()}`;
+      try {
+        const response = await fetch(fetchUrl, {
+          cache: "reload",
+          credentials: "same-origin",
+        });
+        if (!response.ok) continue;
+
+        const cssText = await response.text();
+        if (!cssText.trim()) continue;
+
+        if (
+          document.head.querySelector(
+            'style[data-agentline-inline-style-fallback="1"]',
+          )
+        ) {
+          return true;
+        }
+
+        const styleElement = document.createElement("style");
+        styleElement.setAttribute("data-agentline-inline-style-fallback", "1");
+        styleElement.textContent = cssText;
+        document.head.appendChild(styleElement);
+        return true;
+      } catch {
+        // try next candidate stylesheet
+      }
+    }
+
+    return false;
+  };
+
+  window.setTimeout(async () => {
+    if (hasThemeVariables()) return;
 
     const stylesheetLinks = Array.from(
       document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
@@ -83,6 +145,18 @@ function ensureRemoteStylesLoaded() {
       retryLink.href = `${href}${href.includes("?") ? "&" : "?"}v=${Date.now()}`;
       document.head.appendChild(retryLink);
     }
+
+    postRecoveryEvent("bust");
+    await new Promise((resolve) => window.setTimeout(resolve, 900));
+    if (hasThemeVariables()) return;
+
+    const inlined = await injectInlineCssFallback(stylesheetLinks);
+    if (inlined) {
+      postRecoveryEvent("inline");
+      return;
+    }
+
+    postRecoveryEvent("failed");
   }, 1200);
 }
 

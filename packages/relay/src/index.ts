@@ -149,6 +149,42 @@ app.use(
   }),
 );
 
+app.use("*", async (c, next) => {
+  const requestPath = c.req.path;
+  const isRemoteOrAssets =
+    requestPath.startsWith("/remote") || requestPath.startsWith("/assets");
+  if (!isRemoteOrAssets) {
+    await next();
+    return;
+  }
+
+  const mobileEntry = c.req.query("mobile_entry");
+  const referer = c.req.header("referer") ?? "";
+  const isMobileEntryFlow =
+    Boolean(mobileEntry) || referer.includes("mobile_entry=");
+  if (!isMobileEntryFlow) {
+    await next();
+    return;
+  }
+
+  const startedAt = Date.now();
+  await next();
+  const elapsedMs = Date.now() - startedAt;
+  logger.info(
+    {
+      method: c.req.method,
+      path: requestPath,
+      query: c.req.query(),
+      status: c.res.status,
+      elapsedMs,
+      referer: referer || null,
+      userAgent: c.req.header("user-agent") ?? null,
+      cfRay: c.req.header("cf-ray") ?? null,
+    },
+    "Mobile remote HTTP request",
+  );
+});
+
 if (resolvedRemoteClientDistDir) {
   logger.info(
     { distDir: resolvedRemoteClientDistDir },
