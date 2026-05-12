@@ -1062,6 +1062,171 @@ h2 {
   padding: 0.25rem 0 1rem;
 }
 
+.sidebar-account {
+  border-top: 1px solid var(--border-color);
+  padding: 0.625rem 0.75rem;
+}
+
+.sidebar-account-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.sidebar-account-trigger:hover {
+  background: var(--bg-hover);
+}
+
+.sidebar-account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--app-agent-teal);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sidebar-account-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar-account-name {
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-account-status {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.sidebar-account-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.sidebar-account-modal {
+  width: min(420px, calc(100vw - 2rem));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-medium);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sidebar-account-modal h3 {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+.sidebar-account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.sidebar-account-field input {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.375rem 0.5rem;
+  background: var(--bg-code);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.sidebar-account-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sidebar-account-actions button {
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  padding: 0.45rem 0.5rem;
+  cursor: pointer;
+}
+
+.sidebar-account-primary {
+  flex: 1;
+  background: var(--app-agent-teal) !important;
+  color: #ffffff !important;
+}
+
+.sidebar-account-secondary {
+  min-width: 108px;
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.sidebar-account-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.sidebar-account-readonly code {
+  font-size: 11px;
+  background: var(--bg-code);
+  padding: 0.2rem 0.35rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+}
+
+.sidebar-account-error {
+  margin: 0;
+  color: #ef4444;
+  font-size: var(--font-size-xs);
+}
+
+.sidebar-account-switch {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+.sidebar-account-switch button {
+  border: none;
+  background: transparent;
+  color: var(--app-agent-teal);
+  margin-left: 0.375rem;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  padding: 0;
+}
+
 /* Unified sidebar navigation section and items */
 .sidebar-nav-section {
   display: flex;
@@ -3966,10 +4131,18 @@ a.sidebar-nav-item {
 }
 
 .settings-category-icon {
-  font-size: 1.5rem;
   flex-shrink: 0;
   width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+}
+
+.settings-category-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .settings-category-text {
@@ -5308,6 +5481,18 @@ a.sidebar-nav-item {
   .sidebar-collapsed .sidebar-nav-item {
     justify-content: center;
     padding: 0.5rem;
+  }
+
+  .sidebar-collapsed .sidebar-account {
+    padding: 0.5rem 0.25rem 0.75rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .sidebar-collapsed .sidebar-account-trigger {
+    width: auto;
+    padding: 0.375rem;
+    border-radius: 999px;
   }
 
   /* Sidebar resize handle */

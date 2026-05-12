@@ -1,8 +1,26 @@
+import { SidebarIcons } from "./components/SidebarNavItem";
 import type { FontSize } from "./hooks/useFontSize";
 import type { TabSize } from "./hooks/useTabSize";
 import type { Theme } from "./hooks/useTheme";
 import type { Locale } from "./i18n";
 import type { SettingsCategory } from "./pages/settings/types";
+
+const settingsIcons = {
+  appearance: SidebarIcons.settings,
+  model: SidebarIcons.agents,
+  agentContext: SidebarIcons.allSessions,
+  notifications: SidebarIcons.inbox,
+  webhooks: SidebarIcons.sourceControl,
+  phone: SidebarIcons.voiceSecretary,
+  devices: SidebarIcons.emulator,
+  localAccess: SidebarIcons.settings,
+  remote: SidebarIcons.projects,
+  providers: SidebarIcons.sourceControl,
+  remoteExecutors: SidebarIcons.emulator,
+  about: SidebarIcons.settings,
+  emulator: SidebarIcons.emulator,
+  development: SidebarIcons.settings,
+} as const;
 
 export function getThemeLabel(
   theme: Theme,
@@ -67,73 +85,73 @@ export function getSettingsCategories(
     {
       id: "appearance",
       label: t("settingsAppearanceTitle"),
-      icon: "🎨",
+      icon: settingsIcons.appearance,
       description: t("settingsAppearanceDescription"),
     },
     {
       id: "model",
       label: t("settingsModelTitle"),
-      icon: "🧠",
+      icon: settingsIcons.model,
       description: t("settingsModelDescription"),
     },
     {
       id: "agent-context",
       label: t("settingsAgentContextTitle"),
-      icon: "📋",
+      icon: settingsIcons.agentContext,
       description: t("settingsAgentContextDescription"),
     },
     {
       id: "notifications",
       label: t("settingsNotificationsTitle"),
-      icon: "🔔",
+      icon: settingsIcons.notifications,
       description: t("settingsNotificationsDescription"),
     },
     {
       id: "webhooks",
       label: t("settingsWebhooksTitle"),
-      icon: "🪝",
+      icon: settingsIcons.webhooks,
       description: t("settingsWebhooksDescription"),
     },
     {
       id: "phone",
       label: t("settingsPhoneTitle"),
-      icon: "☎️",
+      icon: settingsIcons.phone,
       description: t("settingsPhoneDescription"),
     },
     {
       id: "devices",
       label: t("settingsDevicesTitle"),
-      icon: "📱",
+      icon: settingsIcons.devices,
       description: t("settingsDevicesDescription"),
     },
     {
       id: "local-access",
       label: t("settingsLocalAccessTitle"),
-      icon: "🔒",
+      icon: settingsIcons.localAccess,
       description: t("settingsLocalAccessDescription"),
     },
     {
       id: "remote",
       label: t("settingsRemoteTitle"),
-      icon: "🌐",
+      icon: settingsIcons.remote,
       description: t("settingsRemoteDescription"),
     },
     {
       id: "providers",
       label: t("settingsProvidersTitle"),
-      icon: "🔌",
+      icon: settingsIcons.providers,
       description: t("settingsProvidersDescription"),
     },
     {
       id: "remote-executors",
       label: t("settingsRemoteExecutorsTitle"),
-      icon: "🖥️",
+      icon: settingsIcons.remoteExecutors,
       description: t("settingsRemoteExecutorsDescription"),
     },
     {
       id: "about",
       label: t("settingsAboutTitle"),
-      icon: "ℹ️",
+      icon: settingsIcons.about,
       description: t("settingsAboutDescription"),
     },
   ];
@@ -145,7 +163,7 @@ export function getEmulatorCategory(
   return {
     id: "emulator",
     label: t("settingsEmulatorTitle"),
-    icon: "🤖",
+    icon: settingsIcons.emulator,
     description: t("settingsEmulatorDescription"),
   };
 }
@@ -156,7 +174,7 @@ export function getDevelopmentCategory(
   return {
     id: "development",
     label: t("settingsDevelopmentTitle"),
-    icon: "🛠️",
+    icon: settingsIcons.development,
     description: t("settingsDevelopmentDescription"),
   };
 }
