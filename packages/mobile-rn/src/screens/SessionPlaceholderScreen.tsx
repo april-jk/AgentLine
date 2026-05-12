@@ -67,7 +67,9 @@ function buildDirectHashForCandidate(
     .map((part) => part.trim())
     .filter(Boolean)
     .filter((part) => !part.startsWith("ws="));
-  parts.push(`ws=${encodeURIComponent(`${wsProtocol}//${host}:${String(serverPort)}/api/ws`)}`);
+  parts.push(
+    `ws=${encodeURIComponent(`${wsProtocol}//${host}:${String(serverPort)}/api/ws`)}`,
+  );
   const serialized = parts.join("&");
   return serialized ? `#${serialized}` : "";
 }
@@ -121,6 +123,47 @@ function buildDirectCandidateUrls(
   return targets;
 }
 
+function normalizeRelayWebBaseUrl(controlPlaneUrl: string): string {
+  const base = normalizeHttpBaseUrl(controlPlaneUrl);
+  if (base.endsWith("/remote/login/relay")) {
+    return base.slice(0, -"/remote/login/relay".length);
+  }
+  if (base.endsWith("/login/relay")) {
+    return base.slice(0, -"/login/relay".length);
+  }
+  if (base.endsWith("/remote")) return base.slice(0, -"/remote".length);
+  return base;
+}
+
+function isLocalRemoteDevBase(baseUrl: string): boolean {
+  return /^(http:\/\/)(127\.0\.0\.1|localhost|10\.0\.2\.2)(:\d+)?$/.test(
+    baseUrl,
+  );
+}
+
+function buildRelayCandidateUrls(
+  sourceUri: string,
+  controlPlaneUrl: string,
+): string[] {
+  const targets: string[] = [];
+  const seen = new Set<string>();
+  const hash = getHash(sourceUri);
+  const base = normalizeRelayWebBaseUrl(controlPlaneUrl);
+
+  if (isLocalRemoteDevBase(base)) {
+    pushCandidate(targets, seen, `${base}/login/relay${hash}`);
+  } else {
+    pushCandidate(targets, seen, `${base}/remote/login/relay${hash}`);
+    pushCandidate(targets, seen, `${base}/login/relay${hash}`);
+    pushCandidate(targets, seen, `${base}/remote/${hash}`);
+  }
+
+  pushCandidate(targets, seen, `${base}/${hash}`);
+  pushCandidate(targets, seen, sourceUri);
+
+  return targets;
+}
+
 function isRemoteClientHtml(html: string): boolean {
   return (
     html.includes("AgentLine - Remote") ||
@@ -158,7 +201,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [resolvedUri, setResolvedUri] = useState(route.params.source.uri);
   const [isResolvingSource, setIsResolvingSource] = useState(
-    route.params.mode === "direct",
+    route.params.mode === "direct" || route.params.mode === "relay",
   );
   const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
   const webViewRef = useRef<WebView>(null);
@@ -180,19 +223,12 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
     let cancelled = false;
 
     const resolveSource = async () => {
-      if (route.params.mode !== "direct") {
-        setResolvedUri(route.params.source.uri);
-        setIsResolvingSource(false);
-        return;
-      }
-
       setIsResolvingSource(true);
       setLoadError(null);
-
-      const candidates = buildDirectCandidateUrls(
-        route.params.source.uri,
-        route.params.url,
-      );
+      const candidates =
+        route.params.mode === "direct"
+          ? buildDirectCandidateUrls(route.params.source.uri, route.params.url)
+          : buildRelayCandidateUrls(route.params.source.uri, route.params.url);
 
       for (const candidate of candidates) {
         if (cancelled) return;

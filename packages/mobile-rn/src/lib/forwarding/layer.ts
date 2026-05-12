@@ -144,7 +144,7 @@ function normalizeDirectWsUrl(rawValue: string): string {
 function normalizeRelayWsUrl(rawValue: string): string {
   const trimmed = rawValue.trim();
   if (!trimmed) {
-    return "wss://relay.agentline.com/ws";
+    return "wss://relay.oneceo.ai/ws";
   }
 
   let value = trimmed;
@@ -214,9 +214,10 @@ export function resolveForwardingTarget(
   }
 
   const url = `${normalizeRelayLoginUrl(input.controlPlaneUrl)}${buildRelayHash(input)}`;
+  const controlPlaneBaseUrl = normalizeRelayWebBaseUrl(input.controlPlaneUrl);
   return {
     mode: "relay",
-    url,
+    url: controlPlaneBaseUrl,
     title: "AgentLine 中转",
     source: { uri: url },
     injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript(
