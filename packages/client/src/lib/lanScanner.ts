@@ -1,6 +1,6 @@
 import {
   buildDesktopDiscoveryPorts,
-} from "../../../../shared/dist/desktop-discovery.js";
+} from "../../../shared/dist/desktop-discovery.js";
 import type { ServerInfo } from "../api/client";
 
 export type LanScanResult = {
