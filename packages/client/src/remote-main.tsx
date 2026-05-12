@@ -69,6 +69,8 @@ initializeTabSize();
  */
 function ensureRemoteStylesLoaded() {
   if (typeof window === "undefined") return;
+  const mobileEntryMarker =
+    new URLSearchParams(window.location.search).get("mobile_entry") ?? "native";
 
   const hasThemeVariables = () => {
     const rootStyles = window.getComputedStyle(document.documentElement);
@@ -95,7 +97,9 @@ function ensureRemoteStylesLoaded() {
       const href = link.getAttribute("href");
       if (!href || !href.includes("/assets/")) continue;
 
-      const fetchUrl = `${href}${href.includes("?") ? "&" : "?"}inline=${Date.now()}`;
+      const fetchUrl =
+        `${href}${href.includes("?") ? "&" : "?"}` +
+        `inline=${Date.now()}&mobile_entry=${encodeURIComponent(mobileEntryMarker)}`;
       try {
         const response = await fetch(fetchUrl, {
           cache: "reload",
@@ -142,7 +146,9 @@ function ensureRemoteStylesLoaded() {
       const retryLink = document.createElement("link");
       retryLink.rel = "stylesheet";
       retryLink.crossOrigin = link.crossOrigin || "anonymous";
-      retryLink.href = `${href}${href.includes("?") ? "&" : "?"}v=${Date.now()}`;
+      retryLink.href =
+        `${href}${href.includes("?") ? "&" : "?"}` +
+        `v=${Date.now()}&mobile_entry=${encodeURIComponent(mobileEntryMarker)}`;
       document.head.appendChild(retryLink);
     }
 

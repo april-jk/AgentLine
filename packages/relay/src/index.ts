@@ -159,9 +159,14 @@ app.use("*", async (c, next) => {
   }
 
   const mobileEntry = c.req.query("mobile_entry");
+  const styleRetry = c.req.query("v");
+  const styleInline = c.req.query("inline");
   const referer = c.req.header("referer") ?? "";
   const isMobileEntryFlow =
-    Boolean(mobileEntry) || referer.includes("mobile_entry=");
+    Boolean(mobileEntry) ||
+    Boolean(styleRetry) ||
+    Boolean(styleInline) ||
+    referer.includes("mobile_entry=");
   if (!isMobileEntryFlow) {
     await next();
     return;
