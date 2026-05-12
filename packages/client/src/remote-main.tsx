@@ -54,6 +54,40 @@ initializeTheme();
 initializeFontSize();
 initializeTabSize();
 
+/**
+ * Some mobile WebViews can keep a stale cached 404 for hashed CSS files after
+ * relay route migrations. If core CSS vars are missing, retry styles once with
+ * cache-busting query params so the remote UI does not render unstyled.
+ */
+function ensureRemoteStylesLoaded() {
+  if (typeof window === "undefined") return;
+
+  window.setTimeout(() => {
+    const rootStyles = window.getComputedStyle(document.documentElement);
+    const hasThemeVar =
+      rootStyles.getPropertyValue("--text-primary").trim().length > 0;
+    if (hasThemeVar) return;
+
+    const stylesheetLinks = Array.from(
+      document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+    );
+    if (stylesheetLinks.length === 0) return;
+
+    for (const link of stylesheetLinks) {
+      const href = link.getAttribute("href");
+      if (!href || !href.includes("/assets/")) continue;
+
+      const retryLink = document.createElement("link");
+      retryLink.rel = "stylesheet";
+      retryLink.crossOrigin = link.crossOrigin || "anonymous";
+      retryLink.href = `${href}${href.includes("?") ? "&" : "?"}v=${Date.now()}`;
+      document.head.appendChild(retryLink);
+    }
+  }, 1200);
+}
+
+ensureRemoteStylesLoaded();
+
 function resolveRemoteBasename(): string | undefined {
   // Build-time base URL from Vite (may be "/" in some relay deployments).
   const configuredBase = import.meta.env.BASE_URL.replace(/\/$/, "");
