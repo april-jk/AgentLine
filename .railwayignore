@@ -1,0 +1,17 @@
+.git
+node_modules
+**/node_modules
+.pnpm-store
+packages/desktop/src-tauri/target
+packages/desktop/src-tauri/binaries
+packages/desktop/src-tauri/gen
+packages/mobile/src-tauri/target
+packages/mobile-rn/android/.gradle
+packages/mobile-rn/android/app/build
+packages/mobile-rn/ios/build
+packages/mobile-rn/.expo
+packages/mobile-rn/.expo-shared
+dist
+coverage
+tmp
+.DS_Store
