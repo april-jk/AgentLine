@@ -1,17 +1,34 @@
 {
   "expo": {
-    "name": "AgentLine Mobile",
+    "name": "AgentLine",
     "slug": "agentline-mobile-rn",
     "version": "0.1.0",
+    "description": "AgentLine mobile client for securely connecting to your desktop AI sessions over direct LAN or relay mode.",
+    "icon": "./assets/icon.png",
     "newArchEnabled": false,
     "scheme": "agentline-mobile",
     "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#181818"
+    },
     "ios": {
-      "bundleIdentifier": "com.agentline.mobile.rn"
+      "bundleIdentifier": "com.agentline.mobile.rn",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "AgentLine uses local network access to discover and connect to your desktop host securely.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.agentline.mobile.rn",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#181818"
+      }
     },
     "platforms": ["ios", "android"],
     "assetBundlePatterns": ["**/*"]
