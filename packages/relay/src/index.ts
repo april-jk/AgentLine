@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { access, readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { extname, join, normalize } from "node:path";
+import { extname, join, normalize, resolve } from "node:path";
 import { getRequestListener } from "@hono/node-server";
 import type Database from "better-sqlite3";
 import { Hono } from "hono";
@@ -68,7 +68,6 @@ telemetry.startSampling(() => ({
 // Create Hono app for HTTP endpoints
 const app = new Hono();
 
-const remoteClientDistDir = config.remoteClientDistDir;
 const REMOTE_ENTRY_FILE = "remote.html";
 
 const MIME_TYPES: Record<string, string> = {
@@ -87,23 +86,35 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 function resolveRemoteAsset(relativePath: string): string | null {
-  if (!remoteClientDistDir) return null;
+  if (!resolvedRemoteClientDistDir) return null;
   const cleaned = relativePath.replace(/^\/+/, "");
   const normalized = normalize(cleaned).replace(/^(\.\.(\/|\\|$))+/, "");
   if (normalized.includes("\0")) return null;
-  return join(remoteClientDistDir, normalized);
+  return join(resolvedRemoteClientDistDir, normalized);
 }
 
-async function canServeRemoteClient(): Promise<boolean> {
-  const entryPath = resolveRemoteAsset(REMOTE_ENTRY_FILE);
-  if (!entryPath) return false;
-  try {
-    await access(entryPath);
-    return true;
-  } catch {
-    return false;
+const remoteClientDistCandidates = [
+  config.remoteClientDistDir,
+  "packages/client/dist-remote",
+  "client-dist-remote",
+  "dist-remote",
+]
+  .filter((value): value is string => Boolean(value?.trim()))
+  .map((value) => resolve(value));
+
+async function detectRemoteClientDistDir(): Promise<string | null> {
+  for (const candidate of remoteClientDistCandidates) {
+    try {
+      await access(join(candidate, REMOTE_ENTRY_FILE));
+      return candidate;
+    } catch {
+      // probe next candidate
+    }
   }
+  return null;
 }
+
+const resolvedRemoteClientDistDir = await detectRemoteClientDistDir();
 
 async function tryReadFile(filePath: string): Promise<Buffer | null> {
   try {
@@ -131,9 +142,9 @@ app.use(
   }),
 );
 
-if (await canServeRemoteClient()) {
+if (resolvedRemoteClientDistDir) {
   logger.info(
-    { distDir: remoteClientDistDir },
+    { distDir: resolvedRemoteClientDistDir },
     "Remote client static hosting enabled at /remote",
   );
 
@@ -166,9 +177,35 @@ if (await canServeRemoteClient()) {
       "Content-Type": "text/html; charset=utf-8",
     });
   });
-} else if (remoteClientDistDir) {
+} else {
   logger.warn(
-    { distDir: remoteClientDistDir },
+    {
+      configuredDistDir: config.remoteClientDistDir ?? null,
+      cwd: process.cwd(),
+      candidates: remoteClientDistCandidates,
+    },
+    "Remote client static hosting unavailable: remote dist entry not found",
+  );
+
+  app.get("/remote", async (c) => c.redirect("/remote/", 302));
+  app.get("/remote/*", async (c) => {
+    return c.json(
+      {
+        error: "remote_client_unavailable",
+        message:
+          "Remote web client dist is not available on relay runtime. Build @agentline/client with build:remote and set RELAY_REMOTE_CLIENT_DIST_DIR.",
+        configuredDistDir: config.remoteClientDistDir ?? null,
+        cwd: process.cwd(),
+        checkedCandidates: remoteClientDistCandidates,
+      },
+      503,
+    );
+  });
+}
+
+if (config.remoteClientDistDir && !resolvedRemoteClientDistDir) {
+  logger.warn(
+    { distDir: config.remoteClientDistDir },
     "Remote client static hosting disabled: dist entry not found",
   );
 }
