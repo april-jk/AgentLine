@@ -71,6 +71,7 @@ interface ControlPlaneAccountUpdatePayload {
 interface RemoteAccessConfig {
   enabled: boolean;
   username: string | null;
+  hostAccessConfigured: boolean;
 }
 
 interface ControlPlaneBridgeState {

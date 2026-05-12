@@ -20,7 +20,7 @@ import {
 const CURRENT_VERSION = 1;
 
 export interface RelayConfig {
-  /** Relay server URL (e.g., wss://relay.agentline.com/ws) */
+  /** Relay server URL (e.g., wss://relay.oneceo.ai/ws) */
   url: string;
   /** Username for relay registration (also used as SRP identity) */
   username: string;
@@ -158,10 +158,15 @@ export class RemoteAccessService {
   /**
    * Get the current configuration state (for API responses).
    */
-  getConfig(): { enabled: boolean; username: string | null } {
+  getConfig(): {
+    enabled: boolean;
+    username: string | null;
+    hostAccessConfigured: boolean;
+  } {
     return {
       enabled: this.isEnabled(),
       username: this.getUsername(),
+      hostAccessConfigured: this.isConfigured(),
     };
   }
 

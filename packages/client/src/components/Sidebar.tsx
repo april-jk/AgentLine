@@ -76,6 +76,16 @@ interface DesktopApiBridge {
     newPassword?: string;
   }) => Promise<ControlPlaneAccountSummary>;
   logoutControlPlane: () => Promise<ControlPlaneAccountSummary>;
+  getRemoteAccessConfig: () => Promise<{
+    enabled: boolean;
+    username: string | null;
+    hostAccessConfigured: boolean;
+  }>;
+  configureRemoteAccessPassword: (password: string) => Promise<{
+    enabled: boolean;
+    username: string | null;
+    hostAccessConfigured: boolean;
+  }>;
 }
 
 interface StoredAccountState {
@@ -94,6 +104,12 @@ interface ControlPlaneBridgeStatus {
   lastHeartbeatAt?: string;
   lastError?: string;
   consecutiveFailures: number;
+}
+
+interface HostAccessConfig {
+  enabled: boolean;
+  username: string | null;
+  hostAccessConfigured: boolean;
 }
 
 function normalizeControlPlaneBaseUrl(rawUrl: string): string {
@@ -255,6 +271,27 @@ export function Sidebar({
     authenticated: false,
   });
   const [accountProfileEmail, setAccountProfileEmail] = useState("");
+  const [hostAccessConfig, setHostAccessConfig] =
+    useState<HostAccessConfig | null>(null);
+  const [hostAccessPassword, setHostAccessPassword] = useState("");
+  const [hostAccessPasswordConfirm, setHostAccessPasswordConfirm] =
+    useState("");
+  const [requireAccessPasswordSetup, setRequireAccessPasswordSetup] =
+    useState(false);
+
+  const refreshHostAccessConfig =
+    async (): Promise<HostAccessConfig | null> => {
+      try {
+        const nextConfig = desktopApi
+          ? await desktopApi.getRemoteAccessConfig()
+          : await fetchJSON<HostAccessConfig>("/remote-access/config");
+        setHostAccessConfig(nextConfig);
+        return nextConfig;
+      } catch {
+        setHostAccessConfig(null);
+        return null;
+      }
+    };
 
   const configureLocalControlPlaneBridge = async (params: {
     baseUrl: string;
@@ -292,6 +329,10 @@ export function Sidebar({
       setAccountBaseUrl(account.baseUrl ?? DEFAULT_CONTROL_PLANE_URL);
       setAccountEmail(account.user?.email ?? account.lastEmail ?? "");
       setAccountProfileEmail(account.user?.email ?? account.lastEmail ?? "");
+      const currentHostAccess = await refreshHostAccessConfig();
+      setRequireAccessPasswordSetup(
+        account.authenticated && !currentHostAccess?.hostAccessConfigured,
+      );
       return;
     }
 
@@ -302,6 +343,10 @@ export function Sidebar({
         hasAccessToken: false,
         authenticated: false,
       });
+      setHostAccessConfig(null);
+      setRequireAccessPasswordSetup(false);
+      setHostAccessPassword("");
+      setHostAccessPasswordConfirm("");
       setAccountBaseUrl(DEFAULT_CONTROL_PLANE_URL);
       setAccountEmail("");
       setAccountProfileEmail("");
@@ -351,6 +396,8 @@ export function Sidebar({
           error,
         );
       }
+      const currentHostAccess = await refreshHostAccessConfig();
+      setRequireAccessPasswordSetup(!currentHostAccess?.hostAccessConfigured);
     } catch {
       clearStoredAccountState();
       setAccountInfo({
@@ -359,6 +406,10 @@ export function Sidebar({
         hasAccessToken: false,
         authenticated: false,
       });
+      setHostAccessConfig(null);
+      setRequireAccessPasswordSetup(false);
+      setHostAccessPassword("");
+      setHostAccessPasswordConfirm("");
     }
   };
 
@@ -372,14 +423,14 @@ export function Sidebar({
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !requireAccessPasswordSetup) {
         setAccountPanelOpen(false);
       }
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [accountPanelOpen]);
+  }, [accountPanelOpen, requireAccessPasswordSetup]);
 
   useEffect(() => {
     setAccountError(null);
@@ -404,8 +455,64 @@ export function Sidebar({
   useEffect(() => {
     if (!isAccountLoggedIn) {
       setAccountProfileEditing(false);
+      setRequireAccessPasswordSetup(false);
+      setHostAccessPassword("");
+      setHostAccessPasswordConfirm("");
     }
   }, [isAccountLoggedIn]);
+
+  const configureHostAccessPassword = async () => {
+    if (!hostAccessPassword.trim()) {
+      setAccountError("访问密码不能为空。");
+      return;
+    }
+    if (hostAccessPassword.length < 8) {
+      setAccountError("访问密码至少 8 位。");
+      return;
+    }
+    if (hostAccessPassword !== hostAccessPasswordConfirm) {
+      setAccountError("两次输入的访问密码不一致。");
+      return;
+    }
+
+    setAccountBusy(true);
+    setAccountError(null);
+    try {
+      if (desktopApi) {
+        const nextConfig =
+          await desktopApi.configureRemoteAccessPassword(hostAccessPassword);
+        setHostAccessConfig(nextConfig);
+      } else {
+        await fetchJSON<{ success: boolean; username: string | null }>(
+          "/remote-access/configure",
+          {
+            method: "POST",
+            body: JSON.stringify({ password: hostAccessPassword }),
+          },
+        );
+        await refreshHostAccessConfig();
+      }
+
+      const latest = desktopApi
+        ? await desktopApi.getRemoteAccessConfig()
+        : await fetchJSON<HostAccessConfig>("/remote-access/config");
+      setHostAccessConfig(latest);
+      const stillRequired = !latest.hostAccessConfigured;
+      setRequireAccessPasswordSetup(stillRequired);
+      if (stillRequired) {
+        throw new Error("access_password_not_applied");
+      }
+      setHostAccessPassword("");
+      setHostAccessPasswordConfirm("");
+      setAccountError(null);
+    } catch (error) {
+      setAccountError(
+        error instanceof Error ? error.message : "访问密码设置失败，请重试。",
+      );
+    } finally {
+      setAccountBusy(false);
+    }
+  };
 
   const handleAccountAuthSubmit = () => {
     if (!accountEmail.trim() || !accountPassword.trim()) {
@@ -438,6 +545,13 @@ export function Sidebar({
         setAccountPassword("");
         setAccountConfirmPassword("");
         await refreshAccountState();
+        const nextHostAccess = await desktopApi.getRemoteAccessConfig();
+        setHostAccessConfig(nextHostAccess);
+        if (!nextHostAccess.hostAccessConfigured) {
+          setRequireAccessPasswordSetup(true);
+          setAccountPanelOpen(true);
+          setAccountError("登录成功，请先设置访问密码后再继续。");
+        }
         return;
       }
 
@@ -498,6 +612,12 @@ export function Sidebar({
       setAccountPassword("");
       setAccountConfirmPassword("");
       await refreshAccountState();
+      const nextHostAccess = await refreshHostAccessConfig();
+      if (!nextHostAccess?.hostAccessConfigured) {
+        setRequireAccessPasswordSetup(true);
+        setAccountPanelOpen(true);
+        setAccountError("登录成功，请先设置访问密码后再继续。");
+      }
     };
 
     void run()
@@ -634,6 +754,10 @@ export function Sidebar({
           );
         });
       }
+      setHostAccessConfig(null);
+      setRequireAccessPasswordSetup(false);
+      setHostAccessPassword("");
+      setHostAccessPasswordConfirm("");
       setAccountPassword("");
       setAccountConfirmPassword("");
       setAccountCurrentPassword("");
@@ -1158,7 +1282,9 @@ export function Sidebar({
             className="sidebar-account-trigger"
             onClick={() => {
               setAccountError(null);
-              setAccountPanelOpen((current) => !current);
+              setAccountPanelOpen((current) =>
+                requireAccessPasswordSetup ? true : !current,
+              );
             }}
           >
             <span className="sidebar-account-avatar">
@@ -1194,9 +1320,13 @@ export function Sidebar({
       {accountPanelOpen && (
         <div
           className="sidebar-account-modal-overlay"
-          onClick={() => setAccountPanelOpen(false)}
+          onClick={() => {
+            if (!requireAccessPasswordSetup) {
+              setAccountPanelOpen(false);
+            }
+          }}
           onKeyDown={(event) => {
-            if (event.key === "Escape") {
+            if (event.key === "Escape" && !requireAccessPasswordSetup) {
               setAccountPanelOpen(false);
             }
           }}
@@ -1217,6 +1347,45 @@ export function Sidebar({
             </h3>
             {isAccountLoggedIn ? (
               <>
+                {requireAccessPasswordSetup ? (
+                  <>
+                    <p className="sidebar-account-error">
+                      为了确保手机端可连接，此账号登录后必须先设置访问密码。
+                    </p>
+                    <label className="sidebar-account-field">
+                      <span>访问密码</span>
+                      <input
+                        type="password"
+                        value={hostAccessPassword}
+                        onChange={(event) =>
+                          setHostAccessPassword(event.target.value)
+                        }
+                        disabled={accountBusy}
+                        placeholder="至少 8 位"
+                      />
+                    </label>
+                    <label className="sidebar-account-field">
+                      <span>确认访问密码</span>
+                      <input
+                        type="password"
+                        value={hostAccessPasswordConfirm}
+                        onChange={(event) =>
+                          setHostAccessPasswordConfirm(event.target.value)
+                        }
+                        disabled={accountBusy}
+                        placeholder="再次输入访问密码"
+                      />
+                    </label>
+                    <div className="sidebar-account-readonly">
+                      <span>当前远程访问状态</span>
+                      <span>
+                        {hostAccessConfig?.hostAccessConfigured
+                          ? "已配置"
+                          : "未配置"}
+                      </span>
+                    </div>
+                  </>
+                ) : null}
                 <div className="sidebar-account-readonly">
                   <span>ID</span>
                   <code>{accountInfo.user?.id}</code>
@@ -1330,7 +1499,26 @@ export function Sidebar({
             <div className="sidebar-account-actions">
               {isAccountLoggedIn ? (
                 <>
-                  {accountProfileEditing ? (
+                  {requireAccessPasswordSetup ? (
+                    <>
+                      <button
+                        type="button"
+                        className="sidebar-account-primary"
+                        disabled={accountBusy}
+                        onClick={configureHostAccessPassword}
+                      >
+                        {accountBusy ? "处理中..." : "设置访问密码"}
+                      </button>
+                      <button
+                        type="button"
+                        className="sidebar-account-secondary"
+                        disabled={accountBusy}
+                        onClick={handleAccountLogout}
+                      >
+                        退出登录
+                      </button>
+                    </>
+                  ) : accountProfileEditing ? (
                     <>
                       <button
                         type="button"
