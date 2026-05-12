@@ -28,6 +28,8 @@ export interface RelayConfig {
   logging: LogConfig;
   /** Structured relay telemetry configuration */
   telemetry: RelayTelemetryRuntimeConfig;
+  /** Optional dist directory for serving remote web client under /remote */
+  remoteClientDistDir?: string;
 }
 
 function getEnvNumber(name: string, defaultValue: number): number {
@@ -75,5 +77,6 @@ export function loadConfig(): RelayConfig {
         60_000,
       ),
     },
+    remoteClientDistDir: process.env.RELAY_REMOTE_CLIENT_DIST_DIR?.trim(),
   };
 }

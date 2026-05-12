@@ -79,8 +79,8 @@ Use these service settings:
 
 ```text
 Root Directory: /
-Build Command: pnpm install --frozen-lockfile && pnpm --filter ./packages/shared build && pnpm --filter ./packages/relay build
-Start Command: RELAY_PORT=$PORT NODE_ENV=production RELAY_DATA_DIR=/data node packages/relay/dist/index.js
+Build Command: pnpm install --frozen-lockfile && pnpm --filter ./packages/shared build && pnpm --filter ./packages/client build:remote && pnpm --filter ./packages/relay build
+Start Command: RELAY_PORT=$PORT NODE_ENV=production RELAY_DATA_DIR=/data RELAY_REMOTE_CLIENT_DIST_DIR=packages/client/dist-remote node packages/relay/dist/index.js
 ```
 
 Recommended Railway variables:
@@ -90,6 +90,7 @@ NODE_ENV=production
 RELAY_LOG_TO_CONSOLE=true
 RELAY_LOG_TO_FILE=false
 RELAY_TELEMETRY_ENABLED=true
+RELAY_REMOTE_CLIENT_DIST_DIR=packages/client/dist-remote
 ```
 
 Add a Railway volume mounted at `/data` if username ownership and telemetry should persist across redeploys. Without a volume, the relay still runs, but its SQLite registry is ephemeral.

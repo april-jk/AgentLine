@@ -3,6 +3,7 @@ import { normalizeHttpBaseUrl } from "../api/client";
 
 export type ForwardMode = "direct" | "relay";
 const DEFAULT_REMOTE_THEME: ThemeMode = "auto";
+const PUBLIC_REMOTE_RELAY_ENTRY = "https://agentline.com/remote/";
 
 export type ForwardingInput =
   | {
@@ -87,6 +88,13 @@ function normalizeRelayLoginUrl(controlPlaneUrl: string): string {
   const base = normalizeRelayWebBaseUrl(controlPlaneUrl);
   if (isLocalRemoteDevBase(base)) {
     return `${base}/login/relay`;
+  }
+  try {
+    if (new URL(base).hostname === "relay.oneceo.ai") {
+      return PUBLIC_REMOTE_RELAY_ENTRY;
+    }
+  } catch {
+    // ignore URL parse failures and continue to same-origin fallback
   }
   return `${base}/remote/login/relay`;
 }

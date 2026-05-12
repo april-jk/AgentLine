@@ -1,7 +1,9 @@
 import { writeFileSync } from "node:fs";
+import { access, readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import type Database from "better-sqlite3";
+import { extname, join, normalize } from "node:path";
 import { getRequestListener } from "@hono/node-server";
+import type Database from "better-sqlite3";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Pool } from "pg";
@@ -66,6 +68,59 @@ telemetry.startSampling(() => ({
 // Create Hono app for HTTP endpoints
 const app = new Hono();
 
+const remoteClientDistDir = config.remoteClientDistDir;
+const REMOTE_ENTRY_FILE = "remote.html";
+
+const MIME_TYPES: Record<string, string> = {
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".ico": "image/x-icon",
+  ".js": "application/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".txt": "text/plain; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+};
+
+function resolveRemoteAsset(relativePath: string): string | null {
+  if (!remoteClientDistDir) return null;
+  const cleaned = relativePath.replace(/^\/+/, "");
+  const normalized = normalize(cleaned).replace(/^(\.\.(\/|\\|$))+/, "");
+  if (normalized.includes("\0")) return null;
+  return join(remoteClientDistDir, normalized);
+}
+
+async function canServeRemoteClient(): Promise<boolean> {
+  const entryPath = resolveRemoteAsset(REMOTE_ENTRY_FILE);
+  if (!entryPath) return false;
+  try {
+    await access(entryPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function tryReadFile(filePath: string): Promise<Buffer | null> {
+  try {
+    const stats = await stat(filePath);
+    if (!stats.isFile()) return null;
+    return await readFile(filePath);
+  } catch {
+    return null;
+  }
+}
+
+function inferContentType(filePath: string): string {
+  return (
+    MIME_TYPES[extname(filePath).toLowerCase()] ?? "application/octet-stream"
+  );
+}
+
 // Add CORS for browser clients
 app.use(
   "*",
@@ -75,6 +130,48 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization"],
   }),
 );
+
+if (await canServeRemoteClient()) {
+  logger.info(
+    { distDir: remoteClientDistDir },
+    "Remote client static hosting enabled at /remote",
+  );
+
+  app.get("/remote", (c) => c.redirect("/remote/", 302));
+
+  app.get("/remote/*", async (c) => {
+    const requestedPath = c.req.path.replace(/^\/remote\/?/, "");
+    const assetPath = resolveRemoteAsset(requestedPath);
+    if (!assetPath) return c.text("Not Found", 404);
+
+    const assetBuffer = await tryReadFile(assetPath);
+    if (assetBuffer) {
+      return c.body(Uint8Array.from(assetBuffer), 200, {
+        "Cache-Control":
+          extname(assetPath).toLowerCase() === ".html"
+            ? "no-cache"
+            : "public, max-age=86400",
+        "Content-Type": inferContentType(assetPath),
+      });
+    }
+
+    const entryPath = resolveRemoteAsset(REMOTE_ENTRY_FILE);
+    if (!entryPath) return c.text("Not Found", 404);
+    const entryBuffer = await tryReadFile(entryPath);
+    if (!entryBuffer) return c.text("Not Found", 404);
+
+    // SPA fallback: unknown /remote/* routes should boot the remote client.
+    return c.body(Uint8Array.from(entryBuffer), 200, {
+      "Cache-Control": "no-cache",
+      "Content-Type": "text/html; charset=utf-8",
+    });
+  });
+} else if (remoteClientDistDir) {
+  logger.warn(
+    { distDir: remoteClientDistDir },
+    "Remote client static hosting disabled: dist entry not found",
+  );
+}
 
 function getBearerToken(authHeader: string | undefined): string | null {
   if (!authHeader) return null;
@@ -548,7 +645,10 @@ function shutdown() {
   server.close(async () => {
     clearTimeout(forceExitTimeout);
     await telemetry.close();
-    if ("end" in controlPlaneStore && typeof controlPlaneStore.end === "function") {
+    if (
+      "end" in controlPlaneStore &&
+      typeof controlPlaneStore.end === "function"
+    ) {
       await controlPlaneStore.end();
     }
     db.close();

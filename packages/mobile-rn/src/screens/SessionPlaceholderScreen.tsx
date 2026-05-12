@@ -10,6 +10,7 @@ import type { AppTheme } from "../styles/theme";
 import { useAppTheme } from "../styles/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Console">;
+const PUBLIC_REMOTE_WEB_ENTRY_URL = "https://agentline.com/remote/";
 
 function stripHash(url: string): string {
   const hashIndex = url.indexOf("#");
@@ -141,6 +142,14 @@ function isLocalRemoteDevBase(baseUrl: string): boolean {
   );
 }
 
+function isPublicRelayBase(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).hostname === "relay.oneceo.ai";
+  } catch {
+    return false;
+  }
+}
+
 function buildRelayCandidateUrls(
   sourceUri: string,
   controlPlaneUrl: string,
@@ -149,6 +158,14 @@ function buildRelayCandidateUrls(
   const seen = new Set<string>();
   const hash = getHash(sourceUri);
   const base = normalizeRelayWebBaseUrl(controlPlaneUrl);
+  const publicHosted = `${PUBLIC_REMOTE_WEB_ENTRY_URL}${hash}`;
+  const publicHostedLogin = `https://agentline.com/remote/login/relay${hash}`;
+
+  if (isPublicRelayBase(base)) {
+    // Public relay does not serve the remote SPA; use hosted remote client first.
+    pushCandidate(targets, seen, publicHosted);
+    pushCandidate(targets, seen, publicHostedLogin);
+  }
 
   if (isLocalRemoteDevBase(base)) {
     pushCandidate(targets, seen, `${base}/login/relay${hash}`);
@@ -158,6 +175,9 @@ function buildRelayCandidateUrls(
     pushCandidate(targets, seen, `${base}/remote/${hash}`);
   }
 
+  // Always keep hosted remote client as a portable fallback for API/ws-only relays.
+  pushCandidate(targets, seen, publicHosted);
+  pushCandidate(targets, seen, publicHostedLogin);
   pushCandidate(targets, seen, `${base}/${hash}`);
   pushCandidate(targets, seen, sourceUri);
 

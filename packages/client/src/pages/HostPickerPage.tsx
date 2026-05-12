@@ -1,199 +1,272 @@
-/**
- * HostPickerPage - Unified host switcher and connection center.
- *
- * Replaces the older split "saved hosts + separate direct/relay pages" entry
- * with one page that matches the newer mobile connection-center structure:
- * - Saved hosts at the top
- * - Inline relay/direct entry options below
- */
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
-import { type SavedHost, loadSavedHosts, removeHost } from "../lib/hostStorage";
 
-type HostStatus = "online" | "offline" | "checking" | "unknown";
+type AccountMode = "login" | "register";
 
-interface HostStatusMap {
-  [hostId: string]: HostStatus;
+interface AccountUser {
+  id: string;
+  email: string;
+}
+
+interface AccountAuthResponse {
+  accessToken: string;
+  expiresAt: string;
+  user: AccountUser;
+}
+
+interface AccountDevice {
+  id: string;
+  relayUsername: string;
+  deviceName: string;
+  deviceType: string;
+  relayState: "offline" | "waiting" | "paired";
+}
+
+const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
+const ACCOUNT_STORAGE_KEY = "agentline.remote.account";
+
+function deriveRelayWsUrl(controlPlaneUrl: string): string {
+  const normalized = controlPlaneUrl.trim().replace(/\/+$/, "");
+  if (!normalized) return "wss://relay.oneceo.ai/ws";
+  try {
+    const url = new URL(normalized);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/ws";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return "wss://relay.oneceo.ai/ws";
+  }
+}
+
+function loadSavedAccount(): {
+  controlPlaneUrl: string;
+  accessToken: string;
+  email: string;
+} | null {
+  try {
+    const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      controlPlaneUrl?: string;
+      accessToken?: string;
+      email?: string;
+    };
+    if (!parsed.controlPlaneUrl || !parsed.accessToken || !parsed.email) {
+      return null;
+    }
+    return {
+      controlPlaneUrl: parsed.controlPlaneUrl,
+      accessToken: parsed.accessToken,
+      email: parsed.email,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveAccount(params: {
+  controlPlaneUrl: string;
+  accessToken: string;
+  email: string;
+}): void {
+  localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(params));
+}
+
+function clearAccount(): void {
+  localStorage.removeItem(ACCOUNT_STORAGE_KEY);
+}
+
+async function requestJson<T>(
+  baseUrl: string,
+  path: string,
+  init: RequestInit = {},
+  accessToken?: string,
+): Promise<T> {
+  const headers = new Headers(init.headers);
+  headers.set("Content-Type", "application/json");
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
+  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}${path}`, {
+    ...init,
+    headers,
+  });
+  if (!response.ok) {
+    let message = `request_failed_${response.status}`;
+    try {
+      const payload = (await response.json()) as { error?: string };
+      if (payload.error) message = payload.error;
+    } catch {
+      // ignore non-json response
+    }
+    throw new Error(message);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function authenticateAccount(
+  baseUrl: string,
+  mode: AccountMode,
+  email: string,
+  password: string,
+): Promise<AccountAuthResponse> {
+  if (mode === "register") {
+    await requestJson<{ user: AccountUser }>(baseUrl, "/api/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  return requestJson<AccountAuthResponse>(baseUrl, "/api/v1/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+async function fetchDevices(
+  baseUrl: string,
+  accessToken: string,
+): Promise<AccountDevice[]> {
+  const payload = await requestJson<{ devices: AccountDevice[] }>(
+    baseUrl,
+    "/api/v1/devices",
+    { method: "GET" },
+    accessToken,
+  );
+  return payload.devices ?? [];
 }
 
 export function HostPickerPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const {
-    isAutoResuming,
-    connectViaRelay,
-    connectDirectWithSession,
-    setCurrentHostId,
-    error: connectionError,
-  } = useRemoteConnection();
-  const [hosts, setHosts] = useState<SavedHost[]>([]);
-  const [hostStatuses, setHostStatuses] = useState<HostStatusMap>({});
-  const [connectingHostId, setConnectingHostId] = useState<string | null>(null);
+  const { isAutoResuming } = useRemoteConnection();
+  const [accountMode, setAccountMode] = useState<AccountMode>("login");
+  const [controlPlaneUrl, setControlPlaneUrl] = useState(
+    DEFAULT_CONTROL_PLANE_URL,
+  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [devices, setDevices] = useState<AccountDevice[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingDevices, setLoadingDevices] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const data = loadSavedHosts();
-    setHosts(data.hosts);
+  const selectedDevice = useMemo(
+    () => devices.find((item) => item.id === selectedDeviceId) ?? null,
+    [devices, selectedDeviceId],
+  );
+
+  const loadDevices = useCallback(async (baseUrl: string, token: string) => {
+    setLoadingDevices(true);
+    setError(null);
+    try {
+      const nextDevices = await fetchDevices(baseUrl, token);
+      setDevices(nextDevices);
+      setSelectedDeviceId(nextDevices[0]?.id ?? null);
+    } catch (e) {
+      setDevices([]);
+      setSelectedDeviceId(null);
+      setError(e instanceof Error ? e.message : "Failed to load devices");
+      throw e;
+    } finally {
+      setLoadingDevices(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (connectionError) {
-      setError(connectionError);
-    }
-  }, [connectionError]);
+    const saved = loadSavedAccount();
+    if (!saved) return;
+
+    setControlPlaneUrl(saved.controlPlaneUrl);
+    setEmail(saved.email);
+    setAccessToken(saved.accessToken);
+    void loadDevices(saved.controlPlaneUrl, saved.accessToken).catch(() => {
+      clearAccount();
+      setAccessToken(null);
+    });
+  }, [loadDevices]);
 
   useEffect(() => {
-    const relayHosts = hosts.filter((host) => host.mode === "relay");
-    if (relayHosts.length === 0) return;
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2) return;
+    const params = new URLSearchParams(hash.slice(1));
+    const relayUsername = params.get("u");
+    const relayPassword = params.get("p");
+    if (!relayUsername || !relayPassword) return;
 
-    setHostStatuses((prev) => {
-      const next = { ...prev };
-      for (const host of relayHosts) {
-        if (!next[host.id]) {
-          next[host.id] = "checking";
-        }
-      }
-      return next;
-    });
+    navigate(
+      {
+        pathname: "/login/relay",
+        hash,
+      },
+      { replace: true },
+    );
+  }, [navigate]);
 
-    for (const host of relayHosts) {
-      void checkRelayHostStatus(host).then((status) => {
-        setHostStatuses((prev) => ({ ...prev, [host.id]: status }));
-      });
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      setError("Email and password are required.");
+      return;
     }
-  }, [hosts]);
 
-  const checkRelayHostStatus = useCallback(
-    async (host: SavedHost): Promise<HostStatus> => {
-      if (!host.relayUrl || !host.relayUsername) return "unknown";
-
-      try {
-        const httpUrl = host.relayUrl
-          .replace(/^ws/, "http")
-          .replace(/\/ws$/, "");
-        const res = await fetch(
-          `${httpUrl}/online/${encodeURIComponent(host.relayUsername)}`,
-          { signal: AbortSignal.timeout(5000) },
-        );
-        if (!res.ok) return "offline";
-        const data = (await res.json()) as { online?: boolean };
-        return data.online ? "online" : "offline";
-      } catch {
-        return "offline";
-      }
-    },
-    [],
-  );
-
-  const formatLastConnected = (isoString?: string): string => {
-    if (!isoString) return "";
+    setLoading(true);
+    setError(null);
     try {
-      const date = new Date(isoString);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-
-      if (diffMins < 1) return t("hostPickerLastConnectedJustNow");
-      if (diffMins < 60)
-        return t("hostPickerLastConnectedMinutes", { count: diffMins });
-      if (diffHours < 24)
-        return t("hostPickerLastConnectedHours", { count: diffHours });
-      if (diffDays < 7)
-        return t("hostPickerLastConnectedDays", { count: diffDays });
-      return date.toLocaleDateString();
-    } catch {
-      return "";
+      const result = await authenticateAccount(
+        controlPlaneUrl,
+        accountMode,
+        email.trim(),
+        password,
+      );
+      setAccessToken(result.accessToken);
+      saveAccount({
+        controlPlaneUrl: controlPlaneUrl.trim(),
+        accessToken: result.accessToken,
+        email: email.trim(),
+      });
+      setPassword("");
+      await loadDevices(controlPlaneUrl, result.accessToken);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Authentication failed");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const hostListSubtitle = useMemo(
-    () =>
-      hosts.length > 0
-        ? t("hostPickerSavedHosts")
-        : t("hostPickerHowToConnect"),
-    [hosts.length, t],
-  );
+  const handleLogout = () => {
+    clearAccount();
+    setAccessToken(null);
+    setDevices([]);
+    setSelectedDeviceId(null);
+    setPassword("");
+  };
 
-  const handleConnectHost = useCallback(
-    async (host: SavedHost) => {
-      setConnectingHostId(host.id);
-      setError(null);
+  const handleConnectSelected = () => {
+    if (!selectedDevice) {
+      setError("Please choose a device first.");
+      return;
+    }
 
-      try {
-        if (host.mode === "relay") {
-          if (!host.relayUrl || !host.relayUsername) {
-            throw new Error(t("hostPickerMissingRelayConfiguration"));
-          }
-
-          if (host.session) {
-            setCurrentHostId(host.id);
-            await connectViaRelay({
-              relayUrl: host.relayUrl,
-              relayUsername: host.relayUsername,
-              srpUsername: host.srpUsername,
-              srpPassword: "",
-              rememberMe: true,
-              onStatusChange: () => {},
-              session: host.session,
-            });
-          } else {
-            navigate("/login/relay", {
-              state: {
-                relayUsername: host.relayUsername,
-                relayUrl: host.relayUrl,
-              },
-            });
-          }
-        } else {
-          if (!host.wsUrl) {
-            throw new Error(t("hostPickerMissingWebSocketUrl"));
-          }
-
-          if (host.session) {
-            setCurrentHostId(host.id);
-            await connectDirectWithSession(
-              host.wsUrl,
-              host.srpUsername,
-              host.session,
-            );
-          } else {
-            navigate("/login/direct", {
-              state: {
-                serverUrl: host.wsUrl,
-                username: host.srpUsername,
-              },
-            });
-          }
-        }
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : t("hostPickerErrorConnectionFailed"),
-        );
-      } finally {
-        setConnectingHostId(null);
-      }
-    },
-    [connectDirectWithSession, connectViaRelay, navigate, setCurrentHostId, t],
-  );
-
-  const handleDeleteHost = useCallback(
-    (hostId: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (confirm(t("hostPickerRemoveConfirm"))) {
-        removeHost(hostId);
-        setHosts((prev) => prev.filter((host) => host.id !== hostId));
-      }
-    },
-    [t],
-  );
+    navigate("/login/relay", {
+      state: {
+        relayUsername: selectedDevice.relayUsername,
+        relayUrl: deriveRelayWsUrl(controlPlaneUrl),
+        lockRelayUsername: true,
+        deviceName: selectedDevice.deviceName,
+      },
+    });
+  };
 
   if (isAutoResuming) {
     return (
@@ -219,7 +292,7 @@ export function HostPickerPage() {
             <AgentLineLogo />
           </div>
           <p className="login-subtitle host-picker-top-subtitle">
-            {hostListSubtitle}
+            Platform account sign-in
           </p>
         </div>
 
@@ -230,77 +303,177 @@ export function HostPickerPage() {
         ) : null}
 
         <section className="host-picker-panel">
-          {hosts.length > 0 ? (
-            <div className="host-picker-list" data-testid="saved-hosts-list">
-              {hosts.map((host) => {
-                const status = hostStatuses[host.id] ?? "unknown";
-                const isConnecting = connectingHostId === host.id;
-
-                return (
-                  <button
-                    key={host.id}
-                    type="button"
-                    className="host-picker-item"
-                    onClick={() => void handleConnectHost(host)}
-                    disabled={isConnecting}
-                    data-testid={`host-item-${host.id}`}
-                  >
-                    <div className="host-picker-item-main">
-                      <span
-                        className={`host-picker-status host-picker-status-${status}`}
-                        title={t(
-                          `hostPickerStatus${status.charAt(0).toUpperCase()}${status.slice(1)}` as never,
-                        )}
-                      />
-                      <span className="host-picker-name">
-                        {host.displayName}
-                      </span>
-                      <span className="host-picker-mode">{host.mode}</span>
-                    </div>
-                    <div className="host-picker-item-meta">
-                      <span className="host-picker-last-connected">
-                        {host.lastConnected
-                          ? formatLastConnected(host.lastConnected)
-                          : host.mode === "relay"
-                            ? host.relayUsername
-                            : host.wsUrl}
-                      </span>
-                      <button
-                        type="button"
-                        className="host-picker-delete"
-                        onClick={(e) => handleDeleteHost(host.id, e)}
-                        title={t("hostPickerRemoveHost")}
-                      >
-                        &times;
-                      </button>
-                    </div>
-                    {isConnecting ? (
-                      <div className="host-picker-connecting">
-                        <div className="login-spinner" />
-                      </div>
-                    ) : null}
-                  </button>
-                );
-              })}
+          <form onSubmit={handleAuth} className="login-form">
+            <div className="login-field">
+              <label htmlFor="controlPlaneUrl">Control Plane URL</label>
+              <input
+                id="controlPlaneUrl"
+                type="text"
+                value={controlPlaneUrl}
+                onChange={(event) => setControlPlaneUrl(event.target.value)}
+                placeholder={DEFAULT_CONTROL_PLANE_URL}
+                disabled={loading || loadingDevices}
+              />
             </div>
-          ) : (
-            <p className="login-hint host-picker-empty-state">
-              {t("hostPickerEmptyHint")}
-            </p>
-          )}
+            <div className="host-picker-mode-switch">
+              <button
+                type="button"
+                className={`host-picker-mode-tab ${accountMode === "login" ? "host-picker-mode-tab-active" : ""}`}
+                onClick={() => setAccountMode("login")}
+                disabled={loading || loadingDevices}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                className={`host-picker-mode-tab ${accountMode === "register" ? "host-picker-mode-tab-active" : ""}`}
+                onClick={() => setAccountMode("register")}
+                disabled={loading || loadingDevices}
+              >
+                Register
+              </button>
+            </div>
+            <div className="login-field">
+              <label htmlFor="accountEmail">Email</label>
+              <input
+                id="accountEmail"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="username"
+                placeholder="you@example.com"
+                disabled={loading || loadingDevices}
+              />
+            </div>
+            <div className="login-field">
+              <label htmlFor="accountPassword">Password</label>
+              <input
+                id="accountPassword"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete={
+                  accountMode === "register"
+                    ? "new-password"
+                    : "current-password"
+                }
+                placeholder="your account password"
+                disabled={loading || loadingDevices}
+              />
+            </div>
+            <button
+              type="submit"
+              className="login-button"
+              disabled={loading || loadingDevices}
+            >
+              {loading
+                ? "Submitting..."
+                : accountMode === "register"
+                  ? "Register & Login"
+                  : "Login"}
+            </button>
+            {accessToken ? (
+              <button
+                type="button"
+                className="login-advanced-toggle"
+                onClick={handleLogout}
+                disabled={loading || loadingDevices}
+              >
+                Logout
+              </button>
+            ) : null}
+          </form>
+
+          {accessToken ? (
+            <div className="host-picker-list" data-testid="account-device-list">
+              <p className="login-hint">Choose one machine to continue:</p>
+              {loadingDevices ? (
+                <div className="login-status">
+                  <div className="login-spinner" />
+                  <span>Loading devices...</span>
+                </div>
+              ) : devices.length === 0 ? (
+                <p className="login-hint">
+                  No bound machine found in this account yet.
+                </p>
+              ) : (
+                devices.map((device) => {
+                  const selected = selectedDeviceId === device.id;
+                  return (
+                    <button
+                      type="button"
+                      key={device.id}
+                      className="host-picker-item"
+                      onClick={() => setSelectedDeviceId(device.id)}
+                      data-testid={`device-${device.id}`}
+                    >
+                      <div className="host-picker-item-main">
+                        <span
+                          className={`host-picker-status host-picker-status-${device.relayState === "offline" ? "offline" : "online"}`}
+                        />
+                        <span className="host-picker-name">
+                          {device.deviceName}
+                        </span>
+                        <span className="host-picker-mode">
+                          {device.deviceType}
+                        </span>
+                      </div>
+                      <div className="host-picker-item-meta">
+                        <span className="host-picker-last-connected">
+                          {device.relayUsername}
+                        </span>
+                        <span className="host-picker-last-connected">
+                          {device.relayState}
+                        </span>
+                      </div>
+                      {selected ? (
+                        <div className="host-picker-connecting">
+                          <span>Selected</span>
+                        </div>
+                      ) : null}
+                    </button>
+                  );
+                })
+              )}
+              <button
+                type="button"
+                className="login-button host-picker-add-button"
+                onClick={handleConnectSelected}
+                disabled={!selectedDevice || loadingDevices}
+              >
+                Continue (Input Access Password)
+              </button>
+            </div>
+          ) : null}
 
           <button
             type="button"
-            className="login-button host-picker-add-button"
-            onClick={() => navigate("/login/new")}
+            className="login-advanced-toggle"
+            onClick={() => setShowAdvanced((value) => !value)}
           >
-            {t("hostPickerAddNewHost")}
+            {showAdvanced
+              ? "Hide advanced connection"
+              : "Show advanced connection"}
           </button>
+          {showAdvanced ? (
+            <div className="host-picker-list">
+              <button
+                type="button"
+                className="login-button host-picker-add-button"
+                onClick={() => navigate("/login/direct")}
+              >
+                Direct connection (advanced)
+              </button>
+              <button
+                type="button"
+                className="login-button host-picker-add-button"
+                onClick={() => navigate("/login/relay")}
+              >
+                Manual relay connection (advanced)
+              </button>
+            </div>
+          ) : null}
         </section>
-
-        <p className="login-hint host-picker-footer-hint">
-          {t("hostPickerSavedHint")}
-        </p>
       </div>
     </div>
   );
