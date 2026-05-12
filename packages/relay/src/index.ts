@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { getRequestListener } from "@hono/node-server";
 import type Database from "better-sqlite3";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Pool } from "pg";
 import { WebSocketServer } from "ws";
@@ -132,6 +132,13 @@ function inferContentType(filePath: string): string {
   );
 }
 
+function notFoundText(c: Context) {
+  return c.body("Not Found", 404, {
+    "Cache-Control": "no-store, max-age=0",
+    "Content-Type": "text/plain; charset=utf-8",
+  });
+}
+
 // Add CORS for browser clients
 app.use(
   "*",
@@ -155,10 +162,10 @@ if (resolvedRemoteClientDistDir) {
   app.get("/assets/*", async (c) => {
     const requestedPath = c.req.path.replace(/^\/+/, "");
     const assetPath = resolveRemoteAsset(requestedPath);
-    if (!assetPath) return c.text("Not Found", 404);
+    if (!assetPath) return notFoundText(c);
 
     const assetBuffer = await tryReadFile(assetPath);
-    if (!assetBuffer) return c.text("Not Found", 404);
+    if (!assetBuffer) return notFoundText(c);
 
     return c.body(Uint8Array.from(assetBuffer), 200, {
       "Cache-Control": "public, max-age=86400",
@@ -175,10 +182,10 @@ if (resolvedRemoteClientDistDir) {
     app.get(rootStaticPath, async (c) => {
       const requestedPath = c.req.path.replace(/^\/+/, "");
       const assetPath = resolveRemoteAsset(requestedPath);
-      if (!assetPath) return c.text("Not Found", 404);
+      if (!assetPath) return notFoundText(c);
 
       const assetBuffer = await tryReadFile(assetPath);
-      if (!assetBuffer) return c.text("Not Found", 404);
+      if (!assetBuffer) return notFoundText(c);
 
       return c.body(Uint8Array.from(assetBuffer), 200, {
         "Cache-Control": "public, max-age=86400",
@@ -190,7 +197,7 @@ if (resolvedRemoteClientDistDir) {
   app.get("/remote/*", async (c) => {
     const requestedPath = c.req.path.replace(/^\/remote\/?/, "");
     const assetPath = resolveRemoteAsset(requestedPath);
-    if (!assetPath) return c.text("Not Found", 404);
+    if (!assetPath) return notFoundText(c);
 
     const assetBuffer = await tryReadFile(assetPath);
     if (assetBuffer) {
@@ -204,9 +211,9 @@ if (resolvedRemoteClientDistDir) {
     }
 
     const entryPath = resolveRemoteAsset(REMOTE_ENTRY_FILE);
-    if (!entryPath) return c.text("Not Found", 404);
+    if (!entryPath) return notFoundText(c);
     const entryBuffer = await tryReadFile(entryPath);
-    if (!entryBuffer) return c.text("Not Found", 404);
+    if (!entryBuffer) return notFoundText(c);
 
     // SPA fallback: unknown /remote/* routes should boot the remote client.
     return c.body(Uint8Array.from(entryBuffer), 200, {

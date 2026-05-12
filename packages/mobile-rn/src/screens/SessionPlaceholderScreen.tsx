@@ -22,8 +22,23 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
   const fixedUri = route.params.source.uri;
 
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [statusToast, setStatusToast] = useState<string | null>(null);
   const [canGoBackInWebView, setCanGoBackInWebView] = useState(false);
   const webViewRef = useRef<WebView>(null);
+  const lastStatusRef = useRef<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showStatusToast = (nextStatus: string) => {
+    if (lastStatusRef.current === nextStatus) return;
+    lastStatusRef.current = nextStatus;
+    setStatusToast(nextStatus);
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setStatusToast(null);
+    }, 3000);
+  };
 
   useEffect(() => {
     navigation.setOptions({ title: route.params.title });
@@ -37,6 +52,14 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
     });
     return unsubscribe;
   }, [navigation, canGoBackInWebView]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <SafeAreaView
@@ -52,13 +75,25 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
         onNavigationStateChange={(state: WebViewNavigation) => {
           setCanGoBackInWebView(state.canGoBack);
         }}
+        onLoadStart={() => {
+          showStatusToast(
+            route.params.mode === "relay" ? "中继连接中" : "连接中",
+          );
+        }}
+        onLoadEnd={() => {
+          showStatusToast(
+            route.params.mode === "relay" ? "中继已连接" : "已连接",
+          );
+        }}
         onError={(event) => {
+          showStatusToast("连接失败");
           setLoadError(
             event.nativeEvent.description ||
               `页面加载失败：${stripHash(fixedUri)}`,
           );
         }}
         onHttpError={(event) => {
+          showStatusToast("连接失败");
           setLoadError(
             `HTTP ${String(event.nativeEvent.statusCode)}：${stripHash(fixedUri)}`,
           );
@@ -74,6 +109,12 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
         originWhitelist={["*"]}
         style={styles.webview}
       />
+
+      {statusToast ? (
+        <View style={styles.statusToast}>
+          <Text style={styles.statusToastText}>{statusToast}</Text>
+        </View>
+      ) : null}
 
       {loadError ? (
         <View style={styles.errorBanner}>
@@ -110,6 +151,25 @@ const createStyles = (theme: AppTheme) =>
       color: theme.textDimmed,
       fontSize: 12,
       textAlign: "center",
+    },
+    statusToast: {
+      position: "absolute",
+      bottom: theme.spaceXl + 8,
+      alignSelf: "center",
+      backgroundColor: theme.panel,
+      borderColor: theme.border,
+      borderWidth: 1,
+      borderRadius: theme.radiusLg,
+      paddingHorizontal: theme.spaceMd,
+      paddingVertical: theme.spaceSm,
+      opacity: 0.95,
+      maxWidth: "80%",
+    },
+    statusToastText: {
+      color: theme.textSecondary,
+      textAlign: "center",
+      fontSize: 12,
+      fontWeight: "600",
     },
     errorBanner: {
       position: "absolute",
