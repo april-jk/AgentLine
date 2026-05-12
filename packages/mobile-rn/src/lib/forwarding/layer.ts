@@ -3,7 +3,6 @@ import { normalizeHttpBaseUrl } from "../api/client";
 
 export type ForwardMode = "direct" | "relay";
 const DEFAULT_REMOTE_THEME: ThemeMode = "auto";
-const PUBLIC_REMOTE_RELAY_ENTRY = "https://agentline.com/remote/";
 
 export type ForwardingInput =
   | {
@@ -89,13 +88,8 @@ function normalizeRelayLoginUrl(controlPlaneUrl: string): string {
   if (isLocalRemoteDevBase(base)) {
     return `${base}/login/relay`;
   }
-  try {
-    if (new URL(base).hostname === "relay.oneceo.ai") {
-      return PUBLIC_REMOTE_RELAY_ENTRY;
-    }
-  } catch {
-    // ignore URL parse failures and continue to same-origin fallback
-  }
+  // Use same-origin remote entry in production so mobile does not
+  // bounce between multiple hosted entries.
   return `${base}/remote/login/relay`;
 }
 
