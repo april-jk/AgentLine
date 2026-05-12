@@ -70,8 +70,8 @@ import type {
   RealClaudeSDKInterface,
 } from "./sdk/types.js";
 import type { BrowserProfileService } from "./services/BrowserProfileService.js";
-import type { ControlPlaneBridgeService } from "./services/ControlPlaneBridgeService.js";
 import type { ConnectedBrowsersService } from "./services/ConnectedBrowsersService.js";
+import type { ControlPlaneBridgeService } from "./services/ControlPlaneBridgeService.js";
 import type { ModelInfoService } from "./services/ModelInfoService.js";
 import type { NetworkBindingService } from "./services/NetworkBindingService.js";
 import type { RelayClientService } from "./services/RelayClientService.js";
@@ -242,6 +242,7 @@ export function createApp(options: AppOptions): AppResult {
         remoteSessionService: options.remoteSessionService,
         relayClientService: options.relayClientService,
         controlPlaneBridgeService: options.controlPlaneBridgeService,
+        serverSettingsService: options.serverSettingsService,
         onRelayConfigChanged: callbackHolder
           ? () => callbackHolder.callback?.() ?? Promise.resolve()
           : undefined,

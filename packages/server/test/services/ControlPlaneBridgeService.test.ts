@@ -125,4 +125,70 @@ describe("ControlPlaneBridgeService", () => {
     expect(state.lastError).toBe("unauthorized");
     expect(state.consecutiveFailures).toBe(1);
   });
+
+  it("supports runtime reconfigure for web-host login flows", async () => {
+    const fetchImpl = vi.fn(
+      async (input: RequestInfo | URL): Promise<Response> => {
+        const url = String(input);
+        if (url.endsWith("/api/v1/devices/register")) {
+          return jsonResponse(200, {
+            device: {
+              id: "device-runtime",
+              relayUsername: "desk-runtime",
+              deviceName: "Desk",
+            },
+          });
+        }
+        if (url.endsWith("/api/v1/devices/device-runtime/heartbeat")) {
+          return jsonResponse(200, {
+            device: {
+              id: "device-runtime",
+              relayUsername: "desk-runtime",
+              deviceName: "Desk",
+            },
+          });
+        }
+        return jsonResponse(404, { error: "not_found" });
+      },
+    );
+
+    let relayConfig: RelayConfig | null = null;
+    const service = new ControlPlaneBridgeService({
+      config: {
+        installId: "install-web-1",
+        deviceName: "Desktop Web",
+        deviceType: "desktop-web",
+        heartbeatIntervalMs: 60_000,
+      },
+      remoteAccessService: {
+        getRelayConfig: () => relayConfig,
+        setRelayConfig: async (next: RelayConfig) => {
+          relayConfig = next;
+        },
+      } as never,
+      onRelayConfigChanged: async () => {},
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    const activeState = await service.reconfigure({
+      baseUrl: "http://relay.local:4400",
+      accessToken: "token-runtime",
+      relayUrl: "ws://relay.local:4400/ws",
+    });
+    expect(activeState.enabled).toBe(true);
+    expect(activeState.running).toBe(true);
+    expect(activeState.deviceId).toBe("device-runtime");
+    expect(activeState.relayUsername).toBe("desk-runtime");
+
+    const inactiveState = await service.reconfigure({
+      baseUrl: undefined,
+      accessToken: undefined,
+      relayUrl: undefined,
+    });
+    expect(inactiveState.enabled).toBe(false);
+    expect(inactiveState.running).toBe(false);
+    expect(inactiveState.pausedReason).toBe("control_plane_not_configured");
+    expect(inactiveState.deviceId).toBeUndefined();
+    expect(inactiveState.relayUsername).toBeUndefined();
+  });
 });

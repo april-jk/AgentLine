@@ -85,6 +85,14 @@ export interface ServerSettings {
   phoneTalkerApiKey?: string;
   /** Whether to explicitly disable reasoning/thinking for the custom Talker API provider */
   phoneTalkerApiDisableThinking?: boolean;
+  /** Control-plane base URL used for desktop host registration */
+  controlPlaneBaseUrl?: string;
+  /** Control-plane access token used for desktop host registration */
+  controlPlaneAccessToken?: string;
+  /** Relay websocket URL associated with control-plane registration */
+  controlPlaneRelayWsUrl?: string;
+  /** Last control-plane account email used on this host */
+  controlPlaneLastEmail?: string;
 }
 
 /** Default settings */

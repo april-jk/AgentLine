@@ -5,6 +5,7 @@
 import { Hono } from "hono";
 import type { ControlPlaneBridgeService } from "../services/ControlPlaneBridgeService.js";
 import type { RelayClientService } from "../services/RelayClientService.js";
+import type { ServerSettingsService } from "../services/ServerSettingsService.js";
 import type { RemoteAccessService } from "./RemoteAccessService.js";
 import type { RemoteSessionService } from "./RemoteSessionService.js";
 
@@ -16,6 +17,8 @@ export interface RemoteAccessRoutesOptions {
   relayClientService?: RelayClientService;
   /** Optional control-plane bridge service for account/device automation */
   controlPlaneBridgeService?: ControlPlaneBridgeService;
+  /** Optional settings service for persisting control-plane credentials */
+  serverSettingsService?: ServerSettingsService;
   /** Callback to update relay connection when config changes */
   onRelayConfigChanged?: () => Promise<void>;
 }
@@ -28,9 +31,31 @@ export function createRemoteAccessRoutes(
     remoteSessionService,
     relayClientService,
     controlPlaneBridgeService,
+    serverSettingsService,
     onRelayConfigChanged,
   } = options;
   const app = new Hono();
+
+  const normalizeControlPlaneBaseUrl = (rawValue: string): string => {
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      throw new Error("control_plane_base_url_required");
+    }
+    const withScheme =
+      trimmed.startsWith("http://") || trimmed.startsWith("https://")
+        ? trimmed
+        : `https://${trimmed}`;
+    return withScheme.replace(/\/+$/, "");
+  };
+
+  const deriveRelayWsUrl = (baseUrl: string): string => {
+    const url = new URL(baseUrl);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/ws";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  };
 
   /**
    * GET /api/remote-access/config
@@ -266,6 +291,99 @@ export function createRemoteAccessRoutes(
       });
     }
     return c.json(controlPlaneBridgeService.getState());
+  });
+
+  /**
+   * PUT /api/remote-access/control-plane/config
+   * Configure control-plane bridge credentials at runtime and sync immediately.
+   */
+  app.put("/control-plane/config", async (c) => {
+    if (!controlPlaneBridgeService) {
+      return c.json({ error: "control_plane_bridge_unavailable" }, 503);
+    }
+
+    try {
+      const body = await c.req.json<{
+        baseUrl?: string;
+        accessToken?: string;
+        relayWsUrl?: string;
+        deviceName?: string;
+        deviceType?: string;
+        lastEmail?: string;
+      }>();
+      const rawBaseUrl = body.baseUrl ?? "";
+      const rawAccessToken = body.accessToken ?? "";
+      if (!rawBaseUrl.trim() || !rawAccessToken.trim()) {
+        return c.json(
+          { error: "control_plane_base_url_and_access_token_required" },
+          400,
+        );
+      }
+
+      const normalizedBaseUrl = normalizeControlPlaneBaseUrl(rawBaseUrl);
+      const relayWsUrl =
+        body.relayWsUrl?.trim() || deriveRelayWsUrl(normalizedBaseUrl);
+      const state = await controlPlaneBridgeService.reconfigure({
+        baseUrl: normalizedBaseUrl,
+        accessToken: rawAccessToken.trim(),
+        relayUrl: relayWsUrl,
+        deviceName: body.deviceName?.trim() || undefined,
+        deviceType: body.deviceType?.trim() || undefined,
+      });
+
+      if (state.pausedReason === "unauthorized") {
+        return c.json({ error: "control_plane_unauthorized", state }, 401);
+      }
+
+      await serverSettingsService?.updateSettings({
+        controlPlaneBaseUrl: normalizedBaseUrl,
+        controlPlaneAccessToken: rawAccessToken.trim(),
+        controlPlaneRelayWsUrl: relayWsUrl,
+        controlPlaneLastEmail: body.lastEmail?.trim() || undefined,
+      });
+
+      if (!state.deviceId || !state.relayUsername) {
+        return c.json(
+          { error: state.lastError ?? "control_plane_sync_failed", state },
+          502,
+        );
+      }
+
+      return c.json({
+        success: true,
+        state,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "control_plane_config_failed";
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  /**
+   * DELETE /api/remote-access/control-plane/config
+   * Clear runtime control-plane credentials and stop bridge sync.
+   */
+  app.delete("/control-plane/config", async (c) => {
+    if (!controlPlaneBridgeService) {
+      return c.json({ error: "control_plane_bridge_unavailable" }, 503);
+    }
+
+    await controlPlaneBridgeService.reconfigure({
+      baseUrl: undefined,
+      accessToken: undefined,
+      relayUrl: undefined,
+    });
+    await remoteAccessService.clearRelayConfig();
+    await onRelayConfigChanged?.();
+    await serverSettingsService?.updateSettings({
+      controlPlaneBaseUrl: undefined,
+      controlPlaneAccessToken: undefined,
+      controlPlaneRelayWsUrl: undefined,
+      controlPlaneLastEmail: undefined,
+    });
+
+    return c.json({ success: true });
   });
 
   /**

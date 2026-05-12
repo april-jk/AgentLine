@@ -124,6 +124,75 @@ export class ControlPlaneBridgeService {
     this.state.running = false;
   }
 
+  /**
+   * Update control-plane runtime configuration and trigger an immediate sync.
+   * This is used by non-Electron desktop flows where credentials are supplied
+   * after the server has already started.
+   */
+  async reconfigure(
+    updates: Partial<
+      Pick<
+        ControlPlaneBridgeConfig,
+        | "baseUrl"
+        | "accessToken"
+        | "relayUrl"
+        | "deviceName"
+        | "deviceType"
+        | "heartbeatIntervalMs"
+      >
+    >,
+  ): Promise<ControlPlaneBridgeState> {
+    if ("baseUrl" in updates) {
+      this.config.baseUrl = updates.baseUrl?.trim() || undefined;
+    }
+    if ("accessToken" in updates) {
+      this.config.accessToken = updates.accessToken?.trim() || undefined;
+    }
+    if ("relayUrl" in updates) {
+      this.config.relayUrl = updates.relayUrl?.trim() || undefined;
+    }
+    if ("deviceName" in updates) {
+      this.config.deviceName =
+        updates.deviceName?.trim() || this.config.deviceName;
+    }
+    if ("deviceType" in updates) {
+      this.config.deviceType =
+        updates.deviceType?.trim() || this.config.deviceType;
+    }
+    if (
+      "heartbeatIntervalMs" in updates &&
+      typeof updates.heartbeatIntervalMs === "number"
+    ) {
+      this.config.heartbeatIntervalMs = updates.heartbeatIntervalMs;
+    }
+
+    if (!this.isConfigured()) {
+      this.stop();
+      this.state.enabled = false;
+      this.state.pausedReason = "control_plane_not_configured";
+      this.state.deviceId = undefined;
+      this.state.relayUsername = undefined;
+      this.state.lastError = undefined;
+      return this.getState();
+    }
+
+    this.state.enabled = true;
+    this.state.running = true;
+    this.state.pausedReason = undefined;
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+
+    await this.syncNow();
+    if (this.state.running) {
+      this.timer = setInterval(() => {
+        void this.syncNow();
+      }, this.config.heartbeatIntervalMs);
+    }
+    return this.getState();
+  }
+
   async syncNow(): Promise<ControlPlaneBridgeState> {
     if (!this.isConfigured()) {
       return this.getState();

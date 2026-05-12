@@ -3,12 +3,12 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BrowserWindow, Menu, Tray, app, ipcMain, nativeImage } from "electron";
+import { DESKTOP_DISCOVERY_PORT_CANDIDATES } from "../../../shared/dist/desktop-discovery.js";
 import {
   type ControlPlaneConfig,
   ServerManager,
   type ServerStatus,
 } from "./serverManager.js";
-import { DESKTOP_DISCOVERY_PORT_CANDIDATES } from "../../../shared/dist/desktop-discovery.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,11 +44,45 @@ interface ControlPlaneLoginResponse {
   expiresAt: string;
 }
 
+interface ControlPlaneAccountUser {
+  id: string;
+  email: string;
+  createdAt: string;
+}
+
 interface ControlPlanePublicConfig {
   baseUrl?: string;
   relayWsUrl?: string;
   lastEmail?: string;
   hasAccessToken: boolean;
+}
+
+interface ControlPlaneAccountSummary extends ControlPlanePublicConfig {
+  authenticated: boolean;
+  user?: ControlPlaneAccountUser;
+}
+
+interface ControlPlaneAccountUpdatePayload {
+  currentPassword: string;
+  email?: string;
+  newPassword?: string;
+}
+
+interface RemoteAccessConfig {
+  enabled: boolean;
+  username: string | null;
+}
+
+interface ControlPlaneBridgeState {
+  enabled: boolean;
+  running: boolean;
+  pausedReason?: string;
+  deviceId?: string;
+  relayUsername?: string;
+  lastSyncAt?: string;
+  lastHeartbeatAt?: string;
+  lastError?: string;
+  consecutiveFailures: number;
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -90,6 +124,75 @@ const getControlPlanePublicConfig = (): ControlPlanePublicConfig => ({
   lastEmail: desktopConfig.controlPlane?.lastEmail,
   hasAccessToken: Boolean(desktopConfig.controlPlane?.accessToken),
 });
+
+const getControlPlaneAuthContext = (): {
+  baseUrl: string;
+  accessToken: string;
+} | null => {
+  const baseUrl = desktopConfig.controlPlane?.baseUrl?.trim();
+  const accessToken = desktopConfig.controlPlane?.accessToken?.trim();
+  if (!baseUrl || !accessToken) {
+    return null;
+  }
+  return { baseUrl, accessToken };
+};
+
+const fetchControlPlaneUser = async (): Promise<ControlPlaneAccountUser> => {
+  const auth = getControlPlaneAuthContext();
+  if (!auth) {
+    throw new Error("control_plane_not_configured");
+  }
+  const response = await fetch(`${auth.baseUrl}/api/v1/me`, {
+    headers: {
+      Authorization: `Bearer ${auth.accessToken}`,
+    },
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) {
+    let message = `me_failed_${response.status}`;
+    try {
+      const data = (await response.json()) as { error?: string };
+      if (data.error) message = data.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+  const payload = (await response.json()) as { user: ControlPlaneAccountUser };
+  return payload.user;
+};
+
+const getControlPlaneAccount =
+  async (): Promise<ControlPlaneAccountSummary> => {
+    const config = getControlPlanePublicConfig();
+    if (!config.hasAccessToken) {
+      return { ...config, authenticated: false };
+    }
+
+    try {
+      const user = await fetchControlPlaneUser();
+      return {
+        ...config,
+        authenticated: true,
+        user,
+      };
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      if (code === "unauthorized" || code.startsWith("me_failed_401")) {
+        desktopConfig.controlPlane = {
+          ...(desktopConfig.controlPlane ?? {}),
+          accessToken: "",
+        };
+        await saveDesktopConfig();
+        getServerManager().updateControlPlaneConfig(desktopConfig.controlPlane);
+        return {
+          ...getControlPlanePublicConfig(),
+          authenticated: false,
+        };
+      }
+      return { ...config, authenticated: false };
+    }
+  };
 
 const loadDesktopConfig = async (): Promise<void> => {
   try {
@@ -269,7 +372,195 @@ const loginToControlPlane = async (
   await saveDesktopConfig();
   getServerManager().updateControlPlaneConfig(desktopConfig.controlPlane);
   await getServerManager().restart();
+  await waitForControlPlaneSync();
   return getControlPlanePublicConfig();
+};
+
+const registerControlPlaneAccount = async (
+  payload: ControlPlaneLoginPayload,
+): Promise<ControlPlanePublicConfig> => {
+  const baseUrl = normalizeHttpUrl(payload.baseUrl);
+  const registerResponse = await fetch(`${baseUrl}/api/v1/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: payload.email.trim(),
+      password: payload.password,
+    }),
+    signal: AbortSignal.timeout(5000),
+  });
+
+  if (!registerResponse.ok && registerResponse.status !== 409) {
+    let message = `register_failed_${registerResponse.status}`;
+    try {
+      const data = (await registerResponse.json()) as { error?: string };
+      if (data.error) {
+        message = data.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  return loginToControlPlane(payload);
+};
+
+const updateControlPlaneAccount = async (
+  payload: ControlPlaneAccountUpdatePayload,
+): Promise<ControlPlaneAccountSummary> => {
+  const auth = getControlPlaneAuthContext();
+  if (!auth) {
+    throw new Error("control_plane_not_configured");
+  }
+
+  const response = await fetch(`${auth.baseUrl}/api/v1/me`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${auth.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      currentPassword: payload.currentPassword,
+      email: payload.email,
+      newPassword: payload.newPassword,
+    }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) {
+    let message = `update_failed_${response.status}`;
+    try {
+      const data = (await response.json()) as { error?: string };
+      if (data.error) message = data.error;
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  const result = (await response.json()) as { user: ControlPlaneAccountUser };
+  if (desktopConfig.controlPlane) {
+    desktopConfig.controlPlane.lastEmail = result.user.email;
+  }
+  await saveDesktopConfig();
+  return {
+    ...getControlPlanePublicConfig(),
+    authenticated: true,
+    user: result.user,
+  };
+};
+
+const logoutControlPlane = async (): Promise<ControlPlaneAccountSummary> => {
+  const auth = getControlPlaneAuthContext();
+  if (auth) {
+    try {
+      await fetch(`${auth.baseUrl}/api/v1/auth/logout`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      // ignore network errors on logout, local token clear is authoritative
+    }
+  }
+
+  desktopConfig.controlPlane = {
+    ...(desktopConfig.controlPlane ?? {}),
+    accessToken: "",
+  };
+  await saveDesktopConfig();
+  getServerManager().updateControlPlaneConfig(desktopConfig.controlPlane);
+  await getServerManager().restart();
+  return {
+    ...getControlPlanePublicConfig(),
+    authenticated: false,
+  };
+};
+
+const callDesktopProtectedApi = async <T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> => {
+  const headers = new Headers(init.headers);
+  headers.set("Content-Type", "application/json");
+  headers.set("x-agentline-api", "desktop-electron");
+  headers.set("x-desktop-token", getServerManager().getDesktopAuthToken());
+
+  const response = await fetch(`${getDashboardBaseUrl()}${path}`, {
+    ...init,
+    headers,
+    signal: init.signal ?? AbortSignal.timeout(5000),
+  });
+
+  if (!response.ok) {
+    let message = `request_failed_${response.status}`;
+    try {
+      const data = (await response.json()) as { error?: string };
+      if (data.error) {
+        message = data.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+
+  return (await response.json()) as T;
+};
+
+const waitForControlPlaneSync = async (): Promise<ControlPlaneBridgeState> => {
+  const maxAttempts = 8;
+  let lastError = "control_plane_sync_unavailable";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const ready = await waitForDashboard();
+    if (!ready) {
+      lastError = "dashboard_unavailable";
+      await sleep(250);
+      continue;
+    }
+
+    try {
+      const state = await callDesktopProtectedApi<ControlPlaneBridgeState>(
+        "/api/remote-access/control-plane/sync",
+        {
+          method: "POST",
+        },
+      );
+      if (state.pausedReason === "unauthorized") {
+        throw new Error("control_plane_unauthorized");
+      }
+      if (state.deviceId && state.relayUsername) {
+        return state;
+      }
+      lastError = state.lastError ?? state.pausedReason ?? "sync_incomplete";
+    } catch (error) {
+      lastError =
+        error instanceof Error ? error.message : "control_plane_sync_failed";
+    }
+
+    await sleep(300);
+  }
+
+  throw new Error(lastError);
+};
+
+const getRemoteAccessConfig = async (): Promise<RemoteAccessConfig> =>
+  callDesktopProtectedApi<RemoteAccessConfig>("/api/remote-access/config");
+
+const configureRemoteAccessPassword = async (
+  password: string,
+): Promise<RemoteAccessConfig> => {
+  await callDesktopProtectedApi<{ success: boolean; username: string | null }>(
+    "/api/remote-access/configure",
+    {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    },
+  );
+  return getRemoteAccessConfig();
 };
 
 const waitForDashboard = async (): Promise<boolean> => {
@@ -452,6 +743,7 @@ const registerIpcHandlers = (): void => {
   ipcMain.handle("control-plane:get-config", () =>
     getControlPlanePublicConfig(),
   );
+  ipcMain.handle("control-plane:get-account", () => getControlPlaneAccount());
   ipcMain.handle("control-plane:get-status", () =>
     fetchControlPlaneBridgeStatus(),
   );
@@ -460,6 +752,11 @@ const registerIpcHandlers = (): void => {
     async (_event, payload: ControlPlaneLoginPayload) =>
       loginToControlPlane(payload),
   );
+  ipcMain.handle(
+    "control-plane:register",
+    async (_event, payload: ControlPlaneLoginPayload) =>
+      registerControlPlaneAccount(payload),
+  );
   ipcMain.handle("control-plane:clear", async () => {
     desktopConfig.controlPlane = undefined;
     await saveDesktopConfig();
@@ -467,6 +764,22 @@ const registerIpcHandlers = (): void => {
     await getServerManager().restart();
     return getControlPlanePublicConfig();
   });
+  ipcMain.handle(
+    "control-plane:update-account",
+    async (_event, payload: ControlPlaneAccountUpdatePayload) =>
+      updateControlPlaneAccount(payload),
+  );
+  ipcMain.handle("control-plane:logout", () => logoutControlPlane());
+  ipcMain.handle("remote-access:get-config", () => getRemoteAccessConfig());
+  ipcMain.handle(
+    "remote-access:configure",
+    async (_event, payload: { password?: string }) => {
+      if (!payload.password?.trim()) {
+        throw new Error("password_required");
+      }
+      return configureRemoteAccessPassword(payload.password);
+    },
+  );
 };
 
 app.whenReady().then(async () => {

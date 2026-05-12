@@ -472,11 +472,27 @@ async function startServer() {
   const relayConfigCallbackHolder: { callback?: () => Promise<void> } = {};
   const controlPlaneRelayRefreshHolder: { callback?: () => Promise<void> } = {};
 
+  const savedControlPlaneBaseUrl = serverSettingsService.getSetting(
+    "controlPlaneBaseUrl",
+  );
+  const savedControlPlaneAccessToken = serverSettingsService.getSetting(
+    "controlPlaneAccessToken",
+  );
+  const savedControlPlaneRelayWsUrl = serverSettingsService.getSetting(
+    "controlPlaneRelayWsUrl",
+  );
+  const resolvedControlPlaneBaseUrl =
+    config.controlPlaneBaseUrl ?? savedControlPlaneBaseUrl;
+  const resolvedControlPlaneAccessToken =
+    config.controlPlaneAccessToken ?? savedControlPlaneAccessToken;
+  const resolvedControlPlaneRelayWsUrl =
+    config.controlPlaneRelayWsUrl ?? savedControlPlaneRelayWsUrl;
+
   const controlPlaneBridgeService = new ControlPlaneBridgeService({
     config: {
-      baseUrl: config.controlPlaneBaseUrl,
-      accessToken: config.controlPlaneAccessToken,
-      relayUrl: config.controlPlaneRelayWsUrl,
+      baseUrl: resolvedControlPlaneBaseUrl,
+      accessToken: resolvedControlPlaneAccessToken,
+      relayUrl: resolvedControlPlaneRelayWsUrl,
       installId: installService.getInstallId(),
       deviceName:
         config.controlPlaneDeviceName ?? `${os.hostname()} (${os.platform()})`,
