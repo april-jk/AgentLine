@@ -388,5 +388,5 @@ Format 0x03 - Compressed JSON:
 ## References
 
 - Current implementation: `packages/shared/src/crypto/encryption-types.ts`
-- NaCl secretbox: XSalsa20-Poly1305 authenticated encryption
+- NaCl `secretbox` primitive with XSalsa20-Poly1305 authenticated encryption
 - [CompressionStream MDN](https://developer.mozilla.org/en-US/docs/Web/API/CompressionStream)

@@ -12,9 +12,8 @@ vi.mock("web-push", () => ({
     setVapidDetails: vi.fn(),
     sendNotification: vi.fn(),
     generateVAPIDKeys: vi.fn(() => ({
-      publicKey:
-        "BNvS3m-n6IpLpGlxj3Mbl7VnBMwGG8syHB9Z45fELFKrQDGwB7z1Gs6ZF7JpY_gRqZDPqZpXnUzSyZvdOWOTnw8",
-      privateKey: "qXsHkzrVZy7ks6q6BZf4mTl4F4oKHH9dXtWlPzMknJs",
+      publicKey: "test_public_vapid_key_do_not_use",
+      privateKey: "test_private_vapid_key_do_not_use",
     })),
   },
 }));
@@ -29,9 +28,8 @@ describe("PushService", () => {
   const mockSubscription: PushSubscription = {
     endpoint: "https://fcm.googleapis.com/fcm/send/test-endpoint",
     keys: {
-      p256dh:
-        "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
-      auth: "tBHItJI5svbpez7KI4CCXg",
+      p256dh: "test_p256dh_key_do_not_use",
+      auth: "test_auth_key_do_not_use",
     },
   };
 

@@ -31,7 +31,7 @@
 
 **Input fields:**
 
-- `file_path`: string (e.g., "/home/kgraehl/code/assetos-takehome/20251119-tech-challenge-assetos.md")
+- `file_path`: string (e.g., "/home/<user>/code/assetos-takehome/20251119-tech-challenge-assetos.md")
 - `offset`: number | string (e.g., "[200, 220]")
 - `limit`: number
 
@@ -39,7 +39,7 @@
 
 **Input fields:**
 
-- `command`: string (e.g., "ls -la /home/kgraehl/code/assetos-takehome/data/ 2>/dev/null || echo "No data directory"")
+- `command`: string (e.g., "ls -la /home/<user>/code/assetos-takehome/data/ 2>/dev/null || echo "No data directory"")
 - `description`: string (e.g., "List project structure")
 - `run_in_background`: boolean
 - `timeout`: number
@@ -48,7 +48,7 @@
 
 **Input fields:**
 
-- `file_path`: string (e.g., "/home/kgraehl/.claude/plans/foamy-conjuring-crane.md")
+- `file_path`: string (e.g., "/home/<user>/.claude/plans/foamy-conjuring-crane.md")
 - `old_string`: string (e.g., "## Implementation Steps
 
 ### 1. Root Setup")
@@ -68,7 +68,7 @@
 **Input fields:**
 
 - `pattern`: string (e.g., "base64|encodeURIComponent|projectId")
-- `path`: string (e.g., "/home/kgraehl/code/claude-anywhere/packages/server/src")
+- `path`: string (e.g., "/home/<user>/code/claude-anywhere/packages/server/src")
 - `glob`: string (e.g., "*.ts")
 - `output_mode`: string (e.g., "content")
 - `-C`: number
@@ -84,7 +84,7 @@
 
 **Input fields:**
 
-- `file_path`: string (e.g., "/home/kgraehl/.claude/plans/foamy-conjuring-crane.md")
+- `file_path`: string (e.g., "/home/<user>/.claude/plans/foamy-conjuring-crane.md")
 - `content`: string (e.g., "packages:
   - "packages/*"
 ")
@@ -94,7 +94,7 @@
 **Input fields:**
 
 - `pattern`: string (e.g., "**/*")
-- `path`: string (e.g., "/home/kgraehl/code/assetos-takehome")
+- `path`: string (e.g., "/home/<user>/code/assetos-takehome")
 
 ### Task (60 uses)
 

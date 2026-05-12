@@ -155,23 +155,23 @@ describe("Project Path Utilities", () => {
     });
 
     it("normalizes macOS home paths", () => {
-      expect(normalizeProjectPathForDedup("/Users/kgraehl/dotfiles")).toBe(
-        "kgraehl/dotfiles",
+      expect(normalizeProjectPathForDedup("/Users/user/dotfiles")).toBe(
+        "user/dotfiles",
       );
     });
 
     it("normalizes Linux home paths", () => {
-      expect(normalizeProjectPathForDedup("/home/kgraehl/dotfiles")).toBe(
-        "kgraehl/dotfiles",
+      expect(normalizeProjectPathForDedup("/home/user/dotfiles")).toBe(
+        "user/dotfiles",
       );
     });
 
     it("matches macOS and Linux paths for same user/project", () => {
       const macos = normalizeProjectPathForDedup(
-        "/Users/kgraehl/code/agentline",
+        "/Users/user/code/agentline",
       );
       const linux = normalizeProjectPathForDedup(
-        "/home/kgraehl/code/agentline",
+        "/home/user/code/agentline",
       );
       expect(macos).toBe(linux);
     });
@@ -214,9 +214,9 @@ describe("Project Path Utilities", () => {
 
     it("matches Windows and macOS paths for same user/project", () => {
       const win = normalizeProjectPathForDedup(
-        "C:\\Users\\kgraehl\\code\\agentline",
+        "C:\\Users\\user\\code\\agentline",
       );
-      const mac = normalizeProjectPathForDedup("/Users/kgraehl/code/agentline");
+      const mac = normalizeProjectPathForDedup("/Users/user/code/agentline");
       expect(win).toBe(mac);
     });
 

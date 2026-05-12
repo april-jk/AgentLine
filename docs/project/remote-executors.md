@@ -119,7 +119,7 @@ async function syncSessions(options: SyncOptions): Promise<void> {
 }
 
 function getProjectDirFromCwd(cwd: string): string {
-  // Convert /home/kgraehl/code/project → home-kgraehl-code-project
+  // Convert /home/<user>/code/project → home-<user>-code-project
   // (matches SDK's session directory naming)
 }
 ```

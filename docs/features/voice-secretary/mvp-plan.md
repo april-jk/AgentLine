@@ -58,7 +58,7 @@ Runnable fixture:
 curl -X POST http://localhost:3400/api/voice-secretary/simulate \
   -H 'content-type: application/json' \
   -H 'x-agentline-request: true' \
-  -d '{"projectPath":"/Users/watson/codingProj/AgentLine","utterance":"Help me understand what this project should do next."}'
+  -d '{"projectPath":"/path/to/AgentLine","utterance":"Help me understand what this project should do next."}'
 ```
 
 The fixture is intentionally text-only. It proves the internal state machine
@@ -71,7 +71,7 @@ To create a real AgentLine provider session from the same task packet, pass
 curl -X POST http://localhost:3400/api/voice-secretary/simulate \
   -H 'content-type: application/json' \
   -H 'x-agentline-request: true' \
-  -d '{"projectPath":"/Users/watson/codingProj/AgentLine","utterance":"Prepare the next implementation step.","executorMode":"agentline"}'
+  -d '{"projectPath":"/path/to/AgentLine","utterance":"Prepare the next implementation step.","executorMode":"agentline"}'
 ```
 
 Read-only planner tasks use permission mode `plan` so Codex receives a

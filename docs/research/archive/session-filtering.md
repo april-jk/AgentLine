@@ -131,7 +131,7 @@ Trade-offs:
 
 ## What Sessions Get Filtered
 
-Based on actual data from `~/.claude/projects/-home-kgraehl-gigabyte-pwm/`:
+Based on actual data from `~/.claude/projects/-home-<user>-gigabyte-pwm/`:
 
 | Category | Count | Example |
 |----------|-------|---------|

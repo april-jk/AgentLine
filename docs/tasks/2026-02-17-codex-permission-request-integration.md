@@ -11,12 +11,12 @@ The Codex app-server JSON-RPC protocol does expose explicit approval requests an
 ## Evidence Collected
 
 1. Current provider limitation in code:
-- `/Users/kgraehl/code/agentline/packages/server/src/sdk/providers/codex.ts`
+- `/path/to/agentline/packages/server/src/sdk/providers/codex.ts`
 - `supportsPermissionMode = false`
 - session loop uses `thread.runStreamed()` and only receives `thread/turn/item/error` events.
 
 2. Codex SDK type surface lacks approval-request events:
-- `/Users/kgraehl/code/agentline/node_modules/.pnpm/@openai+codex-sdk@0.77.0/node_modules/@openai/codex-sdk/dist/index.d.ts`
+- `/path/to/agentline/node_modules/.pnpm/@openai+codex-sdk@0.77.0/node_modules/@openai/codex-sdk/dist/index.d.ts`
 - `ThreadEvent` union includes no permission-request event.
 
 3. Real Codex persisted sessions show elevated tool calls include:
@@ -66,11 +66,11 @@ Decision models include:
 This is sufficient for one-shot allow/deny, but codex app-server supports richer decisions (`acceptForSession`, exec policy amendment) that are not represented in current `ToolApprovalResult` and session input response API.
 
 Relevant files:
-- `/Users/kgraehl/code/agentline/packages/server/src/supervisor/Process.ts`
-- `/Users/kgraehl/code/agentline/packages/server/src/sdk/types.ts`
-- `/Users/kgraehl/code/agentline/packages/server/src/routes/sessions.ts`
-- `/Users/kgraehl/code/agentline/packages/client/src/components/ToolApprovalPanel.tsx`
-- `/Users/kgraehl/code/agentline/packages/client/src/api/client.ts`
+- `/path/to/agentline/packages/server/src/supervisor/Process.ts`
+- `/path/to/agentline/packages/server/src/sdk/types.ts`
+- `/path/to/agentline/packages/server/src/routes/sessions.ts`
+- `/path/to/agentline/packages/client/src/components/ToolApprovalPanel.tsx`
+- `/path/to/agentline/packages/client/src/api/client.ts`
 
 Codex item-shape mismatch to account for:
 - current `@openai/codex-sdk` `ThreadItem` uses snake_case item types (`command_execution`, `file_change`)
@@ -139,8 +139,8 @@ After phase 1 transport integration:
 - remove client metadata claim "No out-of-band tool approval"
 
 Files:
-- `/Users/kgraehl/code/agentline/packages/server/src/sdk/providers/codex.ts`
-- `/Users/kgraehl/code/agentline/packages/client/src/providers/implementations/CodexProvider.ts`
+- `/path/to/agentline/packages/server/src/sdk/providers/codex.ts`
+- `/path/to/agentline/packages/client/src/providers/implementations/CodexProvider.ts`
 
 ## Permission Mode Mapping (Codex)
 

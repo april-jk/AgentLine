@@ -135,17 +135,17 @@ export function canonicalizeProjectPath(path: string): string {
  * on different machines (macOS vs Linux) merges into one entry.
  *
  * @example
- * normalizeProjectPathForDedup("/Users/kgraehl/dotfiles")  // => "kgraehl/dotfiles"
- * normalizeProjectPathForDedup("/home/kgraehl/dotfiles")   // => "kgraehl/dotfiles"
+ * normalizeProjectPathForDedup("/Users/user/dotfiles")  // => "user/dotfiles"
+ * normalizeProjectPathForDedup("/home/user/dotfiles")   // => "user/dotfiles"
  * normalizeProjectPathForDedup("/root/dotfiles")           // => "root/dotfiles"
  * normalizeProjectPathForDedup("/opt/shared/project")      // => "/opt/shared/project"
  */
 export function normalizeProjectPathForDedup(path: string): string {
   const normalized = canonicalizeProjectPath(path);
-  // Unix: /Users/kgraehl/dotfiles or /home/kgraehl/dotfiles
+  // Unix: /Users/user/dotfiles or /home/user/dotfiles
   const unixMatch = normalized.match(/^\/(?:Users|home)\/(.+)$/);
   if (unixMatch?.[1]) return unixMatch[1];
-  // Windows: C:/Users/kgraehl/dotfiles (after backslash normalization)
+  // Windows: C:/Users/user/dotfiles (after backslash normalization)
   const winMatch = normalized.match(/^[a-zA-Z]:\/(?:Users|home)\/(.+)$/);
   if (winMatch?.[1]) return winMatch[1];
   const rootMatch = normalized.match(/^\/root\/(.+)$/);

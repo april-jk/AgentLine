@@ -128,7 +128,7 @@ Uses Tauri's built-in updater with GitHub Releases.
       "active": true,
       "pubkey": "YOUR_PUBLIC_KEY",
       "endpoints": [
-        "https://github.com/kgraehl/agentline/releases/latest/download/latest.json"
+        "https://github.com/<user>/agentline/releases/latest/download/latest.json"
       ]
     }
   }

@@ -540,7 +540,7 @@ const CLAUDE_SESSION_2E582BFB_FIXTURE: ClaudeSessionEntry[] = [
           type: "tool_use",
           id: "toolu_01F85BCXN9KXiBR8uZJzVKCe",
           name: "Read",
-          input: { file_path: "/Users/kgraehl/code/agentline/CLAUDE.md" },
+          input: { file_path: "/Users/user/code/agentline/CLAUDE.md" },
           caller: { type: "direct" },
         },
       ],
@@ -564,7 +564,7 @@ const CLAUDE_SESSION_2E582BFB_FIXTURE: ClaudeSessionEntry[] = [
     toolUseResult: {
       type: "text",
       file: {
-        filePath: "/Users/kgraehl/code/agentline/CLAUDE.md",
+        filePath: "/Users/user/code/agentline/CLAUDE.md",
         content:
           "# AgentLine\n...\n- **Type discrimination**: Use `type` field (user/assistant/system/summary)\n",
         numLines: 328,
@@ -861,7 +861,7 @@ describe("Render Parity Harness", () => {
         structured: {
           type: "text",
           file: {
-            filePath: "/Users/kgraehl/code/agentline/CLAUDE.md",
+            filePath: "/Users/user/code/agentline/CLAUDE.md",
             numLines: 328,
           },
         },

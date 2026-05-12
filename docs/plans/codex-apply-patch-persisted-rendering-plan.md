@@ -14,7 +14,7 @@ Constraint: no new client-side diff parsing/highlighting logic.
    - `packages/server/src/sessions/normalization.ts`
    - `packages/client/src/components/renderers/tools/index.tsx`
 2. Persisted Codex `custom_tool_call` with `name=apply_patch` stores `payload.input` as a raw patch string (`*** Begin Patch ...`), not `Edit` fields (`file_path`, `old_string`, `new_string`).
-   - Example: `/Users/kgraehl/.codex/sessions/2026/02/17/rollout-2026-02-17T12-52-12-019c6b71-984f-71e0-9a27-3bcea9f8cffd.jsonl`
+   - Example: `~/.codex/sessions/2026/02/17/rollout-2026-02-17T12-52-12-019c6b71-984f-71e0-9a27-3bcea9f8cffd.jsonl`
 3. Server `augmentEditInputs` only augments when those classic Edit fields exist, so Codex `apply_patch` calls do not get `_structuredPatch` / `_diffHtml`.
    - `packages/server/src/routes/sessions.ts`
 4. `EditRenderer` shows `Computing diff...` when `structuredPatch` is missing, including completed items in collapsed preview paths.
@@ -137,7 +137,7 @@ Use **Option B + a hard fallback in EditRenderer**.
 
 Use session:
 - `019c6b71-984f-71e0-9a27-3bcea9f8cffd`
-- file: `/Users/kgraehl/.codex/sessions/2026/02/17/rollout-2026-02-17T12-52-12-019c6b71-984f-71e0-9a27-3bcea9f8cffd.jsonl`
+- file: `~/.codex/sessions/2026/02/17/rollout-2026-02-17T12-52-12-019c6b71-984f-71e0-9a27-3bcea9f8cffd.jsonl`
 
 Validate in UI:
 1. No completed Codex `apply_patch` row is stuck on `Computing diff...`.

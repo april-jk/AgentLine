@@ -45,7 +45,7 @@ export interface SyncResult {
  * The SDK stores sessions in ~/.claude/projects/{encoded-path}/
  * where encoded-path is the path with all / replaced by -.
  *
- * For example: /home/kgraehl/code/project → -home-kgraehl-code-project
+ * For example: /home/user/code/project → -home-user-code-project
  */
 export function getProjectDirFromCwd(cwd: string): string {
   // Replace all slashes (and colons on Windows, e.g. C:) with dashes

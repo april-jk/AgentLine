@@ -188,7 +188,7 @@ Token usage from SDK's `UsageMetadata` (input_tokens, output_tokens, cache_read/
 
 ## Notable Implementation Details
 
-- **Path encoding/decoding:** Reverses Claude's `-Users-kgraehl-code-myapp` encoding for project discovery
+- **Path encoding/decoding:** Reverses Claude's `-Users-<user>-code-myapp` encoding for project discovery
 - **Worktree grouping:** Detects source of git worktrees (Conductor, auto-claude, ccswitch, vibe-kanban, etc.) and groups by remote URL
 - **Semantic step extraction:** Parses assistant thinking text to extract high-level reasoning steps as collapsible outlines
 - **Waterfall chart data:** Computes timeline visualization of cumulative token consumption per message

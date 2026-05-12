@@ -110,8 +110,8 @@ export async function getRemoteHome(host: string): Promise<string | null> {
  * Translate a local path to a remote path by replacing the home directory.
  *
  * For example:
- * - Local: /home/kgraehl/code/project, localHome: /home/kgraehl, remoteHome: /Users/kgraehl
- * - Result: /Users/kgraehl/code/project
+ * - Local: /home/user/code/project, localHome: /home/user, remoteHome: /Users/user
+ * - Result: /Users/user/code/project
  */
 export function translateHomePath(
   localPath: string,
@@ -304,8 +304,8 @@ async function runSSHCommand(
  * This handles Mac (/Users/username) to Linux (/home/username) differences.
  *
  * Examples:
- *   /Users/kgraehl/code/project -> $HOME/code/project
- *   /home/kgraehl/code/project -> $HOME/code/project
+ *   /Users/user/code/project -> $HOME/code/project
+ *   /home/user/code/project -> $HOME/code/project
  *   /var/www/project -> /var/www/project (unchanged)
  */
 function toRemotePath(localPath: string): string {

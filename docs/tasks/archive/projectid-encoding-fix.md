@@ -11,7 +11,7 @@ The codebase has two different encodings for project identification, both confus
 | Encoding | Format | Example | Reversible | Used In |
 |----------|--------|---------|------------|---------|
 | **Base64url** | URL-safe base64 of absolute path | `L2hvbWUva2dyYWVobC9jb2RlL2NsYXVkZS1hbnl3aGVyZQ` | Yes | URLs, API, client |
-| **Directory** | Slash-to-hyphen + optional hostname | `-home-kgraehl-code-claude-anywhere` or `hostname/-home-...` | No (lossy) | File paths in ~/.claude/projects/ |
+| **Directory** | Slash-to-hyphen + optional hostname | `-home-<user>-code-claude-anywhere` or `hostname/-home-...` | No (lossy) | File paths in ~/.claude/projects/ |
 
 Both are `string` types with identical names, making it impossible to catch mismatches at compile time. This has caused **at least 5 bugs** where one format is incorrectly compared to the other.
 

@@ -92,14 +92,14 @@ Lightweight WebSocket router. Responsibilities:
 
 1. User opens agentline settings
 2. Enables "Remote Access"
-3. Enters username (e.g., `kgraehl`) - checked for availability
+3. Enters username (e.g., `<user>`) - checked for availability
 4. Enters password
 5. Yepanywhere server stores SRP verifier (never the password)
 6. Yepanywhere server connects to relay, registers username
 
 ### Connecting from Phone
 
-1. User visits `agentline.com/c/kgraehl`
+1. User visits `agentline.com/c/<user>`
 2. Enters password
 3. SRP handshake via relay (proves both sides know password)
 4. Session key established
@@ -174,10 +174,10 @@ class SecureConnection implements Connection {
 }
 
 // Direct secure - WS straight to agentline (LAN testing)
-new SecureConnection('wss://192.168.1.50:3400/ws', 'kgraehl')
+new SecureConnection('wss://192.168.1.50:3400/ws', '<user>')
 
 // Via relay - WS to relay (production remote access)
-new SecureConnection('wss://relay.agentline.com/ws', 'kgraehl')
+new SecureConnection('wss://relay.agentline.com/ws', '<user>')
 ```
 
 **Connection modes:**
@@ -201,11 +201,11 @@ SecureConnection extends WebSocketConnection, adding SRP handshake and encryptio
 For load balancing across multiple relays:
 
 1. **Registration** - Yepanywhere server registers with central DB (Redis/Postgres)
-2. **Discovery** - Phone asks "where is kgraehl?" → gets assigned relay URL
+2. **Discovery** - Phone asks "where is <user>?" → gets assigned relay URL
 3. **Routing** - Phone connects to correct relay
 
 ```
-Phone ──▶ /api/relay/locate/kgraehl ──▶ { "relay": "wss://relay2.agentline.com" }
+Phone ──▶ /api/relay/locate/<user> ──▶ { "relay": "wss://relay2.agentline.com" }
       │
       └──▶ connect to relay2
 ```
@@ -243,7 +243,7 @@ Separate concern from relay. Two options:
 
 **Option A: Generic notifications**
 ```json
-{ "title": "kgraehl", "body": "Action needed" }
+{ "title": "<user>", "body": "Action needed" }
 ```
 User taps, app fetches details over encrypted relay.
 

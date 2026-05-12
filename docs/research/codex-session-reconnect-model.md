@@ -36,9 +36,9 @@ Upstream Codex app-server handles thread resume as a **serialized server-side op
 
 Authoritative references in the Codex source tree:
 
-- `/Users/kgraehl/code/reference/codex/codex-rs/app-server/src/thread_state.rs`
-- `/Users/kgraehl/code/reference/codex/codex-rs/app-server/src/codex_message_processor.rs`
-- `/Users/kgraehl/code/reference/codex/codex-rs/app-server-protocol/src/protocol/thread_history.rs`
+- `/path/to/reference/codex/codex-rs/app-server/src/thread_state.rs`
+- `/path/to/reference/codex/codex-rs/app-server/src/codex_message_processor.rs`
+- `/path/to/reference/codex/codex-rs/app-server-protocol/src/protocol/thread_history.rs`
 
 Relevant points:
 
@@ -62,11 +62,11 @@ AgentLine intentionally does **not** wait for a single server-authoritative resu
 Current sources:
 
 - REST session load from JSONL:
-  - [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSessionMessages.ts)
+  - [packages/client/src/hooks/useSessionMessages.ts](/path/to/agentline/packages/client/src/hooks/useSessionMessages.ts)
 - WebSocket session subscription with connected event + replay:
-  - [packages/server/src/subscriptions.ts](/Users/kgraehl/code/agentline/packages/server/src/subscriptions.ts)
+  - [packages/server/src/subscriptions.ts](/path/to/agentline/packages/server/src/subscriptions.ts)
 - client reconnect catch-up logic:
-  - [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSession.ts)
+  - [packages/client/src/hooks/useSession.ts](/path/to/agentline/packages/client/src/hooks/useSession.ts)
 
 Current behavior:
 
@@ -87,7 +87,7 @@ Claude is easier because stream and persisted messages share stable message UUID
 
 Reference:
 
-- [docs/research/claude-sdk-message-ids.md](/Users/kgraehl/code/agentline/docs/research/claude-sdk-message-ids.md)
+- [docs/research/claude-sdk-message-ids.md](/path/to/agentline/docs/research/claude-sdk-message-ids.md)
 
 Codex is harder because the shapes differ:
 
@@ -100,11 +100,11 @@ Codex is harder because the shapes differ:
 Relevant local code:
 
 - Codex live normalization:
-  - [packages/server/src/sdk/providers/codex.ts](/Users/kgraehl/code/agentline/packages/server/src/sdk/providers/codex.ts)
+  - [packages/server/src/sdk/providers/codex.ts](/path/to/agentline/packages/server/src/sdk/providers/codex.ts)
 - persisted Codex normalization:
-  - [packages/server/src/sessions/normalization.ts](/Users/kgraehl/code/agentline/packages/server/src/sessions/normalization.ts)
+  - [packages/server/src/sessions/normalization.ts](/path/to/agentline/packages/server/src/sessions/normalization.ts)
 - Codex session schema:
-  - [packages/shared/src/codex-schema/session.ts](/Users/kgraehl/code/agentline/packages/shared/src/codex-schema/session.ts)
+  - [packages/shared/src/codex-schema/session.ts](/path/to/agentline/packages/shared/src/codex-schema/session.ts)
 
 Important consequence:
 
@@ -120,7 +120,7 @@ Current subscription behavior is correct for the in-memory process stream, but n
 
 Reference:
 
-- [packages/server/src/subscriptions.ts](/Users/kgraehl/code/agentline/packages/server/src/subscriptions.ts)
+- [packages/server/src/subscriptions.ts](/path/to/agentline/packages/server/src/subscriptions.ts)
 
 Important details:
 
@@ -137,8 +137,8 @@ It is **not** atomic with respect to persisted JSONL loading.
 
 Reference:
 
-- [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSessionMessages.ts)
-- [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSession.ts)
+- [packages/client/src/hooks/useSessionMessages.ts](/path/to/agentline/packages/client/src/hooks/useSessionMessages.ts)
+- [packages/client/src/hooks/useSession.ts](/path/to/agentline/packages/client/src/hooks/useSession.ts)
 
 Important details:
 
@@ -151,8 +151,8 @@ Important details:
 
 Reference:
 
-- [packages/client/src/lib/codexLinearMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/lib/codexLinearMessages.ts)
-- [packages/client/src/lib/__tests__/codexLinearMessages.test.ts](/Users/kgraehl/code/agentline/packages/client/src/lib/__tests__/codexLinearMessages.test.ts)
+- [packages/client/src/lib/codexLinearMessages.ts](/path/to/agentline/packages/client/src/lib/codexLinearMessages.ts)
+- [packages/client/src/lib/__tests__/codexLinearMessages.test.ts](/path/to/agentline/packages/client/src/lib/__tests__/codexLinearMessages.test.ts)
 
 Current Codex-only strategy:
 
@@ -489,20 +489,20 @@ The right target is:
 
 ### AgentLine
 
-- [packages/server/src/subscriptions.ts](/Users/kgraehl/code/agentline/packages/server/src/subscriptions.ts)
-- [packages/client/src/hooks/useSession.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSession.ts)
-- [packages/client/src/hooks/useSessionMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/hooks/useSessionMessages.ts)
-- [packages/client/src/lib/codexLinearMessages.ts](/Users/kgraehl/code/agentline/packages/client/src/lib/codexLinearMessages.ts)
-- [packages/server/src/sdk/providers/codex.ts](/Users/kgraehl/code/agentline/packages/server/src/sdk/providers/codex.ts)
-- [packages/server/src/sessions/normalization.ts](/Users/kgraehl/code/agentline/packages/server/src/sessions/normalization.ts)
-- [packages/shared/src/codex-schema/session.ts](/Users/kgraehl/code/agentline/packages/shared/src/codex-schema/session.ts)
-- [docs/research/claude-sdk-message-ids.md](/Users/kgraehl/code/agentline/docs/research/claude-sdk-message-ids.md)
+- [packages/server/src/subscriptions.ts](/path/to/agentline/packages/server/src/subscriptions.ts)
+- [packages/client/src/hooks/useSession.ts](/path/to/agentline/packages/client/src/hooks/useSession.ts)
+- [packages/client/src/hooks/useSessionMessages.ts](/path/to/agentline/packages/client/src/hooks/useSessionMessages.ts)
+- [packages/client/src/lib/codexLinearMessages.ts](/path/to/agentline/packages/client/src/lib/codexLinearMessages.ts)
+- [packages/server/src/sdk/providers/codex.ts](/path/to/agentline/packages/server/src/sdk/providers/codex.ts)
+- [packages/server/src/sessions/normalization.ts](/path/to/agentline/packages/server/src/sessions/normalization.ts)
+- [packages/shared/src/codex-schema/session.ts](/path/to/agentline/packages/shared/src/codex-schema/session.ts)
+- [docs/research/claude-sdk-message-ids.md](/path/to/agentline/docs/research/claude-sdk-message-ids.md)
 
 ### Reference Codex repo
 
-- `/Users/kgraehl/code/reference/codex/codex-rs/app-server/src/thread_state.rs`
-- `/Users/kgraehl/code/reference/codex/codex-rs/app-server/src/codex_message_processor.rs`
-- `/Users/kgraehl/code/reference/codex/codex-rs/app-server-protocol/src/protocol/thread_history.rs`
-- `/Users/kgraehl/code/reference/codex/sdk/typescript/src/thread.ts`
-- `/Users/kgraehl/code/reference/codex/sdk/typescript/src/events.ts`
-- `/Users/kgraehl/code/reference/codex/sdk/typescript/src/items.ts`
+- `/path/to/reference/codex/codex-rs/app-server/src/thread_state.rs`
+- `/path/to/reference/codex/codex-rs/app-server/src/codex_message_processor.rs`
+- `/path/to/reference/codex/codex-rs/app-server-protocol/src/protocol/thread_history.rs`
+- `/path/to/reference/codex/sdk/typescript/src/thread.ts`
+- `/path/to/reference/codex/sdk/typescript/src/events.ts`
+- `/path/to/reference/codex/sdk/typescript/src/items.ts`

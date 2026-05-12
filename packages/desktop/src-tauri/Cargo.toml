@@ -2,7 +2,7 @@
 name = "agentline-desktop"
 version = "0.1.0"
 description = "AgentLine Desktop App"
-authors = ["Kyle Graehl <kgraehl@gmail.com>"]
+authors = ["AgentLine Contributors <maintainers@example.com>"]
 edition = "2021"
 
 [lib]

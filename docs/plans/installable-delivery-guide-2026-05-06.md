@@ -108,25 +108,25 @@ iOS：
 ## 6) 本次已生成产物（2026-05-06）
 
 桌面端（macOS）：
-- `/Users/watson/codingProj/AgentLine/packages/desktop-electron/release/AgentLine Desktop-0.1.0-arm64.dmg`
-- `/Users/watson/codingProj/AgentLine/packages/desktop-electron/release/AgentLine Desktop-0.1.0-arm64-mac.zip`
+- `/path/to/AgentLine/packages/desktop-electron/release/AgentLine Desktop-0.1.0-arm64.dmg`
+- `/path/to/AgentLine/packages/desktop-electron/release/AgentLine Desktop-0.1.0-arm64-mac.zip`
 
 移动端（Android）：
-- `/Users/watson/codingProj/AgentLine/packages/mobile-rn/android/app/build/outputs/apk/debug/app-debug.apk`
+- `/path/to/AgentLine/packages/mobile-rn/android/app/build/outputs/apk/debug/app-debug.apk`
 
 移动端（iOS 模拟器）：
-- `/Users/watson/Library/Developer/Xcode/DerivedData/AgentLineMobile-boeluyajsljhwrdiumyektzmulzh/Build/Products/Release-iphonesimulator/AgentLineMobile.app`
+- `/path/to/DerivedData/AgentLineMobile/Build/Products/Release-iphonesimulator/AgentLineMobile.app`
 
 ## 7) 安装方式（本机）
 
 Android APK 安装到已连接设备：
 
 ```bash
-adb install -r /Users/watson/codingProj/AgentLine/packages/mobile-rn/android/app/build/outputs/apk/debug/app-debug.apk
+adb install -r /path/to/AgentLine/packages/mobile-rn/android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 iOS 模拟器安装（若需要手动重装）：
 
 ```bash
-xcrun simctl install booted /Users/watson/Library/Developer/Xcode/DerivedData/AgentLineMobile-boeluyajsljhwrdiumyektzmulzh/Build/Products/Release-iphonesimulator/AgentLineMobile.app
+xcrun simctl install booted /path/to/DerivedData/AgentLineMobile/Build/Products/Release-iphonesimulator/AgentLineMobile.app
 ```
