@@ -220,6 +220,9 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [resolvedUri, setResolvedUri] = useState(route.params.source.uri);
+  const [resolvedCandidateAvailable, setResolvedCandidateAvailable] = useState(
+    route.params.mode !== "direct" && route.params.mode !== "relay",
+  );
   const [isResolvingSource, setIsResolvingSource] = useState(
     route.params.mode === "direct" || route.params.mode === "relay",
   );
@@ -245,6 +248,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
     const resolveSource = async () => {
       setIsResolvingSource(true);
       setLoadError(null);
+      setResolvedCandidateAvailable(false);
       const candidates =
         route.params.mode === "direct"
           ? buildDirectCandidateUrls(route.params.source.uri, route.params.url)
@@ -254,6 +258,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
         if (cancelled) return;
         setResolvedUri(candidate);
         if (await canReachCandidate(candidate)) {
+          setResolvedCandidateAvailable(true);
           setIsResolvingSource(false);
           return;
         }
@@ -264,6 +269,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
         setLoadError(
           `无法打开远程页面：${stripHash(candidates[0] ?? route.params.source.uri)}`,
         );
+        setResolvedCandidateAvailable(false);
         setIsResolvingSource(false);
       }
     };
@@ -284,6 +290,11 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
         <View style={styles.centerOverlay}>
           <ActivityIndicator color={theme.primary} />
           <Text style={styles.helperText}>正在查找可用入口…</Text>
+          <Text style={styles.debugText}>{stripHash(resolvedUri)}</Text>
+        </View>
+      ) : !resolvedCandidateAvailable ? (
+        <View style={styles.centerOverlay}>
+          <Text style={styles.helperText}>没有找到可用的远程入口</Text>
           <Text style={styles.debugText}>{stripHash(resolvedUri)}</Text>
         </View>
       ) : (

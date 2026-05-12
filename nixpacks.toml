@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["corepack enable", "pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = [
+  "pnpm --filter ./packages/shared build",
+  "pnpm --filter ./packages/client build:remote",
+  "pnpm --filter ./packages/relay build",
+]
+
+[start]
+cmd = "RELAY_PORT=$PORT NODE_ENV=production RELAY_DATA_DIR=/data RELAY_REMOTE_CLIENT_DIST_DIR=packages/client/dist-remote node packages/relay/dist/index.js"
