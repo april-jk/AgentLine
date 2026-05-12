@@ -150,6 +150,43 @@ if (resolvedRemoteClientDistDir) {
 
   app.get("/remote", (c) => c.redirect("/remote/", 302));
 
+  // Some remote builds emit absolute root asset URLs (for example /assets/main-*.js).
+  // Serve these paths from the remote dist so /remote pages can boot correctly.
+  app.get("/assets/*", async (c) => {
+    const requestedPath = c.req.path.replace(/^\/+/, "");
+    const assetPath = resolveRemoteAsset(requestedPath);
+    if (!assetPath) return c.text("Not Found", 404);
+
+    const assetBuffer = await tryReadFile(assetPath);
+    if (!assetBuffer) return c.text("Not Found", 404);
+
+    return c.body(Uint8Array.from(assetBuffer), 200, {
+      "Cache-Control": "public, max-age=86400",
+      "Content-Type": inferContentType(assetPath),
+    });
+  });
+
+  for (const rootStaticPath of [
+    "/favicon.ico",
+    "/icon-192.png",
+    "/manifest.json",
+    "/sw.js",
+  ]) {
+    app.get(rootStaticPath, async (c) => {
+      const requestedPath = c.req.path.replace(/^\/+/, "");
+      const assetPath = resolveRemoteAsset(requestedPath);
+      if (!assetPath) return c.text("Not Found", 404);
+
+      const assetBuffer = await tryReadFile(assetPath);
+      if (!assetBuffer) return c.text("Not Found", 404);
+
+      return c.body(Uint8Array.from(assetBuffer), 200, {
+        "Cache-Control": "public, max-age=86400",
+        "Content-Type": inferContentType(assetPath),
+      });
+    });
+  }
+
   app.get("/remote/*", async (c) => {
     const requestedPath = c.req.path.replace(/^\/remote\/?/, "");
     const assetPath = resolveRemoteAsset(requestedPath);
