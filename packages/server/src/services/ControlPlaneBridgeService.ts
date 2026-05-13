@@ -21,6 +21,14 @@ interface HeartbeatResponse {
   device: ControlPlaneBridgeDevice;
 }
 
+interface ServerRegisterGrantResponse {
+  grant: string;
+  grantId: string;
+  expiresAt: string;
+  relayUsername: string;
+  deviceId: string;
+}
+
 interface ErrorResponse {
   error?: string;
 }
@@ -228,6 +236,46 @@ export class ControlPlaneBridgeService {
     }
 
     return this.getState();
+  }
+
+  async getServerRegisterGrant(): Promise<string> {
+    if (!this.isConfigured()) {
+      throw new Error("control_plane_not_configured");
+    }
+
+    if (!this.state.deviceId || !this.state.relayUsername) {
+      await this.syncNow();
+    }
+
+    if (!this.state.deviceId || !this.state.relayUsername) {
+      throw new Error(
+        this.state.lastError ?? "control_plane_device_not_registered",
+      );
+    }
+
+    try {
+      const response = await this.request<ServerRegisterGrantResponse>(
+        "/api/v1/relay/grants/server-register",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            installId: this.config.installId,
+            relayUsername: this.state.relayUsername,
+            deviceId: this.state.deviceId,
+          }),
+        },
+      );
+      if (!response.grant?.trim()) {
+        throw new Error("control_plane_grant_missing");
+      }
+      return response.grant;
+    } catch (error) {
+      if (error instanceof ControlPlaneRequestError && error.status === 401) {
+        this.stop();
+        this.state.pausedReason = "unauthorized";
+      }
+      throw error;
+    }
   }
 
   private isConfigured(): boolean {

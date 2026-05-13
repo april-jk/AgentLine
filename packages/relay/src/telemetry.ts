@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { RelayClientErrorReason } from "@agentline/shared";
 import type { Logger } from "pino";
 
 export interface RelayTelemetryConfig {
@@ -60,7 +61,7 @@ export type RelayTelemetryEvent =
   | (RelayTelemetryEventBase & {
       event: "client_connect_error";
       username: string;
-      reason: "server_offline" | "unknown_username";
+      reason: RelayClientErrorReason;
     })
   | (RelayTelemetryEventBase & {
       event: "pair_disconnected";
@@ -93,7 +94,7 @@ type RelayTelemetryEventInput =
   | {
       event: "client_connect_error";
       username: string;
-      reason: "server_offline" | "unknown_username";
+      reason: RelayClientErrorReason;
     }
   | {
       event: "pair_disconnected";

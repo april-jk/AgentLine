@@ -36,6 +36,8 @@ export interface RelayServerRegister {
   username: string;
   /** Installation ID for ownership verification (allows reconnection) */
   installId: string;
+  /** Optional short-lived control-plane grant for relay hard-gating. */
+  serverGrant?: string;
   /** Optional compatibility metadata for relay observability. */
   appVersion?: string;
   /** Optional session resume protocol version. */
@@ -52,7 +54,13 @@ export interface RelayServerRegistered {
 }
 
 /** Reasons a server registration can be rejected */
-export type RelayServerRejectedReason = "username_taken" | "invalid_username";
+export type RelayServerRejectedReason =
+  | "username_taken"
+  | "invalid_username"
+  | "auth_required"
+  | "grant_invalid"
+  | "grant_expired"
+  | "grant_consumed";
 
 /** Relay rejects server registration */
 export interface RelayServerRejected {
@@ -70,6 +78,8 @@ export interface RelayClientConnect {
   type: "client_connect";
   /** Username of server to connect to */
   username: string;
+  /** Optional short-lived control-plane grant for relay hard-gating. */
+  clientGrant?: string;
 }
 
 /** Relay confirms client connected to server */
@@ -78,7 +88,15 @@ export interface RelayClientConnected {
 }
 
 /** Reasons a client connection can fail */
-export type RelayClientErrorReason = "server_offline" | "unknown_username";
+export type RelayClientErrorReason =
+  | "server_offline"
+  | "unknown_username"
+  | "auth_required"
+  | "grant_invalid"
+  | "grant_expired"
+  | "grant_consumed"
+  | "account_mismatch"
+  | "server_session_revoked";
 
 /** Relay reports client connection error */
 export interface RelayClientError {
@@ -125,6 +143,8 @@ export function isRelayServerRegister(
     register.type === "server_register" &&
     typeof register.username === "string" &&
     typeof register.installId === "string" &&
+    (register.serverGrant === undefined ||
+      typeof register.serverGrant === "string") &&
     (register.appVersion === undefined ||
       typeof register.appVersion === "string") &&
     (register.resumeProtocolVersion === undefined ||
@@ -159,7 +179,11 @@ export function isRelayServerRejected(
     msg !== null &&
     (msg as RelayServerRejected).type === "server_rejected" &&
     ((msg as RelayServerRejected).reason === "username_taken" ||
-      (msg as RelayServerRejected).reason === "invalid_username")
+      (msg as RelayServerRejected).reason === "invalid_username" ||
+      (msg as RelayServerRejected).reason === "auth_required" ||
+      (msg as RelayServerRejected).reason === "grant_invalid" ||
+      (msg as RelayServerRejected).reason === "grant_expired" ||
+      (msg as RelayServerRejected).reason === "grant_consumed")
   );
 }
 
@@ -169,7 +193,9 @@ export function isRelayClientConnect(msg: unknown): msg is RelayClientConnect {
     typeof msg === "object" &&
     msg !== null &&
     (msg as RelayClientConnect).type === "client_connect" &&
-    typeof (msg as RelayClientConnect).username === "string"
+    typeof (msg as RelayClientConnect).username === "string" &&
+    ((msg as RelayClientConnect).clientGrant === undefined ||
+      typeof (msg as RelayClientConnect).clientGrant === "string")
   );
 }
 
@@ -191,7 +217,13 @@ export function isRelayClientError(msg: unknown): msg is RelayClientError {
     msg !== null &&
     (msg as RelayClientError).type === "client_error" &&
     ((msg as RelayClientError).reason === "server_offline" ||
-      (msg as RelayClientError).reason === "unknown_username")
+      (msg as RelayClientError).reason === "unknown_username" ||
+      (msg as RelayClientError).reason === "auth_required" ||
+      (msg as RelayClientError).reason === "grant_invalid" ||
+      (msg as RelayClientError).reason === "grant_expired" ||
+      (msg as RelayClientError).reason === "grant_consumed" ||
+      (msg as RelayClientError).reason === "account_mismatch" ||
+      (msg as RelayClientError).reason === "server_session_revoked")
   );
 }
 

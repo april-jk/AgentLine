@@ -109,4 +109,53 @@ describe("RelayControlPlaneService", () => {
 
     db.close();
   });
+
+  it("issues and consumes relay grants once", async () => {
+    const db = createTestDb();
+    const service = new RelayControlPlaneService(db);
+    const user = await service.registerUser("user@example.com", "password123");
+    const login = await service.login("user@example.com", "password123");
+
+    const device = await service.registerOrUpdateDevice({
+      userId: user.id,
+      installId: "install-1",
+      deviceName: "Desktop A",
+      deviceType: "desktop",
+    });
+
+    const serverGrant = await service.issueServerRegisterGrant({
+      userId: user.id,
+      sessionId: login.session.id,
+      installId: "install-1",
+      relayUsername: device.relayUsername,
+    });
+
+    const consumedServerGrant = await service.consumeRelayGrant({
+      token: serverGrant.grant,
+      expectedType: "server_register",
+    });
+    expect(consumedServerGrant.userId).toBe(user.id);
+    expect(consumedServerGrant.relayUsername).toBe(device.relayUsername);
+
+    await expect(
+      service.consumeRelayGrant({
+        token: serverGrant.grant,
+        expectedType: "server_register",
+      }),
+    ).rejects.toThrow("grant_consumed");
+
+    const clientGrant = await service.issueClientConnectGrant({
+      userId: user.id,
+      sessionId: login.session.id,
+      deviceId: device.id,
+    });
+    const consumedClientGrant = await service.consumeRelayGrant({
+      token: clientGrant.grant,
+      expectedType: "client_connect",
+    });
+    expect(consumedClientGrant.deviceId).toBe(device.id);
+    expect(consumedClientGrant.relayUsername).toBe(device.relayUsername);
+
+    db.close();
+  });
 });

@@ -33,6 +33,8 @@ export interface RelayClientConfig {
   renderProtocolVersion?: number;
   /** Optional server capabilities for relay observability. */
   capabilities?: string[];
+  /** Provider for short-lived control-plane grant (required on hard-gated relays). */
+  getServerRegisterGrant?: () => Promise<string>;
   /**
    * Called when a connection is claimed by a phone client.
    * The first message (SRP init) is passed along with the WebSocket.
@@ -204,7 +206,7 @@ export class RelayClientService {
       this.connectingWs = ws;
 
       ws.on("open", () => {
-        this.handleOpen(ws);
+        void this.handleOpen(ws);
       });
 
       ws.on("message", (data: Buffer, isBinary: boolean) => {
@@ -228,17 +230,47 @@ export class RelayClientService {
     }
   }
 
-  private handleOpen(ws: WebSocket): void {
+  private async handleOpen(ws: WebSocket): Promise<void> {
     if (!this.config) return;
 
     console.log(`[RelayClient] Connected to relay: ${this.config.relayUrl}`);
     this.updateState({ status: "registering" });
+
+    let serverGrant: string | undefined;
+    if (this.config.getServerRegisterGrant) {
+      try {
+        const grant = await this.config.getServerRegisterGrant();
+        serverGrant = grant.trim();
+        if (!serverGrant) {
+          throw new Error("control_plane_grant_missing");
+        }
+      } catch (error) {
+        console.error(
+          "[RelayClient] Failed to acquire server register grant:",
+          {
+            error,
+          },
+        );
+        try {
+          ws.close(1000, "server_grant_unavailable");
+        } catch {
+          // Ignore close errors
+        }
+        return;
+      }
+    }
+
+    // Socket might have been replaced while we waited for grant acquisition.
+    if (!this.enabled || ws !== this.connectingWs) {
+      return;
+    }
 
     // Send registration message
     const register: RelayServerRegister = {
       type: "server_register",
       username: this.config.username,
       installId: this.config.installId,
+      serverGrant,
       appVersion: this.config.appVersion,
       resumeProtocolVersion: this.config.resumeProtocolVersion,
       renderProtocolVersion: this.config.renderProtocolVersion,

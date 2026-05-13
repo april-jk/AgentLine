@@ -691,6 +691,21 @@ async function startServer() {
   async function updateRelayConnection() {
     const relayConfig = remoteAccessService.getRelayConfig();
     if (relayConfig?.url && relayConfig?.username) {
+      const controlPlaneState = controlPlaneBridgeService.getState();
+      if (!controlPlaneState.enabled) {
+        console.warn(
+          "[Relay] Relay config is present but control-plane bridge is not configured; keeping relay client disconnected for hard-gated auth.",
+        );
+        relayClientService.stop();
+        return;
+      }
+      if (controlPlaneState.pausedReason === "unauthorized") {
+        console.warn(
+          "[Relay] Control-plane session is unauthorized; relay client remains disconnected until account login is refreshed.",
+        );
+        relayClientService.stop();
+        return;
+      }
       const compatibility = await getServerCompatibilityInfo({
         getDeviceBridgeState: () => {
           if (!deviceBridgeService) return "unavailable";
@@ -707,6 +722,8 @@ async function startServer() {
         resumeProtocolVersion: compatibility.resumeProtocolVersion,
         renderProtocolVersion: compatibility.renderProtocolVersion,
         capabilities: compatibility.capabilities,
+        getServerRegisterGrant: async () =>
+          controlPlaneBridgeService.getServerRegisterGrant(),
         onRelayConnection: acceptRelayConnection,
         onStatusChange: (status) => {
           console.log(`[Relay] Status: ${status}`);

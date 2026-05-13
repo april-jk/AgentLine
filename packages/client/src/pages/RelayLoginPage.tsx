@@ -15,6 +15,7 @@ import {
   getHostByRelayUsername,
   saveHost,
 } from "../lib/hostStorage";
+import { requestClientConnectGrant } from "../lib/relayGrants";
 
 /**
  * Parse credentials from URL hash for auto-login via QR code.
@@ -64,6 +65,8 @@ export function RelayLoginPage() {
       | {
           relayUsername?: string;
           relayUrl?: string;
+          controlPlaneUrl?: string;
+          deviceId?: string;
           lockRelayUsername?: boolean;
           deviceName?: string;
         }
@@ -77,6 +80,8 @@ export function RelayLoginPage() {
   const initialRelayUrl = locationState.relayUrl ?? searchParams.get("r") ?? "";
   const lockRelayUsername = locationState.lockRelayUsername === true;
   const selectedDeviceName = locationState.deviceName;
+  const selectedDeviceId = locationState.deviceId;
+  const selectedControlPlaneUrl = locationState.controlPlaneUrl;
   const [relayUsername, setRelayUsername] = useState(
     () => locationState.relayUsername ?? searchParams.get("u") ?? "",
   );
@@ -117,14 +122,18 @@ export function RelayLoginPage() {
     setCurrentHostId(host.id);
 
     setStatus("connecting_relay");
-    connectViaRelay({
-      relayUrl: effectiveRelayUrl,
-      relayUsername: username,
-      srpUsername: username,
-      srpPassword: password,
-      rememberMe: true,
-      onStatusChange: setStatus,
-    })
+    requestClientConnectGrant({ relayUsername: username })
+      .then((grantPayload) =>
+        connectViaRelay({
+          relayUrl: effectiveRelayUrl,
+          relayUsername: grantPayload.relayUsername,
+          srpUsername: username,
+          srpPassword: password,
+          rememberMe: true,
+          onStatusChange: setStatus,
+          clientGrant: grantPayload.grant,
+        }),
+      )
       .then(() => {
         // Host already saved and currentHostId already set
       })
@@ -195,14 +204,20 @@ export function RelayLoginPage() {
     }
 
     try {
+      const grantPayload = await requestClientConnectGrant({
+        relayUsername: username,
+        deviceId: selectedDeviceId,
+        controlPlaneUrl: selectedControlPlaneUrl,
+      });
       await connectViaRelay({
         relayUrl,
-        relayUsername: username,
+        relayUsername: grantPayload.relayUsername,
         // Use relay username as SRP identity
         srpUsername: username,
         srpPassword,
         rememberMe,
         onStatusChange: setStatus,
+        clientGrant: grantPayload.grant,
       });
       // On success, the RemoteApp will render the main app instead of login
     } catch (err) {
@@ -383,6 +398,23 @@ function getStatusMessage(
 }
 
 function formatRelayError(message: string, t: (key: never) => string): string {
+  if (
+    message.includes("account_auth_required") ||
+    message.includes("unauthorized") ||
+    message.includes("grant_request_failed_401")
+  ) {
+    return "Account login required. Please sign in from the host picker first.";
+  }
+  if (message.includes("auth_required")) {
+    return "Relay authorization is required for this host. Please log in again.";
+  }
+  if (
+    message.includes("grant_invalid") ||
+    message.includes("grant_expired") ||
+    message.includes("grant_consumed")
+  ) {
+    return "Relay authorization expired. Please retry the connection.";
+  }
   if (message.includes("server_offline")) {
     return t("relayLoginErrorServerOffline" as never);
   }

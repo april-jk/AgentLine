@@ -98,6 +98,34 @@ export function createDb(dataDir: string): Database.Database {
     ON devices(user_id)
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS relay_grants (
+      id TEXT PRIMARY KEY,
+      grant_type TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      relay_username TEXT NOT NULL,
+      install_id TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      revoked_at TEXT,
+      metadata_json TEXT
+    )
+  `);
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_relay_grants_type_expiry
+    ON relay_grants(grant_type, expires_at)
+  `);
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_relay_grants_session
+    ON relay_grants(session_id, grant_type)
+  `);
+
   return db;
 }
 
@@ -156,6 +184,24 @@ export function createTestDb(): Database.Database {
       updated_at TEXT NOT NULL,
       last_seen_at TEXT NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS relay_grants (
+      id TEXT PRIMARY KEY,
+      grant_type TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      relay_username TEXT NOT NULL,
+      install_id TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      revoked_at TEXT,
+      metadata_json TEXT
     )
   `);
 
@@ -224,6 +270,34 @@ export async function createControlPlanePostgresPool(
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_devices_user_id
     ON devices(user_id)
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS relay_grants (
+      id TEXT PRIMARY KEY,
+      grant_type TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      session_id TEXT NOT NULL REFERENCES user_sessions(id),
+      device_id TEXT NOT NULL REFERENCES devices(id),
+      relay_username TEXT NOT NULL,
+      install_id TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      revoked_at TEXT,
+      metadata_json TEXT
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_relay_grants_type_expiry
+    ON relay_grants(grant_type, expires_at)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_relay_grants_session
+    ON relay_grants(session_id, grant_type)
   `);
 
   return pool;

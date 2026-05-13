@@ -514,6 +514,18 @@ app.post("/api/v1/auth/logout", async (c) => {
   try {
     const auth = await controlPlane.authenticate(token);
     await controlPlane.revokeSession(auth.sessionId);
+    const disconnected = connectionManager.disconnectServersBySession(
+      auth.sessionId,
+      "session_revoked_logout",
+    );
+    logger.info(
+      {
+        userId: auth.user.id,
+        sessionId: auth.sessionId,
+        disconnectedServers: disconnected,
+      },
+      "Logout revoked relay server connections bound to session",
+    );
     return c.body(null, 204);
   } catch {
     return c.json({ error: "unauthorized" }, 401);
@@ -573,6 +585,99 @@ app.patch("/api/v1/me", async (c) => {
     }
     if (message === "email_taken") {
       return c.json({ error: "email_taken" }, 409);
+    }
+    return c.json({ error: "bad_request" }, 400);
+  }
+});
+
+app.post("/api/v1/relay/grants/server-register", async (c) => {
+  const token = getBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+
+  try {
+    const auth = await controlPlane.authenticate(token);
+    const body = await c.req.json().catch(() => ({}));
+    const installId = typeof body?.installId === "string" ? body.installId : "";
+    const relayUsername =
+      typeof body?.relayUsername === "string" ? body.relayUsername : "";
+    const deviceId = typeof body?.deviceId === "string" ? body.deviceId : "";
+
+    const issued = await controlPlane.issueServerRegisterGrant({
+      userId: auth.user.id,
+      sessionId: auth.sessionId,
+      installId,
+      relayUsername,
+      deviceId: deviceId || undefined,
+    });
+
+    return c.json(
+      {
+        grant: issued.grant,
+        grantId: issued.id,
+        expiresAt: issued.expiresAt,
+        relayUsername: issued.relayUsername,
+        deviceId: issued.deviceId,
+      },
+      200,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "bad_request";
+    if (message === "unauthorized") {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    if (message === "device_not_found") {
+      return c.json({ error: "device_not_found" }, 404);
+    }
+    if (
+      message === "invalid_grant_request" ||
+      message === "device_route_mismatch" ||
+      message === "device_install_mismatch"
+    ) {
+      return c.json({ error: message }, 400);
+    }
+    return c.json({ error: "bad_request" }, 400);
+  }
+});
+
+app.post("/api/v1/relay/grants/client-connect", async (c) => {
+  const token = getBearerToken(c.req.header("authorization"));
+  if (!token) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+
+  try {
+    const auth = await controlPlane.authenticate(token);
+    const body = await c.req.json().catch(() => ({}));
+    const deviceId = typeof body?.deviceId === "string" ? body.deviceId : "";
+    const relayUsername =
+      typeof body?.relayUsername === "string" ? body.relayUsername : "";
+
+    const issued = await controlPlane.issueClientConnectGrant({
+      userId: auth.user.id,
+      sessionId: auth.sessionId,
+      deviceId: deviceId || undefined,
+      relayUsername: relayUsername || undefined,
+    });
+
+    return c.json(
+      {
+        grant: issued.grant,
+        grantId: issued.id,
+        expiresAt: issued.expiresAt,
+        relayUsername: issued.relayUsername,
+        deviceId: issued.deviceId,
+      },
+      200,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "bad_request";
+    if (message === "unauthorized") {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    if (message === "device_not_found") {
+      return c.json({ error: "device_not_found" }, 404);
     }
     return c.json({ error: "bad_request" }, 400);
   }
@@ -691,7 +796,16 @@ app.get("/online/:username", (c) => {
 });
 
 // Create WebSocket handler
-const wsHandler = createWsHandler(connectionManager, config, logger, telemetry);
+const wsHandler = createWsHandler(
+  connectionManager,
+  config,
+  logger,
+  telemetry,
+  {
+    grantAuthorizer: controlPlane,
+    requireGrants: true,
+  },
+);
 
 // Create HTTP server with Hono
 const requestListener = getRequestListener(app.fetch);
@@ -706,7 +820,7 @@ wss.on("connection", (ws) => {
   wsHandler.onOpen(ws);
 
   ws.on("message", (data, isBinary) => {
-    wsHandler.onMessage(ws, data, isBinary);
+    void wsHandler.onMessage(ws, data, isBinary);
   });
 
   ws.on("close", (code, reason) => {

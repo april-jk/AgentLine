@@ -84,6 +84,8 @@ export interface StoredSession {
   sessionKey: string;
 }
 
+type RelayClientGrantProvider = (relayUsername: string) => Promise<string>;
+
 function uint8ToBase64(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) {
@@ -126,6 +128,7 @@ export class SecureConnection implements Connection {
   // Relay connection details for auto-reconnect (only set for relay connections)
   private relayUrl: string | null = null;
   private relayUsername: string | null = null;
+  private relayClientGrantProvider?: RelayClientGrantProvider;
 
   // Stored session for resumption (optional)
   private storedSession: StoredSession | null = null;
@@ -246,6 +249,7 @@ export class SecureConnection implements Connection {
     onSessionEstablished?: (session: StoredSession) => void,
     relayConfig?: { relayUrl: string; relayUsername: string },
     onDisconnect?: (error: Error) => void,
+    relayClientGrantProvider?: RelayClientGrantProvider,
   ): Promise<SecureConnection> {
     const conn = new SecureConnection(
       "", // No URL needed - socket already connected
@@ -262,6 +266,7 @@ export class SecureConnection implements Connection {
       conn.relayUrl = relayConfig.relayUrl;
       conn.relayUsername = relayConfig.relayUsername;
     }
+    conn.relayClientGrantProvider = relayClientGrantProvider;
 
     // Resume the session on the existing socket
     await conn.resumeOnExistingSocket();
@@ -789,8 +794,25 @@ export class SecureConnection implements Connection {
 
     console.log("[SecureConnection] Relay connected, sending client_connect");
 
+    if (!this.relayClientGrantProvider) {
+      ws.close();
+      throw new Error("account_auth_required");
+    }
+
+    const relayGrant = (
+      await this.relayClientGrantProvider(this.relayUsername)
+    ).trim();
+    if (!relayGrant) {
+      ws.close();
+      throw new Error("grant_response_invalid");
+    }
+
     ws.send(
-      JSON.stringify({ type: "client_connect", username: this.relayUsername }),
+      JSON.stringify({
+        type: "client_connect",
+        username: this.relayUsername,
+        clientGrant: relayGrant,
+      }),
     );
 
     await new Promise<void>((resolve, reject) => {
@@ -1273,6 +1295,7 @@ export class SecureConnection implements Connection {
     onSessionEstablished?: (session: StoredSession) => void,
     relayConfig?: { relayUrl: string; relayUsername: string },
     onDisconnect?: (error: Error) => void,
+    relayClientGrantProvider?: RelayClientGrantProvider,
   ): Promise<SecureConnection> {
     const conn = new SecureConnection(
       "", // No URL needed - socket already connected
@@ -1287,6 +1310,7 @@ export class SecureConnection implements Connection {
       conn.relayUrl = relayConfig.relayUrl;
       conn.relayUsername = relayConfig.relayUsername;
     }
+    conn.relayClientGrantProvider = relayClientGrantProvider;
     ws.binaryType = "arraybuffer";
 
     await conn.authenticateOnExistingSocket();

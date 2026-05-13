@@ -229,7 +229,7 @@ export async function createRelayServer(
     wsHandler.onOpen(ws);
 
     ws.on("message", (data, isBinary) => {
-      wsHandler.onMessage(ws, data, isBinary);
+      void wsHandler.onMessage(ws, data, isBinary);
     });
 
     ws.on("close", (code, reason) => {

@@ -15,6 +15,7 @@ export type ConnectionResult =
       status: "connected";
       serverWs: WebSocket;
       server: ActiveRelayServer | null;
+      serverAuth: RelayServerAuthContext | null;
     }
   | { status: "server_offline" }
   | { status: "unknown_username" };
@@ -38,6 +39,23 @@ export interface ActiveRelayServer extends RelayServerCompatibilityMetadata {
   installId: string;
   connectedAt: string;
   state: "waiting" | "paired";
+}
+
+export interface RelayServerAuthContext {
+  userId: string;
+  sessionId: string;
+  deviceId: string;
+}
+
+export type ClientAvailability =
+  | "unknown_username"
+  | "server_offline"
+  | "ready";
+
+export interface WaitingServerInfo {
+  ws: WebSocket;
+  server: ActiveRelayServer;
+  auth: RelayServerAuthContext | null;
 }
 
 interface SummaryBucket<T> {
@@ -70,6 +88,8 @@ export class ConnectionManager {
   private pairLookup = new Map<WebSocket, Pair>();
   /** Active server connections keyed by the server WebSocket. */
   private activeServers = new Map<WebSocket, ActiveRelayServer>();
+  /** Auth context keyed by server WebSocket for hard-gated relay pairing. */
+  private serverAuthByWs = new Map<WebSocket, RelayServerAuthContext>();
   /** Registry for username validation */
   private registry: UsernameRegistry;
 
@@ -90,6 +110,7 @@ export class ConnectionManager {
     username: string,
     installId: string,
     metadata: RelayServerCompatibilityMetadata = {},
+    authContext?: RelayServerAuthContext,
   ): RegistrationResult {
     // Validate username format
     if (!isValidRelayUsername(username)) {
@@ -110,6 +131,7 @@ export class ConnectionManager {
     const existingWaiting = this.waiting.get(username);
     if (existingWaiting) {
       this.activeServers.delete(existingWaiting);
+      this.serverAuthByWs.delete(existingWaiting);
       try {
         existingWaiting.close(1000, "Replaced by new connection");
       } catch {
@@ -131,8 +153,35 @@ export class ConnectionManager {
         ? [...metadata.capabilities]
         : undefined,
     });
+    if (authContext) {
+      this.serverAuthByWs.set(ws, authContext);
+    } else {
+      this.serverAuthByWs.delete(ws);
+    }
 
     return "registered";
+  }
+
+  getClientAvailability(username: string): ClientAvailability {
+    if (!this.registry.isRegistered(username)) {
+      return "unknown_username";
+    }
+    if (!this.waiting.has(username)) {
+      return "server_offline";
+    }
+    return "ready";
+  }
+
+  getWaitingServerInfo(username: string): WaitingServerInfo | null {
+    const ws = this.waiting.get(username);
+    if (!ws) return null;
+    const server = this.activeServers.get(ws);
+    if (!server) return null;
+    return {
+      ws,
+      server,
+      auth: this.serverAuthByWs.get(ws) ?? null,
+    };
   }
 
   /**
@@ -170,7 +219,12 @@ export class ConnectionManager {
     // Update last seen for the username
     this.registry.updateLastSeen(username);
 
-    return { status: "connected", serverWs, server: serverInfo ?? null };
+    return {
+      status: "connected",
+      serverWs,
+      server: serverInfo ?? null,
+      serverAuth: this.serverAuthByWs.get(serverWs) ?? null,
+    };
   }
 
   /**
@@ -214,6 +268,7 @@ export class ConnectionManager {
         const serverInfo = this.activeServers.get(ws) ?? null;
         this.waiting.delete(username);
         this.activeServers.delete(ws);
+        this.serverAuthByWs.delete(ws);
         return { kind: "waiting_server_closed", server: serverInfo };
       }
     }
@@ -226,6 +281,7 @@ export class ConnectionManager {
       this.pairLookup.delete(pair.server);
       this.pairLookup.delete(pair.client);
       this.activeServers.delete(pair.server);
+      this.serverAuthByWs.delete(pair.server);
 
       // Close the other end
       const other = pair.server === ws ? pair.client : pair.server;
@@ -241,6 +297,20 @@ export class ConnectionManager {
       };
     }
     return { kind: "none" };
+  }
+
+  disconnectServersBySession(sessionId: string, reason: string): number {
+    let closed = 0;
+    for (const [ws, auth] of this.serverAuthByWs.entries()) {
+      if (auth.sessionId !== sessionId) continue;
+      closed += 1;
+      try {
+        ws.close(4001, reason);
+      } catch {
+        // Ignore close errors
+      }
+    }
+    return closed;
   }
 
   /**

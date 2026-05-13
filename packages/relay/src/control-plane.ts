@@ -11,6 +11,29 @@ import type { Pool } from "pg";
 import type { ActiveRelayServer } from "./connections.js";
 
 const ACCESS_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SERVER_REGISTER_GRANT_TTL_MS = 60_000;
+const CLIENT_CONNECT_GRANT_TTL_MS = 60_000;
+
+export type RelayGrantType = "server_register" | "client_connect";
+
+export interface IssuedRelayGrant {
+  id: string;
+  grant: string;
+  expiresAt: string;
+  relayUsername: string;
+  deviceId: string;
+}
+
+export interface ConsumedRelayGrant {
+  id: string;
+  grantType: RelayGrantType;
+  userId: string;
+  sessionId: string;
+  deviceId: string;
+  relayUsername: string;
+  installId: string | null;
+  expiresAt: string;
+}
 
 export interface AccountUser {
   id: string;
@@ -112,6 +135,26 @@ interface AuthLookupRow {
   user_id: string;
   user_email: string;
   user_created_at: string;
+}
+
+interface SessionActiveRow {
+  id: string;
+}
+
+interface RelayGrantRow {
+  id: string;
+  grant_type: RelayGrantType;
+  token_hash: string;
+  user_id: string;
+  session_id: string;
+  device_id: string;
+  relay_username: string;
+  install_id: string | null;
+  created_at: string;
+  expires_at: string;
+  consumed_at: string | null;
+  revoked_at: string | null;
+  metadata_json: string | null;
 }
 
 type ControlPlaneStore = Database.Database | Pool;
@@ -225,7 +268,10 @@ export class RelayControlPlaneService {
     this.store = store;
   }
 
-  async registerUser(emailInput: string, password: string): Promise<AccountUser> {
+  async registerUser(
+    emailInput: string,
+    password: string,
+  ): Promise<AccountUser> {
     const email = normalizeEmail(emailInput);
     if (!isValidEmail(email)) {
       throw new Error("invalid_email");
@@ -437,6 +483,157 @@ export class RelayControlPlaneService {
       .run(now, sessionId);
   }
 
+  async isSessionActive(sessionId: string): Promise<boolean> {
+    const now = nowIso();
+    if (isPgPool(this.store)) {
+      const result = await this.store.query<SessionActiveRow>(
+        `
+          SELECT id
+          FROM user_sessions
+          WHERE id = $1
+            AND revoked_at IS NULL
+            AND expires_at > $2
+          LIMIT 1
+        `,
+        [sessionId, now],
+      );
+      return Boolean(result.rows[0]);
+    }
+
+    const row = this.store
+      .prepare(
+        `
+          SELECT id
+          FROM user_sessions
+          WHERE id = ?
+            AND revoked_at IS NULL
+            AND expires_at > ?
+          LIMIT 1
+        `,
+      )
+      .get(sessionId, now) as SessionActiveRow | undefined;
+    return Boolean(row);
+  }
+
+  async issueServerRegisterGrant(params: {
+    userId: string;
+    sessionId: string;
+    installId: string;
+    relayUsername: string;
+    deviceId?: string;
+  }): Promise<IssuedRelayGrant> {
+    const installId = params.installId.trim();
+    const relayUsername = params.relayUsername.trim().toLowerCase();
+    if (!installId || !relayUsername) {
+      throw new Error("invalid_grant_request");
+    }
+
+    const device = params.deviceId
+      ? await this.getDeviceByIdOwnedByUser(params.deviceId, params.userId)
+      : await this.getDeviceByUserInstall(params.userId, installId);
+    if (!device) {
+      throw new Error("device_not_found");
+    }
+    if (device.relay_username !== relayUsername) {
+      throw new Error("device_route_mismatch");
+    }
+    if (device.install_id !== installId) {
+      throw new Error("device_install_mismatch");
+    }
+
+    return this.createRelayGrant({
+      grantType: "server_register",
+      userId: params.userId,
+      sessionId: params.sessionId,
+      deviceId: device.id,
+      relayUsername: relayUsername,
+      installId,
+      ttlMs: SERVER_REGISTER_GRANT_TTL_MS,
+    });
+  }
+
+  async issueClientConnectGrant(params: {
+    userId: string;
+    sessionId: string;
+    deviceId?: string;
+    relayUsername?: string;
+  }): Promise<IssuedRelayGrant> {
+    const relayUsername = params.relayUsername?.trim().toLowerCase();
+    const deviceId = params.deviceId?.trim();
+
+    let device: DeviceRow | undefined;
+    if (deviceId) {
+      device = await this.getDeviceByIdOwnedByUser(deviceId, params.userId);
+    } else if (relayUsername) {
+      device = await this.getDeviceByUserRelayUsername(
+        params.userId,
+        relayUsername,
+      );
+    }
+
+    if (!device) {
+      throw new Error("device_not_found");
+    }
+
+    return this.createRelayGrant({
+      grantType: "client_connect",
+      userId: params.userId,
+      sessionId: params.sessionId,
+      deviceId: device.id,
+      relayUsername: device.relay_username,
+      installId: null,
+      ttlMs: CLIENT_CONNECT_GRANT_TTL_MS,
+    });
+  }
+
+  async consumeRelayGrant(params: {
+    token: string;
+    expectedType: RelayGrantType;
+  }): Promise<ConsumedRelayGrant> {
+    const rawToken = params.token.trim();
+    if (!rawToken) {
+      throw new Error("grant_invalid");
+    }
+
+    const tokenHash = hashToken(rawToken);
+    const now = nowIso();
+    const grant = await this.getRelayGrantByTokenHash(tokenHash);
+    if (!grant) {
+      throw new Error("grant_invalid");
+    }
+    if (grant.grant_type !== params.expectedType) {
+      throw new Error("grant_invalid");
+    }
+    if (grant.revoked_at) {
+      throw new Error("grant_invalid");
+    }
+    if (grant.consumed_at) {
+      throw new Error("grant_consumed");
+    }
+    if (grant.expires_at <= now) {
+      throw new Error("grant_expired");
+    }
+    const sessionActive = await this.isSessionActive(grant.session_id);
+    if (!sessionActive) {
+      throw new Error("server_session_revoked");
+    }
+
+    const consumed = await this.markRelayGrantConsumed(grant.id, now);
+    if (!consumed) {
+      throw new Error("grant_consumed");
+    }
+    return {
+      id: grant.id,
+      grantType: grant.grant_type,
+      userId: grant.user_id,
+      sessionId: grant.session_id,
+      deviceId: grant.device_id,
+      relayUsername: grant.relay_username,
+      installId: grant.install_id,
+      expiresAt: grant.expires_at,
+    };
+  }
+
   async registerOrUpdateDevice(params: {
     userId: string;
     installId: string;
@@ -458,7 +655,10 @@ export class RelayControlPlaneService {
     }
 
     const now = nowIso();
-    const existing = await this.getDeviceByUserInstall(params.userId, installId);
+    const existing = await this.getDeviceByUserInstall(
+      params.userId,
+      installId,
+    );
 
     if (existing) {
       if (isPgPool(this.store)) {
@@ -668,9 +868,9 @@ export class RelayControlPlaneService {
       );
       return result.rows[0];
     }
-    return this.store
-      .prepare("SELECT * FROM users WHERE id = ?")
-      .get(userId) as UserRow | undefined;
+    return this.store.prepare("SELECT * FROM users WHERE id = ?").get(userId) as
+      | UserRow
+      | undefined;
   }
 
   private async getUserIdByEmail(email: string): Promise<string | null> {
@@ -752,7 +952,172 @@ export class RelayControlPlaneService {
       .get(userId, installId) as DeviceRow | undefined;
   }
 
-  private async hasDeviceRelayUsername(relayUsername: string): Promise<boolean> {
+  private async getDeviceByIdOwnedByUser(
+    deviceId: string,
+    userId: string,
+  ): Promise<DeviceRow | undefined> {
+    if (isPgPool(this.store)) {
+      const result = await this.store.query<DeviceRow>(
+        `
+          SELECT *
+          FROM devices
+          WHERE id = $1 AND user_id = $2
+          LIMIT 1
+        `,
+        [deviceId, userId],
+      );
+      return result.rows[0];
+    }
+    return this.store
+      .prepare("SELECT * FROM devices WHERE id = ? AND user_id = ? LIMIT 1")
+      .get(deviceId, userId) as DeviceRow | undefined;
+  }
+
+  private async getDeviceByUserRelayUsername(
+    userId: string,
+    relayUsername: string,
+  ): Promise<DeviceRow | undefined> {
+    if (isPgPool(this.store)) {
+      const result = await this.store.query<DeviceRow>(
+        `
+          SELECT *
+          FROM devices
+          WHERE user_id = $1 AND relay_username = $2
+          LIMIT 1
+        `,
+        [userId, relayUsername],
+      );
+      return result.rows[0];
+    }
+    return this.store
+      .prepare(
+        "SELECT * FROM devices WHERE user_id = ? AND relay_username = ? LIMIT 1",
+      )
+      .get(userId, relayUsername) as DeviceRow | undefined;
+  }
+
+  private async createRelayGrant(params: {
+    grantType: RelayGrantType;
+    userId: string;
+    sessionId: string;
+    deviceId: string;
+    relayUsername: string;
+    installId: string | null;
+    ttlMs: number;
+  }): Promise<IssuedRelayGrant> {
+    const now = nowIso();
+    const expiresAt = new Date(Date.now() + params.ttlMs).toISOString();
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = hashToken(token);
+    const id = randomUUID();
+
+    if (isPgPool(this.store)) {
+      await this.store.query(
+        `
+          INSERT INTO relay_grants (
+            id, grant_type, token_hash, user_id, session_id, device_id,
+            relay_username, install_id, created_at, expires_at, consumed_at, revoked_at, metadata_json
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NULL, NULL, NULL)
+        `,
+        [
+          id,
+          params.grantType,
+          tokenHash,
+          params.userId,
+          params.sessionId,
+          params.deviceId,
+          params.relayUsername,
+          params.installId,
+          now,
+          expiresAt,
+        ],
+      );
+    } else {
+      this.store
+        .prepare(
+          `
+            INSERT INTO relay_grants (
+              id, grant_type, token_hash, user_id, session_id, device_id,
+              relay_username, install_id, created_at, expires_at, consumed_at, revoked_at, metadata_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+          `,
+        )
+        .run(
+          id,
+          params.grantType,
+          tokenHash,
+          params.userId,
+          params.sessionId,
+          params.deviceId,
+          params.relayUsername,
+          params.installId,
+          now,
+          expiresAt,
+        );
+    }
+
+    return {
+      id,
+      grant: token,
+      expiresAt,
+      relayUsername: params.relayUsername,
+      deviceId: params.deviceId,
+    };
+  }
+
+  private async getRelayGrantByTokenHash(
+    tokenHash: string,
+  ): Promise<RelayGrantRow | undefined> {
+    if (isPgPool(this.store)) {
+      const result = await this.store.query<RelayGrantRow>(
+        `
+          SELECT *
+          FROM relay_grants
+          WHERE token_hash = $1
+          LIMIT 1
+        `,
+        [tokenHash],
+      );
+      return result.rows[0];
+    }
+    return this.store
+      .prepare("SELECT * FROM relay_grants WHERE token_hash = ? LIMIT 1")
+      .get(tokenHash) as RelayGrantRow | undefined;
+  }
+
+  private async markRelayGrantConsumed(
+    id: string,
+    consumedAt: string,
+  ): Promise<boolean> {
+    if (isPgPool(this.store)) {
+      const result = await this.store.query(
+        `
+          UPDATE relay_grants
+          SET consumed_at = $1
+          WHERE id = $2 AND consumed_at IS NULL
+        `,
+        [consumedAt, id],
+      );
+      return (result.rowCount ?? 0) > 0;
+    }
+
+    const result = this.store
+      .prepare(
+        `
+          UPDATE relay_grants
+          SET consumed_at = ?
+          WHERE id = ? AND consumed_at IS NULL
+        `,
+      )
+      .run(consumedAt, id);
+    return result.changes > 0;
+  }
+
+  private async hasDeviceRelayUsername(
+    relayUsername: string,
+  ): Promise<boolean> {
     if (isPgPool(this.store)) {
       const result = await this.store.query(
         "SELECT 1 FROM devices WHERE relay_username = $1 LIMIT 1",

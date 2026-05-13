@@ -62,6 +62,11 @@ export class RelayReconnectRequiredError extends Error {
     if (!this.cause) return false;
     const msg = this.cause.message.toLowerCase();
     if (msg.includes("unknown_username")) return true;
+    if (msg.includes("auth_required")) return true;
+    if (msg.includes("account_auth_required")) return true;
+    if (msg.includes("account_mismatch")) return true;
+    if (msg.includes("grant_invalid")) return true;
+    if (msg.includes("grant_consumed")) return true;
     if (msg.includes("missing relay config")) return true;
     return false;
   }
@@ -98,6 +103,17 @@ function formatRelayReconnectError(cause?: Error): string {
   // Server offline (relay knows about the user but server isn't connected)
   if (msg.includes("server_offline") || msg.includes("not connected")) {
     return "Server is offline. Make sure your server is running and connected to the relay.";
+  }
+
+  if (
+    msg.includes("auth_required") ||
+    msg.includes("grant_invalid") ||
+    msg.includes("grant_consumed") ||
+    msg.includes("grant_expired") ||
+    msg.includes("account_auth_required") ||
+    msg.includes("account_mismatch")
+  ) {
+    return "Account authorization expired. Please sign in and reconnect.";
   }
 
   // Default fallback

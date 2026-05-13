@@ -42,6 +42,7 @@ import {
   updateHostSession,
   upsertRelayHost,
 } from "../lib/hostStorage";
+import { requestClientConnectGrant } from "../lib/relayGrants";
 
 /** Stored credentials for auto-reconnect */
 interface StoredCredentials {
@@ -92,6 +93,8 @@ export interface ConnectViaRelayOptions {
   relayUsername: string;
   srpUsername: string;
   srpPassword: string;
+  /** Optional pre-fetched control-plane grant; when omitted we fetch just-in-time. */
+  clientGrant?: string;
   rememberMe?: boolean;
   onStatusChange?: (status: RelayConnectionStatus) => void;
   /** Optional session for resumption (if provided, srpPassword is ignored) */
@@ -413,6 +416,7 @@ export function RemoteConnectionProvider({ children }: Props) {
         relayUsername,
         srpUsername,
         srpPassword,
+        clientGrant,
         rememberMe = false,
         onStatusChange,
         session,
@@ -425,6 +429,14 @@ export function RemoteConnectionProvider({ children }: Props) {
       onStatusChange?.("connecting_relay");
 
       try {
+        const resolvedClientGrant =
+          clientGrant?.trim() ||
+          (
+            await requestClientConnectGrant({
+              relayUsername,
+            })
+          ).grant;
+
         // 1. Connect to relay server
         const ws = new WebSocket(relayUrl);
         ws.binaryType = "arraybuffer";
@@ -450,7 +462,11 @@ export function RemoteConnectionProvider({ children }: Props) {
         // 2. Send client_connect message
         onStatusChange?.("waiting_server");
         ws.send(
-          JSON.stringify({ type: "client_connect", username: relayUsername }),
+          JSON.stringify({
+            type: "client_connect",
+            username: relayUsername,
+            clientGrant: resolvedClientGrant,
+          }),
         );
 
         // 3. Wait for client_connected or error
@@ -517,6 +533,12 @@ export function RemoteConnectionProvider({ children }: Props) {
             rememberMe ? handleSessionEstablished : undefined,
             { relayUrl, relayUsername },
             handleDisconnect,
+            async (targetRelayUsername) =>
+              (
+                await requestClientConnectGrant({
+                  relayUsername: targetRelayUsername,
+                })
+              ).grant,
           );
         } else {
           conn = await SecureConnection.connectWithExistingSocket(
@@ -526,6 +548,12 @@ export function RemoteConnectionProvider({ children }: Props) {
             rememberMe ? handleSessionEstablished : undefined,
             { relayUrl, relayUsername },
             handleDisconnect,
+            async (targetRelayUsername) =>
+              (
+                await requestClientConnectGrant({
+                  relayUsername: targetRelayUsername,
+                })
+              ).grant,
           );
         }
 
@@ -650,6 +678,10 @@ export function RemoteConnectionProvider({ children }: Props) {
             throw new Error("Missing relay credentials for auto-resume");
           }
 
+          const grant = await requestClientConnectGrant({
+            relayUsername,
+          });
+
           // 1. Connect to relay server
           const ws = new WebSocket(relayUrl);
           ws.binaryType = "arraybuffer";
@@ -673,7 +705,11 @@ export function RemoteConnectionProvider({ children }: Props) {
 
           // 2. Send client_connect message
           ws.send(
-            JSON.stringify({ type: "client_connect", username: relayUsername }),
+            JSON.stringify({
+              type: "client_connect",
+              username: relayUsername,
+              clientGrant: grant.grant,
+            }),
           );
 
           // 3. Wait for client_connected or error
@@ -719,6 +755,12 @@ export function RemoteConnectionProvider({ children }: Props) {
             handleSessionEstablished,
             { relayUrl, relayUsername },
             handleDisconnect,
+            async (targetRelayUsername) =>
+              (
+                await requestClientConnectGrant({
+                  relayUsername: targetRelayUsername,
+                })
+              ).grant,
           );
         } else {
           // Direct mode: just create connection and resume

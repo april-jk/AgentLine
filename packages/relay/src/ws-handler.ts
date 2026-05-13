@@ -1,15 +1,21 @@
 import {
   type RelayClientConnected,
   type RelayClientError,
+  type RelayClientErrorReason,
   type RelayServerRegistered,
   type RelayServerRejected,
+  type RelayServerRejectedReason,
   isRelayClientConnect,
   isRelayServerRegister,
 } from "@agentline/shared";
 import type { Logger } from "pino";
 import type { RawData, WebSocket } from "ws";
 import type { RelayConfig } from "./config.js";
-import type { ConnectionManager } from "./connections.js";
+import type {
+  ConnectionManager,
+  RelayServerAuthContext,
+} from "./connections.js";
+import type { ConsumedRelayGrant, RelayGrantType } from "./control-plane.js";
 import type { RelayTelemetryRecorder } from "./telemetry.js";
 
 /** State for each WebSocket connection */
@@ -26,6 +32,19 @@ interface ConnectionState {
   pongTimeout?: ReturnType<typeof setTimeout>;
   /** Last pong received */
   lastPong?: number;
+}
+
+interface RelayGrantAuthorizer {
+  consumeRelayGrant(params: {
+    token: string;
+    expectedType: RelayGrantType;
+  }): Promise<ConsumedRelayGrant>;
+  isSessionActive(sessionId: string): Promise<boolean>;
+}
+
+interface WsHandlerOptions {
+  grantAuthorizer?: RelayGrantAuthorizer;
+  requireGrants?: boolean;
 }
 
 /** Track connection state by WebSocket */
@@ -48,7 +67,11 @@ export function createWsHandler(
   config: RelayConfig,
   logger: Logger,
   telemetry: RelayTelemetryRecorder,
+  options: WsHandlerOptions = {},
 ) {
+  const requireGrants = options.requireGrants === true;
+  const grantAuthorizer = options.grantAuthorizer;
+
   function sendJson(ws: WebSocket, data: object): void {
     try {
       // Send as text frame (binary: false)
@@ -111,182 +134,348 @@ export function createWsHandler(
     }
   }
 
+  function mapGrantErrorToServerRejectReason(
+    error: unknown,
+  ): RelayServerRejectedReason {
+    const message = error instanceof Error ? error.message : "grant_invalid";
+    if (message === "grant_expired") return "grant_expired";
+    if (message === "grant_consumed") return "grant_consumed";
+    if (message === "auth_required") return "auth_required";
+    return "grant_invalid";
+  }
+
+  function mapGrantErrorToClientErrorReason(
+    error: unknown,
+  ): RelayClientErrorReason {
+    const message = error instanceof Error ? error.message : "grant_invalid";
+    if (
+      message === "grant_expired" ||
+      message === "grant_consumed" ||
+      message === "auth_required" ||
+      message === "account_mismatch" ||
+      message === "server_session_revoked"
+    ) {
+      return message;
+    }
+    return "grant_invalid";
+  }
+
   return {
     onOpen(ws: WebSocket): void {
       logger.debug("WebSocket connection opened");
       // State is initialized lazily on first message
     },
 
-    onMessage(ws: WebSocket, data: RawData, isBinary: boolean): void {
-      const state = getState(ws);
-
-      // Debug logging
-      const dataType = isBinary ? "binary" : "text";
-      const size =
-        data instanceof Buffer
-          ? data.length
-          : Array.isArray(data)
-            ? data.reduce((sum, buf) => sum + buf.length, 0)
-            : (data as ArrayBuffer).byteLength;
-      logger.debug(
-        { paired: state.paired, dataType, size, isServer: state.isServer },
-        "onMessage received",
-      );
-
-      // Convert RawData to Buffer for consistent handling
-      let buffer: Buffer;
-      if (data instanceof Buffer) {
-        buffer = data;
-      } else if (Array.isArray(data)) {
-        // Array of Buffers - concatenate
-        buffer = Buffer.concat(data);
-      } else {
-        // ArrayBuffer - need to wrap in Uint8Array first
-        buffer = Buffer.from(new Uint8Array(data));
-      }
-
-      // If already paired, forward everything preserving frame type
-      if (state.paired) {
-        connectionManager.forward(ws, buffer, isBinary);
-        return;
-      }
-
-      // Before pairing, we only accept text frames with JSON protocol messages
-      if (isBinary) {
-        logger.debug("Received binary message before pairing, ignoring");
-        return;
-      }
-
-      // Parse JSON message for protocol handling
-      let msg: unknown;
+    async onMessage(
+      ws: WebSocket,
+      data: RawData,
+      isBinary: boolean,
+    ): Promise<void> {
       try {
-        msg = JSON.parse(buffer.toString("utf8"));
-      } catch {
-        logger.debug("Failed to parse message as JSON");
-        return;
-      }
+        const state = getState(ws);
 
-      // Handle server registration
-      if (isRelayServerRegister(msg)) {
-        const result = connectionManager.registerServer(
-          ws,
-          msg.username,
-          msg.installId,
-          {
-            appVersion: msg.appVersion,
-            resumeProtocolVersion: msg.resumeProtocolVersion,
-            renderProtocolVersion: msg.renderProtocolVersion,
-            capabilities: msg.capabilities,
-          },
+        // Debug logging
+        const dataType = isBinary ? "binary" : "text";
+        const size =
+          data instanceof Buffer
+            ? data.length
+            : Array.isArray(data)
+              ? data.reduce((sum, buf) => sum + buf.length, 0)
+              : (data as ArrayBuffer).byteLength;
+        logger.debug(
+          { paired: state.paired, dataType, size, isServer: state.isServer },
+          "onMessage received",
         );
 
-        if (result === "registered") {
-          state.username = msg.username;
-          state.isServer = true;
-          const response: RelayServerRegistered = { type: "server_registered" };
-          sendJson(ws, response);
+        // Convert RawData to Buffer for consistent handling
+        let buffer: Buffer;
+        if (data instanceof Buffer) {
+          buffer = data;
+        } else if (Array.isArray(data)) {
+          // Array of Buffers - concatenate
+          buffer = Buffer.concat(data);
+        } else {
+          // ArrayBuffer - need to wrap in Uint8Array first
+          buffer = Buffer.from(new Uint8Array(data));
+        }
 
-          // Start ping interval for waiting connections
-          startPingInterval(ws, state);
+        // If already paired, forward everything preserving frame type
+        if (state.paired) {
+          connectionManager.forward(ws, buffer, isBinary);
+          return;
+        }
 
-          telemetry.record({
-            event: "server_register",
-            username: msg.username,
-            installId: msg.installId,
-            appVersion: msg.appVersion,
-            resumeProtocolVersion: msg.resumeProtocolVersion,
-            renderProtocolVersion: msg.renderProtocolVersion,
-            capabilities: msg.capabilities ? [...msg.capabilities] : undefined,
-          });
+        // Before pairing, we only accept text frames with JSON protocol messages
+        if (isBinary) {
+          logger.debug("Received binary message before pairing, ignoring");
+          return;
+        }
 
-          logger.info(
+        // Parse JSON message for protocol handling
+        let msg: unknown;
+        try {
+          msg = JSON.parse(buffer.toString("utf8"));
+        } catch {
+          logger.debug("Failed to parse message as JSON");
+          return;
+        }
+
+        // Handle server registration
+        if (isRelayServerRegister(msg)) {
+          let serverAuth: RelayServerAuthContext | undefined;
+          if (requireGrants) {
+            if (!grantAuthorizer || !msg.serverGrant) {
+              const reason: RelayServerRejectedReason = "auth_required";
+              const response: RelayServerRejected = {
+                type: "server_rejected",
+                reason,
+              };
+              sendJson(ws, response);
+              ws.close(1000, "Registration rejected: auth_required");
+              return;
+            }
+
+            try {
+              const grant = await grantAuthorizer.consumeRelayGrant({
+                token: msg.serverGrant,
+                expectedType: "server_register",
+              });
+              if (
+                grant.relayUsername !== msg.username ||
+                (grant.installId && grant.installId !== msg.installId)
+              ) {
+                throw new Error("grant_invalid");
+              }
+              serverAuth = {
+                userId: grant.userId,
+                sessionId: grant.sessionId,
+                deviceId: grant.deviceId,
+              };
+            } catch (error) {
+              const reason = mapGrantErrorToServerRejectReason(error);
+              const response: RelayServerRejected = {
+                type: "server_rejected",
+                reason,
+              };
+              sendJson(ws, response);
+              ws.close(1000, `Registration rejected: ${reason}`);
+              return;
+            }
+          }
+
+          const result = connectionManager.registerServer(
+            ws,
+            msg.username,
+            msg.installId,
             {
-              username: msg.username,
               appVersion: msg.appVersion,
               resumeProtocolVersion: msg.resumeProtocolVersion,
               renderProtocolVersion: msg.renderProtocolVersion,
               capabilities: msg.capabilities,
             },
-            "Server registered",
+            serverAuth,
           );
-        } else {
-          const response: RelayServerRejected = {
-            type: "server_rejected",
-            reason: result,
-          };
-          sendJson(ws, response);
-          logger.info(
-            { username: msg.username, reason: result },
-            "Server registration rejected",
-          );
-          // Close connection after rejection
-          ws.close(1000, `Registration rejected: ${result}`);
+
+          if (result === "registered") {
+            state.username = msg.username;
+            state.isServer = true;
+            const response: RelayServerRegistered = {
+              type: "server_registered",
+            };
+            sendJson(ws, response);
+
+            // Start ping interval for waiting connections
+            startPingInterval(ws, state);
+
+            telemetry.record({
+              event: "server_register",
+              username: msg.username,
+              installId: msg.installId,
+              appVersion: msg.appVersion,
+              resumeProtocolVersion: msg.resumeProtocolVersion,
+              renderProtocolVersion: msg.renderProtocolVersion,
+              capabilities: msg.capabilities
+                ? [...msg.capabilities]
+                : undefined,
+            });
+
+            logger.info(
+              {
+                username: msg.username,
+                appVersion: msg.appVersion,
+                resumeProtocolVersion: msg.resumeProtocolVersion,
+                renderProtocolVersion: msg.renderProtocolVersion,
+                capabilities: msg.capabilities,
+              },
+              "Server registered",
+            );
+          } else {
+            const response: RelayServerRejected = {
+              type: "server_rejected",
+              reason: result,
+            };
+            sendJson(ws, response);
+            logger.info(
+              { username: msg.username, reason: result },
+              "Server registration rejected",
+            );
+            // Close connection after rejection
+            ws.close(1000, `Registration rejected: ${result}`);
+          }
+          return;
         }
-        return;
-      }
 
-      // Handle client connection
-      if (isRelayClientConnect(msg)) {
-        const result = connectionManager.connectClient(ws, msg.username);
+        // Handle client connection
+        if (isRelayClientConnect(msg)) {
+          if (requireGrants) {
+            if (!grantAuthorizer || !msg.clientGrant) {
+              const reason: RelayClientErrorReason = "auth_required";
+              const response: RelayClientError = {
+                type: "client_error",
+                reason,
+              };
+              sendJson(ws, response);
+              ws.close(1000, "Connection failed: auth_required");
+              return;
+            }
 
-        if (result.status === "connected") {
-          state.username = msg.username;
-          state.isServer = false;
-          state.paired = true;
+            const availability = connectionManager.getClientAvailability(
+              msg.username,
+            );
+            if (availability !== "ready") {
+              const response: RelayClientError = {
+                type: "client_error",
+                reason: availability,
+              };
+              sendJson(ws, response);
+              ws.close(1000, `Connection failed: ${availability}`);
+              return;
+            }
 
-          // Also mark the server as paired
-          const serverState = getState(result.serverWs);
-          serverState.paired = true;
+            const waiting = connectionManager.getWaitingServerInfo(
+              msg.username,
+            );
+            if (!waiting) {
+              const response: RelayClientError = {
+                type: "client_error",
+                reason: "server_offline",
+              };
+              sendJson(ws, response);
+              ws.close(1000, "Connection failed: server_offline");
+              return;
+            }
 
-          // Stop ping interval on server (paired connections don't need keepalive from relay)
-          stopPingInterval(serverState);
+            try {
+              const grant = await grantAuthorizer.consumeRelayGrant({
+                token: msg.clientGrant,
+                expectedType: "client_connect",
+              });
 
-          const response: RelayClientConnected = { type: "client_connected" };
-          sendJson(ws, response);
+              if (grant.relayUsername !== msg.username) {
+                throw new Error("grant_invalid");
+              }
 
-          telemetry.record({
-            event: "client_connect_success",
-            username: msg.username,
-            installId: result.server?.installId,
-            appVersion: result.server?.appVersion,
-            resumeProtocolVersion: result.server?.resumeProtocolVersion,
-            renderProtocolVersion: result.server?.renderProtocolVersion,
-            capabilities: result.server?.capabilities
-              ? [...result.server.capabilities]
-              : undefined,
-          });
+              if (!waiting.auth) {
+                throw new Error("auth_required");
+              }
 
-          logger.info({ username: msg.username }, "Pair connected");
-        } else {
-          const response: RelayClientError = {
-            type: "client_error",
-            reason: result.status,
-          };
-          sendJson(ws, response);
-          telemetry.record({
-            event: "client_connect_error",
-            username: msg.username,
-            reason: result.status,
-          });
-          logger.info(
-            { username: msg.username, reason: result.status },
-            "Client connection failed",
-          );
-          // Close connection after error
-          ws.close(1000, `Connection failed: ${result.status}`);
+              if (
+                waiting.auth.userId !== grant.userId ||
+                waiting.auth.deviceId !== grant.deviceId
+              ) {
+                throw new Error("account_mismatch");
+              }
+
+              const serverSessionActive = await grantAuthorizer.isSessionActive(
+                waiting.auth.sessionId,
+              );
+              if (!serverSessionActive) {
+                try {
+                  waiting.ws.close(4001, "session_revoked");
+                } catch {
+                  // ignore close errors
+                }
+                throw new Error("server_session_revoked");
+              }
+            } catch (error) {
+              const reason = mapGrantErrorToClientErrorReason(error);
+              const response: RelayClientError = {
+                type: "client_error",
+                reason,
+              };
+              sendJson(ws, response);
+              ws.close(1000, `Connection failed: ${reason}`);
+              return;
+            }
+          }
+
+          const result = connectionManager.connectClient(ws, msg.username);
+
+          if (result.status === "connected") {
+            state.username = msg.username;
+            state.isServer = false;
+            state.paired = true;
+
+            // Also mark the server as paired
+            const serverState = getState(result.serverWs);
+            serverState.paired = true;
+
+            // Stop ping interval on server (paired connections don't need keepalive from relay)
+            stopPingInterval(serverState);
+
+            const response: RelayClientConnected = { type: "client_connected" };
+            sendJson(ws, response);
+
+            telemetry.record({
+              event: "client_connect_success",
+              username: msg.username,
+              installId: result.server?.installId,
+              appVersion: result.server?.appVersion,
+              resumeProtocolVersion: result.server?.resumeProtocolVersion,
+              renderProtocolVersion: result.server?.renderProtocolVersion,
+              capabilities: result.server?.capabilities
+                ? [...result.server.capabilities]
+                : undefined,
+            });
+
+            logger.info({ username: msg.username }, "Pair connected");
+          } else {
+            const response: RelayClientError = {
+              type: "client_error",
+              reason: result.status,
+            };
+            sendJson(ws, response);
+            telemetry.record({
+              event: "client_connect_error",
+              username: msg.username,
+              reason: result.status,
+            });
+            logger.info(
+              { username: msg.username, reason: result.status },
+              "Client connection failed",
+            );
+            ws.close(1000, `Connection failed: ${result.status}`);
+          }
+          return;
         }
-        return;
-      }
 
-      // If server is waiting and receives a non-protocol message,
-      // this means a client was paired and this is the first forwarded message
-      if (state.isServer && state.username && !state.paired) {
-        // This shouldn't happen - clients send client_connect first
-        // But if we receive data before client_connect, treat it as claim detection
-        logger.warn(
-          { username: state.username },
-          "Received non-protocol message on waiting connection",
-        );
+        // If server is waiting and receives a non-protocol message,
+        // this means a client was paired and this is the first forwarded message
+        if (state.isServer && state.username && !state.paired) {
+          // This shouldn't happen - clients send client_connect first
+          // But if we receive data before client_connect, treat it as claim detection
+          logger.warn(
+            { username: state.username },
+            "Received non-protocol message on waiting connection",
+          );
+        }
+      } catch (error) {
+        logger.error({ err: error }, "Unhandled relay ws message error");
+        try {
+          ws.close(1011, "Internal server error");
+        } catch {
+          // ignore
+        }
       }
     },
 

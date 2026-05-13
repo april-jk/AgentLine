@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
+import { deriveRelayWsUrl } from "../lib/relayGrants";
 
 type AccountMode = "login" | "register";
 
@@ -27,21 +28,6 @@ interface AccountDevice {
 
 const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
 const ACCOUNT_STORAGE_KEY = "agentline.remote.account";
-
-function deriveRelayWsUrl(controlPlaneUrl: string): string {
-  const normalized = controlPlaneUrl.trim().replace(/\/+$/, "");
-  if (!normalized) return "wss://relay.oneceo.ai/ws";
-  try {
-    const url = new URL(normalized);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.pathname = "/ws";
-    url.search = "";
-    url.hash = "";
-    return url.toString();
-  } catch {
-    return "wss://relay.oneceo.ai/ws";
-  }
-}
 
 function loadSavedAccount(): {
   controlPlaneUrl: string;
@@ -262,6 +248,8 @@ export function HostPickerPage() {
       state: {
         relayUsername: selectedDevice.relayUsername,
         relayUrl: deriveRelayWsUrl(controlPlaneUrl),
+        controlPlaneUrl,
+        deviceId: selectedDevice.id,
         lockRelayUsername: true,
         deviceName: selectedDevice.deviceName,
       },
