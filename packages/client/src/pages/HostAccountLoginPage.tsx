@@ -1,0 +1,213 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { AgentLineLogo } from "../components/AgentLineLogo";
+import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
+import { useI18n } from "../i18n";
+import {
+  type AccountMode,
+  DEFAULT_CONTROL_PLANE_URL,
+  authenticateAccount,
+  loadSavedAccount,
+  saveAccount,
+} from "./hostPickerShared";
+
+function hasRelayHashCredentials(): boolean {
+  const hash = window.location.hash;
+  if (!hash || hash.length < 2) return false;
+  try {
+    const params = new URLSearchParams(hash.slice(1));
+    return Boolean(params.get("u") && params.get("p"));
+  } catch {
+    return false;
+  }
+}
+
+export function HostAccountLoginPage() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const { isAutoResuming } = useRemoteConnection();
+
+  const [accountMode, setAccountMode] = useState<AccountMode>("login");
+  const [controlPlaneUrl, setControlPlaneUrl] = useState(
+    DEFAULT_CONTROL_PLANE_URL,
+  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const saved = loadSavedAccount();
+    if (saved) {
+      navigate("/login/devices", { replace: true });
+      return;
+    }
+    if (hasRelayHashCredentials()) {
+      navigate(
+        {
+          pathname: "/login/devices",
+          hash: window.location.hash,
+        },
+        { replace: true },
+      );
+    }
+  }, [navigate]);
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      setError("Email and password are required.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await authenticateAccount(
+        controlPlaneUrl,
+        accountMode,
+        email.trim(),
+        password,
+      );
+      saveAccount({
+        controlPlaneUrl: controlPlaneUrl.trim(),
+        accessToken: result.accessToken,
+        email: email.trim(),
+      });
+      setPassword("");
+      navigate("/login/devices", { replace: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (isAutoResuming) {
+    return (
+      <div className="login-page">
+        <div className="login-container">
+          <div className="login-logo">
+            <AgentLineLogo />
+          </div>
+          <p className="login-subtitle">{t("reconnecting")}</p>
+          <div className="login-loading" data-testid="auto-resume-loading">
+            <div className="login-spinner" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="login-page">
+      <div className="login-container login-container-unified host-picker-shell">
+        <div className="host-picker-top">
+          <div className="login-logo host-picker-logo">
+            <AgentLineLogo />
+          </div>
+          <p className="login-subtitle host-picker-top-subtitle">
+            Platform account sign-in
+          </p>
+        </div>
+
+        {error ? (
+          <div className="login-error" data-testid="host-picker-error">
+            {error}
+          </div>
+        ) : null}
+
+        <section className="host-picker-panel">
+          <form onSubmit={handleAuth} className="login-form">
+            <div className="login-field">
+              <label htmlFor="controlPlaneUrl">Control Plane URL</label>
+              <input
+                id="controlPlaneUrl"
+                type="text"
+                value={controlPlaneUrl}
+                onChange={(event) => setControlPlaneUrl(event.target.value)}
+                placeholder={DEFAULT_CONTROL_PLANE_URL}
+                disabled={loading}
+              />
+            </div>
+            <div className="host-picker-mode-switch">
+              <button
+                type="button"
+                className={`host-picker-mode-tab ${accountMode === "login" ? "host-picker-mode-tab-active" : ""}`}
+                onClick={() => setAccountMode("login")}
+                disabled={loading}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                className={`host-picker-mode-tab ${accountMode === "register" ? "host-picker-mode-tab-active" : ""}`}
+                onClick={() => setAccountMode("register")}
+                disabled={loading}
+              >
+                Register
+              </button>
+            </div>
+            <div className="login-field">
+              <label htmlFor="accountEmail">Email</label>
+              <input
+                id="accountEmail"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="username"
+                placeholder="you@example.com"
+                disabled={loading}
+              />
+            </div>
+            <div className="login-field">
+              <label htmlFor="accountPassword">Password</label>
+              <input
+                id="accountPassword"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete={
+                  accountMode === "register"
+                    ? "new-password"
+                    : "current-password"
+                }
+                placeholder="your account password"
+                disabled={loading}
+              />
+            </div>
+            <button type="submit" className="login-button" disabled={loading}>
+              {loading
+                ? "Submitting..."
+                : accountMode === "register"
+                  ? "Register & Login"
+                  : "Login"}
+            </button>
+          </form>
+
+          <button
+            type="button"
+            className="login-advanced-toggle"
+            onClick={() => setShowAdvanced((value) => !value)}
+          >
+            {showAdvanced
+              ? "Hide advanced connection"
+              : "Show advanced connection"}
+          </button>
+          {showAdvanced ? (
+            <div className="host-picker-list">
+              <button
+                type="button"
+                className="login-button host-picker-add-button"
+                onClick={() => navigate("/login/direct")}
+              >
+                Direct connection (advanced)
+              </button>
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </div>
+  );
+}

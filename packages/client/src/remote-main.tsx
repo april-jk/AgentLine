@@ -38,6 +38,7 @@ import { EmulatorPage } from "./pages/EmulatorPage";
 import { FilePage } from "./pages/FilePage";
 import { GitStatusPage } from "./pages/GitStatusPage";
 import { GlobalSessionsPage } from "./pages/GlobalSessionsPage";
+import { HostAccountLoginPage } from "./pages/HostAccountLoginPage";
 import { HostPickerPage } from "./pages/HostPickerPage";
 import { InboxPage } from "./pages/InboxPage";
 import { NewSessionPage } from "./pages/NewSessionPage";
@@ -236,7 +237,8 @@ createRoot(rootElement).render(
           <Routes>
             {/* Login routes — redirect to app if already connected */}
             <Route element={<UnauthenticatedGate />}>
-              <Route path="/login" element={<HostPickerPage />} />
+              <Route path="/login" element={<HostAccountLoginPage />} />
+              <Route path="/login/devices" element={<HostPickerPage />} />
               <Route
                 path="/login/new"
                 element={<Navigate to="/login" replace />}
