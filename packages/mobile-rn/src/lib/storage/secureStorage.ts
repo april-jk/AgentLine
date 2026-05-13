@@ -14,6 +14,7 @@ export async function deleteSecureItem(key: string): Promise<void> {
 
 export const secureStorageKeys = {
   accessToken: "agentline.access_token",
+  mobileOnboardingDone: "agentline.mobile_onboarding_done",
   uiThemeMode: "agentline.ui_theme_mode",
   controlPlaneUrl: "agentline.control_plane_url",
   controlPlaneAccessToken: "agentline.control_plane_access_token",

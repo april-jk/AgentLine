@@ -57,33 +57,45 @@ export function HostLoginEntryPage() {
 
   return (
     <div className="login-page">
-      <div className="login-container login-container-unified host-picker-shell">
-        <div className="host-picker-top">
-          <div className="login-logo host-picker-logo">
+      <div className="login-container login-container-unified host-picker-shell host-entry-shell">
+        <div className="host-entry-top">
+          <div className="login-logo host-picker-logo host-entry-logo">
             <AgentLineLogo />
           </div>
-          <p className="login-subtitle host-picker-top-subtitle">
-            Choose connection mode
+          <h1 className="host-entry-title">选择连接方式</h1>
+          <p className="host-entry-subtitle">
+            先完成认证，再进入设备列表进行连接。
           </p>
         </div>
 
-        <section className="host-picker-panel">
-          <div className="host-picker-list">
+        <section className="host-picker-panel host-entry-panel">
+          <div className="host-entry-mode-list">
             <button
               type="button"
-              className="login-button host-picker-add-button"
-              onClick={() => navigate("/login/account")}
+              className="host-entry-mode-card host-entry-mode-card-primary"
+              onClick={() =>
+                navigate("/login/account", {
+                  state: { fromEntry: true },
+                })
+              }
               data-testid="entry-platform-account"
             >
-              Platform Account Login
+              <span className="host-entry-mode-badge">推荐</span>
+              <span className="host-entry-mode-title">平台账号登录</span>
+              <span className="host-entry-mode-desc">
+                使用 OneCEO 平台账号登录，进入可控设备列表。
+              </span>
             </button>
             <button
               type="button"
-              className="login-button host-picker-add-button"
+              className="host-entry-mode-card host-entry-mode-card-secondary"
               onClick={() => navigate("/login/direct")}
               data-testid="entry-lan-login"
             >
-              LAN Login
+              <span className="host-entry-mode-title">局域网登录</span>
+              <span className="host-entry-mode-desc">
+                适用于同一网络下的直连调试和本地访问。
+              </span>
             </button>
           </div>
         </section>

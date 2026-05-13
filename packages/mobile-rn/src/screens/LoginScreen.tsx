@@ -2,6 +2,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,6 @@ import {
   type HostItem,
   normalizeHttpBaseUrl,
 } from "../lib/api/client";
-import type { LanScanResult } from "../lib/connection/lanScanner";
 import {
   type ForwardMode,
   resolveForwardingTarget,
@@ -33,24 +33,7 @@ import { useAppTheme } from "../styles/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 type AccountMode = "login" | "register";
-
-type KnownHost = {
-  url: string;
-  label: string;
-  source: "recent" | "scan";
-  detail?: string;
-};
-
-function normalizeLabelFromUrl(url: string): string {
-  try {
-    const match = url.match(/^https?:\/\/([^/:]+)/);
-    if (match?.[1]) return match[1];
-  } catch {
-    // fall through to raw normalization
-  }
-
-  return url.replace(/^https?:\/\//, "");
-}
+const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
 
 function getPortFromUrl(url: string): string {
   const match = url.match(/:(\d+)(?:\/|$)/);
@@ -78,38 +61,6 @@ function getSubnetPrefixFromUrl(url: string): string | null {
   const prefix = match?.[1] ?? null;
   if (!prefix || !isRoutableLanPrefix(prefix)) return null;
   return prefix;
-}
-
-function dedupeKnownHosts(
-  recentServers: string[],
-  scanResults: LanScanResult[],
-): KnownHost[] {
-  const seen = new Set<string>();
-  const items: KnownHost[] = [];
-
-  for (const url of recentServers) {
-    if (seen.has(url)) continue;
-    seen.add(url);
-    items.push({
-      url,
-      label: normalizeLabelFromUrl(url),
-      source: "recent",
-      detail: "最近连接",
-    });
-  }
-
-  for (const item of scanResults) {
-    if (seen.has(item.baseUrl)) continue;
-    seen.add(item.baseUrl);
-    items.push({
-      url: item.baseUrl,
-      label: item.host,
-      source: "scan",
-      detail: `${item.host}:${String(item.port)}`,
-    });
-  }
-
-  return items;
 }
 
 function deriveRelayWsUrl(controlPlaneUrl: string): string {
@@ -144,10 +95,7 @@ export function LoginScreen({ navigation, route }: Props) {
   const [directUsername, setDirectUsername] = useState("mobiletest");
   const [directPassword, setDirectPassword] = useState("mobiletest123");
 
-  const [controlPlaneUrl, setControlPlaneUrl] = useState(
-    "https://relay.oneceo.ai",
-  );
-  const [relayWsUrl, setRelayWsUrl] = useState("");
+  const controlPlaneUrl = DEFAULT_CONTROL_PLANE_URL;
   const [accountEmail, setAccountEmail] = useState("");
   const [accountPassword, setAccountPassword] = useState("");
   const [accountMode, setAccountMode] = useState<AccountMode>("login");
@@ -155,22 +103,25 @@ export function LoginScreen({ navigation, route }: Props) {
   const [bootstrapDone, setBootstrapDone] = useState(false);
   const [hosts, setHosts] = useState<HostItem[]>([]);
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
-  const [accessPassword, setAccessPassword] = useState("");
+  const [savedAccessPassword, setSavedAccessPassword] = useState("");
+  const [accessPasswordDraft, setAccessPasswordDraft] = useState("");
+  const [rememberAccessPassword, setRememberAccessPassword] = useState(true);
+  const [showAccessPasswordModal, setShowAccessPasswordModal] = useState(false);
   const [relayBusy, setRelayBusy] = useState(false);
-  const [showRelayAdvanced, setShowRelayAdvanced] = useState(false);
-
-  const [scanPrefix, setScanPrefix] = useState("192.168.1");
-  const [scanPort, setScanPort] = useState(
-    String(DEFAULT_DESKTOP_DISCOVERY_PORT),
-  );
-  const [scanAdvanced, setScanAdvanced] = useState(false);
-  const [entryMode, setEntryMode] = useState<ForwardMode>("relay");
+  const [showDirectAdvanced, setShowDirectAdvanced] = useState(false);
   const [recentServers, setRecentServers] = useState<string[]>([]);
 
   const selectedHost = useMemo(
     () => hosts.find((item) => item.id === selectedHostId) ?? null,
     [hosts, selectedHostId],
   );
+  const hasAccountToken = accountToken.trim().length > 0;
+  const loginMode: ForwardMode =
+    route.params?.mode === "direct" || route.params?.selectedHostUrl
+      ? "direct"
+      : "relay";
+  const showRelayDevicePage = loginMode === "relay" && hasAccountToken;
+  const showRelayBottomSwitch = loginMode === "relay";
 
   const loadRelayHosts = useCallback(
     async (token: string, urlOverride?: string) => {
@@ -183,7 +134,9 @@ export function LoginScreen({ navigation, route }: Props) {
         const list = await client.listHosts(token);
         setHosts(list);
         setSelectedHostId((current) => {
-          if (current && list.some((item) => item.id === current)) return current;
+          if (current && list.some((item) => item.id === current)) {
+            return current;
+          }
           return list[0]?.id ?? null;
         });
       } catch (error) {
@@ -204,8 +157,6 @@ export function LoginScreen({ navigation, route }: Props) {
         savedDirect,
         savedDirectUsername,
         savedDirectPassword,
-        savedControlPlaneUrl,
-        savedRelayWs,
         savedAccountToken,
         savedAccountEmail,
         savedSelectedHostId,
@@ -215,8 +166,6 @@ export function LoginScreen({ navigation, route }: Props) {
         getSecureItem(secureStorageKeys.directServerUrl),
         getSecureItem(secureStorageKeys.directUsername),
         getSecureItem(secureStorageKeys.directPassword),
-        getSecureItem(secureStorageKeys.controlPlaneUrl),
-        getSecureItem(secureStorageKeys.relayWsUrl),
         getSecureItem(secureStorageKeys.controlPlaneAccessToken),
         getSecureItem(secureStorageKeys.controlPlaneAccountEmail),
         getSecureItem(secureStorageKeys.selectedRelayDeviceId),
@@ -227,12 +176,12 @@ export function LoginScreen({ navigation, route }: Props) {
       if (savedDirect?.trim()) setDirectServerUrl(savedDirect);
       if (savedDirectUsername?.trim()) setDirectUsername(savedDirectUsername);
       if (savedDirectPassword?.trim()) setDirectPassword(savedDirectPassword);
-      if (savedControlPlaneUrl?.trim()) setControlPlaneUrl(savedControlPlaneUrl);
-      if (savedRelayWs?.trim()) setRelayWsUrl(savedRelayWs);
       if (savedAccountToken?.trim()) setAccountToken(savedAccountToken);
       if (savedAccountEmail?.trim()) setAccountEmail(savedAccountEmail);
       if (savedSelectedHostId?.trim()) setSelectedHostId(savedSelectedHostId);
-      if (savedRelayPassword?.trim()) setAccessPassword(savedRelayPassword);
+      if (savedRelayPassword?.trim()) {
+        setSavedAccessPassword(savedRelayPassword);
+      }
       if (savedRecent) {
         try {
           const arr = JSON.parse(savedRecent) as unknown;
@@ -248,10 +197,8 @@ export function LoginScreen({ navigation, route }: Props) {
         }
       }
 
-      // Use persisted URL + token together to avoid startup race where token
-      // triggers a fetch before controlPlaneUrl state has finished updating.
-      if (savedControlPlaneUrl?.trim() && savedAccountToken?.trim()) {
-        await loadRelayHosts(savedAccountToken, savedControlPlaneUrl);
+      if (savedAccountToken?.trim()) {
+        await loadRelayHosts(savedAccountToken, DEFAULT_CONTROL_PLANE_URL);
       }
       setBootstrapDone(true);
     };
@@ -259,10 +206,10 @@ export function LoginScreen({ navigation, route }: Props) {
     void bootstrap();
   }, [loadRelayHosts]);
 
-  const knownHosts = useMemo(
-    () => dedupeKnownHosts(recentServers, []),
-    [recentServers],
-  );
+  useEffect(() => {
+    if (!bootstrapDone || !accountToken.trim()) return;
+    void loadRelayHosts(accountToken);
+  }, [accountToken, bootstrapDone, loadRelayHosts]);
 
   const saveRecent = useCallback(
     async (url: string) => {
@@ -278,11 +225,6 @@ export function LoginScreen({ navigation, route }: Props) {
     },
     [recentServers],
   );
-
-  useEffect(() => {
-    if (!bootstrapDone || !accountToken.trim()) return;
-    void loadRelayHosts(accountToken);
-  }, [accountToken, bootstrapDone, loadRelayHosts]);
 
   const openDirectConsole = useCallback(
     async (serverUrl = directServerUrl) => {
@@ -338,8 +280,7 @@ export function LoginScreen({ navigation, route }: Props) {
 
     setRelayBusy(true);
     try {
-      const baseUrl = normalizeHttpBaseUrl(controlPlaneUrl);
-      const client = new ApiClient(baseUrl);
+      const client = new ApiClient(normalizeHttpBaseUrl(controlPlaneUrl));
       const authResult =
         accountMode === "register"
           ? await client.register({ email, password: accountPassword })
@@ -354,9 +295,14 @@ export function LoginScreen({ navigation, route }: Props) {
         authResult.accessToken,
       );
       await setSecureItem(secureStorageKeys.controlPlaneAccountEmail, email);
+      await setSecureItem(secureStorageKeys.mobileOnboardingDone, "1");
       setAccountToken(authResult.accessToken);
       setAccountPassword("");
-      await loadRelayHosts(authResult.accessToken, baseUrl);
+      await loadRelayHosts(authResult.accessToken, controlPlaneUrl);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Login", params: { mode: "relay" } }],
+      });
     } catch (error) {
       Alert.alert(
         accountMode === "register" ? "注册失败" : "登录失败",
@@ -374,7 +320,7 @@ export function LoginScreen({ navigation, route }: Props) {
     await setSecureItem(secureStorageKeys.controlPlaneAccessToken, "");
   };
 
-  const openRelayConsole = async () => {
+  const openRelayConsole = async (accessPassword: string) => {
     try {
       if (!selectedHost) {
         Alert.alert("请选择主机", "先选择要连接的电脑");
@@ -388,7 +334,7 @@ export function LoginScreen({ navigation, route }: Props) {
       const target = resolveForwardingTarget({
         mode: "relay",
         controlPlaneUrl,
-        relayWsUrl: relayWsUrl.trim() || deriveRelayWsUrl(controlPlaneUrl),
+        relayWsUrl: deriveRelayWsUrl(controlPlaneUrl),
         relayUsername: selectedHost.relayUsername,
         relayPassword: accessPassword,
         themeMode,
@@ -401,14 +347,17 @@ export function LoginScreen({ navigation, route }: Props) {
       );
       await setSecureItem(
         secureStorageKeys.relayWsUrl,
-        relayWsUrl.trim() || deriveRelayWsUrl(controlPlaneUrl),
+        deriveRelayWsUrl(controlPlaneUrl),
       );
       await setSecureItem(
         secureStorageKeys.relayUsername,
         selectedHost.relayUsername,
       );
       await setSecureItem(secureStorageKeys.relayPassword, accessPassword);
-      await setSecureItem(secureStorageKeys.selectedRelayDeviceId, selectedHost.id);
+      await setSecureItem(
+        secureStorageKeys.selectedRelayDeviceId,
+        selectedHost.id,
+      );
       navigation.navigate("Console", target);
     } catch (error) {
       Alert.alert(
@@ -416,6 +365,37 @@ export function LoginScreen({ navigation, route }: Props) {
         error instanceof Error ? error.message : "未知错误",
       );
     }
+  };
+
+  const handleRelayConnectPress = () => {
+    if (!selectedHost) {
+      Alert.alert("请选择主机", "先选择要连接的电脑");
+      return;
+    }
+
+    setAccessPasswordDraft(savedAccessPassword);
+    setRememberAccessPassword(Boolean(savedAccessPassword));
+    setShowAccessPasswordModal(true);
+  };
+
+  const handleConfirmRelayPassword = async () => {
+    const password = accessPasswordDraft.trim();
+    if (!password) {
+      Alert.alert("缺少访问密码", "请输入桌面端设置的访问密码");
+      return;
+    }
+
+    if (rememberAccessPassword) {
+      await setSecureItem(secureStorageKeys.relayPassword, password);
+      setSavedAccessPassword(password);
+    } else {
+      await setSecureItem(secureStorageKeys.relayPassword, "");
+      setSavedAccessPassword("");
+    }
+
+    setShowAccessPasswordModal(false);
+    setAccessPasswordDraft("");
+    void openRelayConsole(password);
   };
 
   useEffect(() => {
@@ -443,71 +423,19 @@ export function LoginScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.container,
+          loginMode === "direct" || showRelayDevicePage || showRelayBottomSwitch
+            ? styles.containerCentered
+            : null,
+        ]}
+      >
         <View style={styles.surface}>
-          <View style={styles.logoBlock}>
-            <View style={styles.logoMark}>
-              <Text style={styles.logoMarkText}>A</Text>
-            </View>
-            <Text style={styles.logoWordmark}>
-              <Text style={styles.logoWordmarkAccent}>Agent</Text>
-              <Text style={styles.logoWordmarkBase}>Line</Text>
-            </Text>
-          </View>
-
-          <Text style={styles.sectionSubtitle}>
-            {entryMode === "relay" ? "平台账号连接" : "直接连接"}
-          </Text>
-
-          <View style={styles.modeSwitch}>
-            <Pressable
-              style={[
-                styles.modeTab,
-                entryMode === "relay" ? styles.modeTabActive : null,
-              ]}
-              onPress={() => setEntryMode("relay")}
-            >
-              <Text
-                style={[
-                  styles.modeTabText,
-                  entryMode === "relay" ? styles.modeTabTextActive : null,
-                ]}
-              >
-                平台账号
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.modeTab,
-                entryMode === "direct" ? styles.modeTabActive : null,
-              ]}
-              onPress={() => setEntryMode("direct")}
-            >
-              <Text
-                style={[
-                  styles.modeTabText,
-                  entryMode === "direct" ? styles.modeTabTextActive : null,
-                ]}
-              >
-                局域网直连
-              </Text>
-            </Pressable>
-          </View>
-
-          {entryMode === "relay" ? (
-            <View style={styles.formCard}>
-              <Text style={styles.formTitle}>平台账号与设备</Text>
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>控制平面地址</Text>
-                <TextInput
-                  style={styles.input}
-                  value={controlPlaneUrl}
-                  onChangeText={setControlPlaneUrl}
-                  autoCapitalize="none"
-                  placeholder="https://relay.oneceo.ai"
-                  placeholderTextColor={theme.textMuted}
-                />
-              </View>
+          {loginMode === "relay" && !hasAccountToken ? (
+            <View style={[styles.formSection, styles.formSectionCentered]}>
+              <Text style={styles.formTitle}>平台账号登录</Text>
               <View style={styles.modeSwitch}>
                 <Pressable
                   style={[
@@ -567,34 +495,44 @@ export function LoginScreen({ navigation, route }: Props) {
                 />
               </View>
               <Pressable
-                style={styles.secondaryButton}
+                style={[
+                  styles.primaryButton,
+                  relayBusy ? styles.buttonDisabled : null,
+                ]}
                 onPress={() => void submitRelayAccount()}
                 disabled={relayBusy}
               >
-                <Text style={styles.secondaryButtonText}>
+                <Text style={styles.primaryButtonText}>
                   {relayBusy
                     ? "处理中..."
                     : accountMode === "register"
-                      ? "注册并登录"
-                      : "登录并加载设备"}
+                      ? "注册并继续"
+                      : "登录并继续"}
                 </Text>
               </Pressable>
-              {accountToken ? (
-                <View style={styles.inlineActionsRow}>
-                  <Pressable
-                    style={styles.utilityButton}
-                    onPress={() => void loadRelayHosts(accountToken)}
-                  >
-                    <Text style={styles.utilityButtonText}>刷新设备列表</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.utilityButton}
-                    onPress={() => void clearRelayAccount()}
-                  >
-                    <Text style={styles.utilityButtonText}>退出账号</Text>
-                  </Pressable>
-                </View>
-              ) : null}
+            </View>
+          ) : null}
+
+          {loginMode === "relay" && hasAccountToken ? (
+            <View style={[styles.formSection, styles.formSectionCentered]}>
+              <Text style={styles.formTitle}>选择设备并连接</Text>
+              <Text style={styles.formMetaText}>
+                当前平台账号：{accountEmail || "已登录"}
+              </Text>
+              <View style={styles.inlineActionsRow}>
+                <Pressable
+                  style={[styles.utilityButton, styles.utilityButtonInline]}
+                  onPress={() => void loadRelayHosts(accountToken)}
+                >
+                  <Text style={styles.utilityButtonText}>刷新设备列表</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.utilityButton, styles.utilityButtonInline]}
+                  onPress={() => void clearRelayAccount()}
+                >
+                  <Text style={styles.utilityButtonText}>退出账号</Text>
+                </Pressable>
+              </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.fieldLabel}>已绑定设备</Text>
@@ -615,11 +553,18 @@ export function LoginScreen({ navigation, route }: Props) {
                             <View
                               style={[
                                 styles.hostDot,
-                                { backgroundColor: statusColor(host.relayState, theme) },
+                                {
+                                  backgroundColor: statusColor(
+                                    host.relayState,
+                                    theme,
+                                  ),
+                                },
                               ]}
                             />
                             <Text style={styles.hostName}>{host.name}</Text>
-                            <Text style={styles.hostModeBadge}>{host.deviceType}</Text>
+                            <Text style={styles.hostModeBadge}>
+                              {host.deviceType}
+                            </Text>
                           </View>
                           <View style={styles.hostItemMeta}>
                             <Text style={styles.hostMetaText}>
@@ -635,100 +580,38 @@ export function LoginScreen({ navigation, route }: Props) {
                   </View>
                 ) : (
                   <Text style={styles.emptyText}>
-                    {accountToken
-                      ? "没有找到已绑定设备，请先在桌面端登录同一账号并保持在线。"
-                      : "登录后会显示可连接的电脑。"}
+                    没有找到已绑定设备，请先在桌面端登录同一账号并保持在线。
                   </Text>
                 )}
               </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>访问密码（桌面端设置）</Text>
-                <TextInput
-                  style={styles.input}
-                  value={accessPassword}
-                  onChangeText={setAccessPassword}
-                  secureTextEntry
-                  placeholder="访问密码"
-                  placeholderTextColor={theme.textMuted}
-                />
-              </View>
 
               <Pressable
-                style={styles.primaryButton}
-                onPress={() => void openRelayConsole()}
+                style={[
+                  styles.primaryButton,
+                  relayBusy ? styles.buttonDisabled : null,
+                ]}
+                onPress={handleRelayConnectPress}
+                disabled={relayBusy}
               >
-                <Text style={styles.primaryButtonText}>连接到选中设备</Text>
-              </Pressable>
-
-              <Pressable
-                style={styles.textAction}
-                onPress={() => setShowRelayAdvanced((value) => !value)}
-              >
-                <Text style={styles.textActionText}>
-                  {showRelayAdvanced ? "隐藏高级选项" : "显示高级选项"}
+                <Text style={styles.primaryButtonText}>
+                  {relayBusy ? "连接中..." : "连接到选中设备"}
                 </Text>
               </Pressable>
-              {showRelayAdvanced ? (
-                <View style={styles.advancedPane}>
-                  <TextInput
-                    style={styles.input}
-                    value={relayWsUrl}
-                    onChangeText={setRelayWsUrl}
-                    autoCapitalize="none"
-                    placeholder={deriveRelayWsUrl(controlPlaneUrl)}
-                    placeholderTextColor={theme.textMuted}
-                  />
-                  <Text style={styles.footerHint}>
-                    默认会从控制平面地址自动推导 Relay WebSocket。
-                  </Text>
-                </View>
-              ) : null}
             </View>
           ) : null}
 
-          {entryMode === "direct" ? (
-            <View style={styles.formCard}>
+          {loginMode === "direct" ? (
+            <View style={[styles.formSection, styles.formSectionCentered]}>
               <Text style={styles.formTitle}>局域网直连</Text>
-
-              {knownHosts.length > 0 ? (
-                <View style={styles.hostList}>
-                  {knownHosts.map((host) => (
-                    <Pressable
-                      key={host.url}
-                      style={styles.hostItem}
-                      onPress={() => {
-                        setDirectServerUrl(host.url);
-                        void openDirectConsole(host.url);
-                      }}
-                    >
-                      <View style={styles.hostItemMain}>
-                        <View style={styles.hostDot} />
-                        <Text style={styles.hostName}>{host.label}</Text>
-                        <Text style={styles.hostModeBadge}>direct</Text>
-                      </View>
-                      <View style={styles.hostItemMeta}>
-                        <Text style={styles.hostMetaText}>{host.url}</Text>
-                        <Text style={styles.hostMetaText}>
-                          {host.detail ?? "最近连接"}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.emptyText}>
-                  还没有已保存主机。你可以先自动搜索，也可以手动添加。
-                </Text>
-              )}
 
               <Pressable
                 style={styles.utilityButton}
                 onPress={() =>
-                  navigation.navigate("SearchHosts", {
+                  navigation.push("SearchHosts", {
                     currentServerUrl: directServerUrl,
                     recentServers,
                     scanPrefix:
-                      getSubnetPrefixFromUrl(directServerUrl) ?? scanPrefix,
+                      getSubnetPrefixFromUrl(directServerUrl) ?? "192.168.1",
                     scanPort: getPortFromUrl(directServerUrl),
                   })
                 }
@@ -736,100 +619,143 @@ export function LoginScreen({ navigation, route }: Props) {
                 <Text style={styles.utilityButtonText}>自动搜索局域网主机</Text>
               </Pressable>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>电脑端地址</Text>
-                <TextInput
-                  style={styles.input}
-                  value={directServerUrl}
-                  onChangeText={setDirectServerUrl}
-                  autoCapitalize="none"
-                  placeholder={`http://127.0.0.1:${String(
-                    DEFAULT_DESKTOP_DISCOVERY_PORT,
-                  )}`}
-                  placeholderTextColor={theme.textMuted}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>用户名</Text>
-                <TextInput
-                  style={styles.input}
-                  value={directUsername}
-                  onChangeText={setDirectUsername}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="直连用户名"
-                  placeholderTextColor={theme.textMuted}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>密码</Text>
-                <TextInput
-                  style={styles.input}
-                  value={directPassword}
-                  onChangeText={setDirectPassword}
-                  placeholder="直连密码"
-                  placeholderTextColor={theme.textMuted}
-                  secureTextEntry
-                />
-              </View>
               <Pressable
-                style={styles.primaryButton}
-                onPress={() => void openDirectConsole()}
+                style={styles.utilityButton}
+                onPress={() =>
+                  navigation.push("RecentHosts", {
+                    currentServerUrl: directServerUrl,
+                    recentServers,
+                  })
+                }
               >
-                <Text style={styles.primaryButtonText}>连接</Text>
+                <Text style={styles.utilityButtonText}>连接历史</Text>
               </Pressable>
+
               <Pressable
-                style={styles.textAction}
-                onPress={() => setScanAdvanced((value) => !value)}
+                style={styles.utilityButton}
+                onPress={() => setShowDirectAdvanced((value) => !value)}
               >
-                <Text style={styles.textActionText}>
-                  {scanAdvanced ? "隐藏高级选项" : "显示高级选项"}
+                <Text style={styles.utilityButtonText}>
+                  {showDirectAdvanced ? "隐藏高级" : "高级"}
                 </Text>
               </Pressable>
-              {scanAdvanced ? (
-                <View style={styles.advancedPane}>
-                  <TextInput
-                    style={styles.input}
-                    value={scanPrefix}
-                    onChangeText={setScanPrefix}
-                    autoCapitalize="none"
-                    placeholder="网段，例如 192.168.1"
-                    placeholderTextColor={theme.textMuted}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    value={scanPort}
-                    onChangeText={setScanPort}
-                    keyboardType="numeric"
-                    placeholder={`端口（默认 ${String(
-                      DEFAULT_DESKTOP_DISCOVERY_PORT,
-                    )}）`}
-                    placeholderTextColor={theme.textMuted}
-                  />
+
+              {showDirectAdvanced ? (
+                <>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.fieldLabel}>电脑端地址</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={directServerUrl}
+                      onChangeText={setDirectServerUrl}
+                      autoCapitalize="none"
+                      placeholder={`http://127.0.0.1:${String(
+                        DEFAULT_DESKTOP_DISCOVERY_PORT,
+                      )}`}
+                      placeholderTextColor={theme.textMuted}
+                    />
+                  </View>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.fieldLabel}>用户名</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={directUsername}
+                      onChangeText={setDirectUsername}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder="直连用户名"
+                      placeholderTextColor={theme.textMuted}
+                    />
+                  </View>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.fieldLabel}>密码</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={directPassword}
+                      onChangeText={setDirectPassword}
+                      placeholder="直连密码"
+                      placeholderTextColor={theme.textMuted}
+                      secureTextEntry
+                    />
+                  </View>
                   <Pressable
-                    style={styles.secondaryButton}
-                    onPress={() =>
-                      navigation.navigate("SearchHosts", {
-                        currentServerUrl: directServerUrl,
-                        recentServers,
-                        scanPrefix:
-                          getSubnetPrefixFromUrl(directServerUrl) ?? scanPrefix,
-                        scanPort,
-                      })
-                    }
+                    style={styles.primaryButton}
+                    onPress={() => void openDirectConsole()}
                   >
-                    <Text style={styles.secondaryButtonText}>打开扫描窗口</Text>
+                    <Text style={styles.primaryButtonText}>连接</Text>
                   </Pressable>
-                </View>
+                </>
               ) : null}
             </View>
           ) : null}
-
-          <Text style={styles.footerHint}>
-            推荐流程：平台账号登录 → 选择设备 → 输入桌面端访问密码。
-          </Text>
         </View>
       </ScrollView>
+
+      {showRelayBottomSwitch ? (
+        <View style={styles.bottomDock}>
+          <Pressable
+            style={styles.bottomTextAction}
+            onPress={() => navigation.push("Login", { mode: "direct" })}
+          >
+            <Text style={styles.bottomTextActionText}>使用局域网连接</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showAccessPasswordModal}
+        onRequestClose={() => setShowAccessPasswordModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>输入访问密码</Text>
+            <Text style={styles.modalHint}>
+              连接 {selectedHost?.name ?? "选中设备"} 前请输入桌面端访问密码。
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={accessPasswordDraft}
+              onChangeText={setAccessPasswordDraft}
+              secureTextEntry
+              placeholder="访问密码"
+              placeholderTextColor={theme.textMuted}
+            />
+            <Pressable
+              onPress={() => setRememberAccessPassword((value) => !value)}
+              style={styles.rememberRow}
+            >
+              <View
+                style={[
+                  styles.checkboxOuter,
+                  rememberAccessPassword ? styles.checkboxOuterChecked : null,
+                ]}
+              >
+                {rememberAccessPassword ? (
+                  <View style={styles.checkboxInner} />
+                ) : null}
+              </View>
+              <Text style={styles.rememberText}>保存到本机</Text>
+            </Pressable>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={() => setShowAccessPasswordModal(false)}
+                style={styles.modalGhostButton}
+              >
+                <Text style={styles.modalGhostButtonText}>取消</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void handleConfirmRelayPassword()}
+                style={[styles.primaryButton, styles.modalPrimaryButton]}
+              >
+                <Text style={styles.primaryButtonText}>连接</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -840,70 +766,74 @@ const createStyles = (theme: AppTheme) =>
       flex: 1,
       backgroundColor: theme.bg,
     },
+    scroll: {
+      flex: 1,
+    },
     container: {
+      flexGrow: 1,
       paddingHorizontal: theme.spaceLg,
-      paddingTop: theme.spaceLg,
+      paddingTop: theme.spaceSm,
       paddingBottom: theme.spaceXl * 2,
+    },
+    containerCentered: {
+      justifyContent: "center",
     },
     surface: {
       width: "100%",
-      maxWidth: 380,
+      maxWidth: 420,
       alignSelf: "center",
       gap: theme.spaceMd,
     },
-    logoBlock: {
-      alignItems: "center",
+    formSection: {
+      width: "100%",
       gap: theme.spaceMd,
-      paddingTop: theme.spaceXl,
-      paddingBottom: theme.spaceLg,
     },
-    logoMark: {
-      width: 44,
-      height: 44,
-      borderRadius: theme.radiusLg,
-      alignItems: "center",
+    formSectionCentered: {
       justifyContent: "center",
-      backgroundColor: theme.panelAlt,
-      borderWidth: 1,
-      borderColor: theme.border,
     },
-    logoMarkText: {
-      color: theme.brandTeal,
-      fontSize: 24,
-      fontWeight: "800",
-    },
-    logoWordmark: {
-      fontSize: 22,
-      fontWeight: "800",
-    },
-    logoWordmarkAccent: {
-      color: theme.brandTeal,
-    },
-    logoWordmarkBase: {
+    formTitle: {
       color: theme.text,
-    },
-    sectionSubtitle: {
-      color: theme.text,
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: "700",
       textAlign: "center",
+    },
+    formMetaText: {
+      marginTop: -theme.spaceXs,
+      color: theme.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
+      textAlign: "center",
+    },
+    formGroup: {
+      gap: theme.spaceXs,
+    },
+    fieldLabel: {
+      color: theme.textMuted,
+      fontSize: 12,
+      fontWeight: "600",
+      letterSpacing: 0.3,
+      textTransform: "uppercase",
     },
     modeSwitch: {
       flexDirection: "row",
       gap: theme.spaceSm,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 999,
+      padding: 4,
+      backgroundColor: theme.panelAlt,
     },
     modeTab: {
       flex: 1,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: theme.radiusMd,
-      paddingVertical: theme.spaceSm,
+      borderWidth: 0,
+      borderRadius: 999,
+      minHeight: 52,
       alignItems: "center",
-      backgroundColor: theme.panel,
+      justifyContent: "center",
+      backgroundColor: "transparent",
     },
     modeTabActive: {
       backgroundColor: theme.brandTeal,
-      borderColor: theme.brandTeal,
     },
     modeTabText: {
       color: theme.textMuted,
@@ -912,68 +842,44 @@ const createStyles = (theme: AppTheme) =>
     modeTabTextActive: {
       color: "#ffffff",
     },
-    formCard: {
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: theme.radiusLg,
-      backgroundColor: theme.panel,
-      padding: theme.spaceLg,
-      gap: theme.spaceMd,
-    },
-    formTitle: {
-      color: theme.text,
-      fontSize: 16,
-      fontWeight: "700",
-    },
-    formGroup: {
-      gap: theme.spaceXs,
-    },
-    fieldLabel: {
-      color: theme.textMuted,
-      fontSize: 13,
-      fontWeight: "600",
-    },
     input: {
       borderWidth: 1,
       borderColor: theme.border,
-      borderRadius: theme.radiusMd,
+      borderRadius: 26,
       backgroundColor: theme.panelAlt,
       color: theme.text,
       paddingHorizontal: theme.spaceMd,
-      paddingVertical: theme.spaceSm,
+      minHeight: 52,
       fontSize: 14,
     },
     primaryButton: {
-      borderRadius: theme.radiusMd,
+      borderRadius: 999,
       backgroundColor: theme.brandTeal,
-      paddingVertical: theme.spaceSm,
+      minHeight: 54,
       alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: theme.spaceLg,
+    },
+    buttonDisabled: {
+      opacity: 0.58,
     },
     primaryButtonText: {
       color: "#ffffff",
       fontWeight: "700",
-      fontSize: 15,
-    },
-    secondaryButton: {
-      borderRadius: theme.radiusMd,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.panelAlt,
-      paddingVertical: theme.spaceSm,
-      alignItems: "center",
-    },
-    secondaryButtonText: {
-      color: theme.text,
-      fontWeight: "600",
-      fontSize: 14,
+      fontSize: 16,
     },
     utilityButton: {
-      borderRadius: theme.radiusMd,
+      borderRadius: 999,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.panelAlt,
-      paddingVertical: theme.spaceSm,
+      minHeight: 54,
       alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: theme.spaceMd,
+    },
+    utilityButtonInline: {
+      flex: 1,
     },
     utilityButtonText: {
       color: theme.text,
@@ -990,13 +896,15 @@ const createStyles = (theme: AppTheme) =>
     hostItem: {
       borderWidth: 1,
       borderColor: theme.border,
-      borderRadius: theme.radiusMd,
+      borderRadius: 24,
       backgroundColor: theme.panelAlt,
-      padding: theme.spaceSm,
+      paddingHorizontal: theme.spaceSm + 2,
+      paddingVertical: theme.spaceSm,
       gap: theme.spaceXs,
     },
     hostItemSelected: {
       borderColor: theme.brandTeal,
+      backgroundColor: theme.panel,
     },
     hostItemMain: {
       flexDirection: "row",
@@ -1019,6 +927,7 @@ const createStyles = (theme: AppTheme) =>
       color: theme.textMuted,
       fontSize: 12,
       fontWeight: "600",
+      textTransform: "uppercase",
     },
     hostItemMeta: {
       gap: 2,
@@ -1031,29 +940,110 @@ const createStyles = (theme: AppTheme) =>
     emptyText: {
       color: theme.textMuted,
       fontSize: 13,
-      lineHeight: 18,
+      lineHeight: 19,
+      textAlign: "center",
     },
-    textAction: {
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.42)",
       alignItems: "center",
-      paddingVertical: theme.spaceXs,
+      justifyContent: "center",
+      paddingHorizontal: theme.spaceLg,
     },
-    textActionText: {
-      color: theme.brandTeal,
-      fontWeight: "600",
-      fontSize: 13,
-    },
-    advancedPane: {
-      gap: theme.spaceSm,
+    modalCard: {
+      width: "100%",
+      maxWidth: 380,
+      borderRadius: 30,
       borderWidth: 1,
       borderColor: theme.border,
-      borderRadius: theme.radiusMd,
-      padding: theme.spaceSm,
-      backgroundColor: theme.panelAlt,
+      backgroundColor: theme.panel,
+      paddingHorizontal: theme.spaceLg,
+      paddingVertical: theme.spaceLg,
+      gap: theme.spaceMd,
     },
-    footerHint: {
-      color: theme.textMuted,
-      fontSize: 12,
-      lineHeight: 18,
+    modalTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: "700",
       textAlign: "center",
+    },
+    modalHint: {
+      color: theme.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
+      textAlign: "center",
+    },
+    rememberRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spaceSm,
+      paddingVertical: 2,
+    },
+    checkboxOuter: {
+      width: 20,
+      height: 20,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.panelAlt,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkboxOuterChecked: {
+      borderColor: theme.brandTeal,
+      backgroundColor: theme.brandTeal,
+    },
+    checkboxInner: {
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: "#ffffff",
+    },
+    rememberText: {
+      color: theme.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    modalActions: {
+      flexDirection: "row",
+      gap: theme.spaceSm,
+    },
+    modalGhostButton: {
+      flex: 1,
+      minHeight: 54,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.panelAlt,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalGhostButtonText: {
+      color: theme.textMuted,
+      fontSize: 15,
+      fontWeight: "600",
+    },
+    modalPrimaryButton: {
+      flex: 1,
+    },
+    bottomTextAction: {
+      alignSelf: "center",
+      paddingVertical: theme.spaceXs,
+      paddingHorizontal: theme.spaceSm,
+    },
+    bottomTextActionText: {
+      color: theme.brandTeal,
+      fontSize: 13,
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    bottomDock: {
+      width: "100%",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingTop: theme.spaceXs,
+      paddingBottom: theme.spaceSm,
+      paddingHorizontal: theme.spaceLg,
+      backgroundColor: theme.bg,
     },
   });

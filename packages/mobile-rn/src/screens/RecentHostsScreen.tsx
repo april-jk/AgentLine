@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -74,12 +74,15 @@ export function RecentHostsScreen({ navigation, route }: Props) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { currentServerUrl, recentServers } = route.params;
 
-  const hosts = useMemo(() => dedupeRecentHosts(recentServers), [recentServers]);
+  const hosts = useMemo(
+    () => dedupeRecentHosts(recentServers),
+    [recentServers],
+  );
   const [selectedHostUrl, setSelectedHostUrl] = useState(currentServerUrl);
   const [isChecking, setIsChecking] = useState(false);
-  const [probeStatusMap, setProbeStatusMap] = useState<Record<string, ProbeStatus>>(
-    {},
-  );
+  const [probeStatusMap, setProbeStatusMap] = useState<
+    Record<string, ProbeStatus>
+  >({});
 
   useEffect(() => {
     if (!selectedHostUrl && hosts[0]) {
@@ -87,7 +90,7 @@ export function RecentHostsScreen({ navigation, route }: Props) {
     }
   }, [hosts, selectedHostUrl]);
 
-  const runProbe = async () => {
+  const runProbe = useCallback(async () => {
     if (hosts.length <= 0) return;
 
     setIsChecking(true);
@@ -112,15 +115,16 @@ export function RecentHostsScreen({ navigation, route }: Props) {
       return next;
     });
     setIsChecking(false);
-  };
+  }, [hosts]);
 
   useEffect(() => {
     void runProbe();
-  }, [hosts.join("|")]);
+  }, [runProbe]);
 
   const applySelection = (connectOnSelect: boolean) => {
     if (!selectedHostUrl.trim()) return;
     navigation.popTo("Login", {
+      mode: "direct",
       selectedHostUrl,
       connectOnSelect,
     });
@@ -171,7 +175,9 @@ export function RecentHostsScreen({ navigation, route }: Props) {
                           status === "online" ? styles.hostDotOnline : null,
                         ]}
                       />
-                      <Text style={styles.hostName}>{normalizeLabelFromUrl(host)}</Text>
+                      <Text style={styles.hostName}>
+                        {normalizeLabelFromUrl(host)}
+                      </Text>
                     </View>
                     <Text style={styles.hostMetaText}>{host}</Text>
                   </Pressable>

@@ -120,7 +120,10 @@ export function SearchHostsScreen({ navigation, route }: Props) {
     [scanPrefix],
   );
 
-  const knownHosts = useMemo(() => dedupeKnownHosts(scanResults), [scanResults]);
+  const knownHosts = useMemo(
+    () => dedupeKnownHosts(scanResults),
+    [scanResults],
+  );
 
   useEffect(() => {
     void runSmartScan();
@@ -172,7 +175,9 @@ export function SearchHostsScreen({ navigation, route }: Props) {
       return;
     }
     if (!isRoutableLanPrefix(prefix)) {
-      setScanProgress("禁止扫描该网段，请输入可路由局域网网段（例如 192.168.1）");
+      setScanProgress(
+        "禁止扫描该网段，请输入可路由局域网网段（例如 192.168.1）",
+      );
       return;
     }
 
@@ -208,6 +213,7 @@ export function SearchHostsScreen({ navigation, route }: Props) {
   const applySelection = (connectOnSelect = false) => {
     if (!selectedHostUrl.trim()) return;
     navigation.popTo("Login", {
+      mode: "direct",
       selectedHostUrl,
       connectOnSelect,
     });
@@ -220,7 +226,8 @@ export function SearchHostsScreen({ navigation, route }: Props) {
           <View style={styles.headerBlock}>
             <Text style={styles.title}>搜索局域网主机</Text>
             <Text style={styles.subtitle}>
-              默认只扫描当前网段 {effectiveScanPrefix}.0/24。跨网段或复杂网络请使用高级扫描。
+              默认只扫描当前网段 {effectiveScanPrefix}
+              .0/24。跨网段或复杂网络请使用高级扫描。
             </Text>
           </View>
 

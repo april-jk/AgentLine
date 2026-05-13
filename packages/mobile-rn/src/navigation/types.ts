@@ -1,8 +1,11 @@
 import type { ForwardMode } from "../lib/forwarding/layer";
 
 export type RootStackParamList = {
+  Welcome: undefined;
+  ConnectionMode: undefined;
   Login:
     | {
+        mode?: "relay" | "direct";
         selectedHostUrl?: string;
         connectOnSelect?: boolean;
       }
