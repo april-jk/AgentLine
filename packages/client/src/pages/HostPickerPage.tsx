@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
+import { Modal } from "../components/ui/Modal";
 import {
   type RelayConnectionStatus,
   useRemoteConnection,
@@ -24,6 +25,11 @@ interface RelayHashCredentials {
   relayUrl: string;
   clientGrant?: string;
 }
+
+type SavedAccessPasswordMap = Record<string, string>;
+
+const DEVICE_ACCESS_PASSWORDS_STORAGE_KEY =
+  "agentline.remote.device-access-passwords";
 
 function parseRelayHashCredentials(
   clearHash = true,
@@ -106,6 +112,54 @@ function getRelayStatusText(status: RelayConnectionStatus | "idle"): string {
   }
 }
 
+function isAccessPasswordError(message: string): boolean {
+  return (
+    message.includes("authentication failed") ||
+    message.includes("Authentication failed") ||
+    message.includes("invalid_identity")
+  );
+}
+
+function loadSavedAccessPasswords(): SavedAccessPasswordMap {
+  try {
+    const raw = localStorage.getItem(DEVICE_ACCESS_PASSWORDS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as SavedAccessPasswordMap;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function getSavedAccessPassword(relayUsername: string): string | null {
+  const all = loadSavedAccessPasswords();
+  const password = all[relayUsername];
+  return typeof password === "string" && password.length > 0 ? password : null;
+}
+
+function setSavedAccessPassword(
+  relayUsername: string,
+  accessPassword: string,
+): void {
+  const all = loadSavedAccessPasswords();
+  all[relayUsername] = accessPassword;
+  localStorage.setItem(
+    DEVICE_ACCESS_PASSWORDS_STORAGE_KEY,
+    JSON.stringify(all),
+  );
+}
+
+function removeSavedAccessPassword(relayUsername: string): void {
+  const all = loadSavedAccessPasswords();
+  if (!(relayUsername in all)) return;
+  delete all[relayUsername];
+  localStorage.setItem(
+    DEVICE_ACCESS_PASSWORDS_STORAGE_KEY,
+    JSON.stringify(all),
+  );
+}
+
 export function HostPickerPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -124,9 +178,10 @@ export function HostPickerPage() {
   const [relayStatus, setRelayStatus] = useState<
     RelayConnectionStatus | "idle"
   >("idle");
-  const [pendingPasswordDeviceId, setPendingPasswordDeviceId] = useState<
+  const [passwordModalDeviceId, setPasswordModalDeviceId] = useState<
     string | null
   >(null);
+  const [rememberAccessPassword, setRememberAccessPassword] = useState(true);
   const [accessPassword, setAccessPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -143,6 +198,14 @@ export function HostPickerPage() {
         ? (getHostByRelayUsername(selectedDevice.relayUsername) ?? null)
         : null,
     [selectedDevice],
+  );
+  const passwordModalDevice = useMemo(
+    () =>
+      passwordModalDeviceId
+        ? (devices.find((device) => device.id === passwordModalDeviceId) ??
+          null)
+        : null,
+    [devices, passwordModalDeviceId],
   );
 
   const loadDevices = useCallback(async (baseUrl: string, token: string) => {
@@ -193,11 +256,12 @@ export function HostPickerPage() {
       accessPassword?: string;
       clientGrant?: string;
       controlPlaneBaseUrl?: string;
-    }) => {
+      fromSavedPassword?: boolean;
+    }): Promise<boolean> => {
       const relayUsername = params.relayUsername.trim().toLowerCase();
       if (!relayUsername) {
         setError("Device route is missing.");
-        return;
+        return false;
       }
 
       const relayUrl =
@@ -241,7 +305,7 @@ export function HostPickerPage() {
         });
 
         setAccessPassword("");
-        setPendingPasswordDeviceId(null);
+        setPasswordModalDeviceId(null);
         setRelayStatus("idle");
         setConnectingDeviceId(null);
         navigate(
@@ -253,10 +317,26 @@ export function HostPickerPage() {
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Connection failed";
+        if (params.fromSavedPassword && isAccessPasswordError(message)) {
+          removeSavedAccessPassword(relayUsername);
+          if (params.deviceId) {
+            setPasswordModalDeviceId(params.deviceId);
+            setRememberAccessPassword(true);
+          }
+          setAccessPassword("");
+          setError(
+            "Saved access password is no longer valid. Please re-enter it.",
+          );
+          setRelayStatus("idle");
+          setConnectingDeviceId(null);
+          return false;
+        }
         setError(formatConnectError(message));
         setRelayStatus("error");
         setConnectingDeviceId(null);
+        return false;
       }
+      return true;
     },
     [connectViaRelay, controlPlaneUrl, navigate, setCurrentHostId],
   );
@@ -279,7 +359,7 @@ export function HostPickerPage() {
 
   const handleSelectDevice = (deviceId: string) => {
     setSelectedDeviceId(deviceId);
-    setPendingPasswordDeviceId(null);
+    setPasswordModalDeviceId(null);
     setAccessPassword("");
   };
 
@@ -288,7 +368,7 @@ export function HostPickerPage() {
     setAccessToken(null);
     setDevices([]);
     setSelectedDeviceId(null);
-    setPendingPasswordDeviceId(null);
+    setPasswordModalDeviceId(null);
     setAccessPassword("");
     navigate("/login", { replace: true });
   };
@@ -308,18 +388,47 @@ export function HostPickerPage() {
       return;
     }
 
-    setPendingPasswordDeviceId(selectedDevice.id);
+    const savedAccessPassword = getSavedAccessPassword(
+      selectedDevice.relayUsername,
+    );
+    if (savedAccessPassword) {
+      void connectToRelayHost({
+        relayUsername: selectedDevice.relayUsername,
+        relayUrl: deriveRelayWsUrl(controlPlaneUrl),
+        deviceId: selectedDevice.id,
+        accessPassword: savedAccessPassword,
+        fromSavedPassword: true,
+      });
+      return;
+    }
+
+    setPasswordModalDeviceId(selectedDevice.id);
+    setRememberAccessPassword(true);
+    setAccessPassword("");
     setError(null);
   };
 
-  const handleConnectWithPassword = () => {
-    if (!selectedDevice) return;
-    void connectToRelayHost({
-      relayUsername: selectedDevice.relayUsername,
-      relayUrl: deriveRelayWsUrl(controlPlaneUrl),
-      deviceId: selectedDevice.id,
-      accessPassword,
-    });
+  const handleConfirmPasswordConnect = () => {
+    if (!passwordModalDevice) return;
+    const password = accessPassword;
+    const shouldRemember = rememberAccessPassword;
+    const relayUsername = passwordModalDevice.relayUsername;
+    const relayUrl = deriveRelayWsUrl(controlPlaneUrl);
+    const deviceId = passwordModalDevice.id;
+
+    setPasswordModalDeviceId(null);
+
+    void (async () => {
+      const ok = await connectToRelayHost({
+        relayUsername,
+        relayUrl,
+        deviceId,
+        accessPassword: password,
+      });
+      if (ok && shouldRemember) {
+        setSavedAccessPassword(relayUsername, password);
+      }
+    })();
   };
 
   if (isAutoResuming) {
@@ -408,31 +517,6 @@ export function HostPickerPage() {
               })
             )}
 
-            {pendingPasswordDeviceId && selectedDevice ? (
-              <>
-                <div className="login-field">
-                  <label htmlFor="deviceAccessPassword">Access Password</label>
-                  <input
-                    id="deviceAccessPassword"
-                    type="password"
-                    value={accessPassword}
-                    onChange={(event) => setAccessPassword(event.target.value)}
-                    autoComplete="current-password"
-                    placeholder="Enter desktop access password"
-                    disabled={connectingDeviceId !== null}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="login-button host-picker-add-button"
-                  onClick={handleConnectWithPassword}
-                  disabled={!accessPassword || connectingDeviceId !== null}
-                >
-                  Confirm Password & Connect
-                </button>
-              </>
-            ) : null}
-
             {connectingDeviceId ? (
               <div className="login-status">
                 <div className="login-spinner" />
@@ -464,6 +548,51 @@ export function HostPickerPage() {
           </div>
         </section>
       </div>
+      {passwordModalDevice ? (
+        <Modal
+          title={`Access Password · ${passwordModalDevice.deviceName}`}
+          onClose={() => {
+            if (connectingDeviceId) return;
+            setPasswordModalDeviceId(null);
+          }}
+        >
+          <div className="login-field">
+            <label htmlFor="deviceAccessPassword">Access Password</label>
+            <input
+              id="deviceAccessPassword"
+              type="password"
+              value={accessPassword}
+              onChange={(event) => setAccessPassword(event.target.value)}
+              autoComplete="current-password"
+              placeholder="Enter desktop access password"
+              disabled={connectingDeviceId !== null}
+            />
+          </div>
+          <div className="login-field login-field-checkbox">
+            <label className="login-checkbox-label">
+              <input
+                type="checkbox"
+                checked={rememberAccessPassword}
+                onChange={(event) =>
+                  setRememberAccessPassword(event.target.checked)
+                }
+                disabled={connectingDeviceId !== null}
+              />
+              <span>Save on this phone</span>
+            </label>
+          </div>
+          <div className="host-offline-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleConfirmPasswordConnect}
+              disabled={!accessPassword || connectingDeviceId !== null}
+            >
+              Connect
+            </button>
+          </div>
+        </Modal>
+      ) : null}
     </div>
   );
 }

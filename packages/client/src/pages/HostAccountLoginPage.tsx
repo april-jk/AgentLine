@@ -28,13 +28,9 @@ export function HostAccountLoginPage() {
   const { isAutoResuming } = useRemoteConnection();
 
   const [accountMode, setAccountMode] = useState<AccountMode>("login");
-  const [controlPlaneUrl, setControlPlaneUrl] = useState(
-    DEFAULT_CONTROL_PLANE_URL,
-  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,13 +61,13 @@ export function HostAccountLoginPage() {
     setError(null);
     try {
       const result = await authenticateAccount(
-        controlPlaneUrl,
+        DEFAULT_CONTROL_PLANE_URL,
         accountMode,
         email.trim(),
         password,
       );
       saveAccount({
-        controlPlaneUrl: controlPlaneUrl.trim(),
+        controlPlaneUrl: DEFAULT_CONTROL_PLANE_URL,
         accessToken: result.accessToken,
         email: email.trim(),
       });
@@ -120,17 +116,6 @@ export function HostAccountLoginPage() {
 
         <section className="host-picker-panel">
           <form onSubmit={handleAuth} className="login-form">
-            <div className="login-field">
-              <label htmlFor="controlPlaneUrl">Control Plane URL</label>
-              <input
-                id="controlPlaneUrl"
-                type="text"
-                value={controlPlaneUrl}
-                onChange={(event) => setControlPlaneUrl(event.target.value)}
-                placeholder={DEFAULT_CONTROL_PLANE_URL}
-                disabled={loading}
-              />
-            </div>
             <div className="host-picker-mode-switch">
               <button
                 type="button"
@@ -184,28 +169,15 @@ export function HostAccountLoginPage() {
                   ? "Register & Login"
                   : "Login"}
             </button>
+            <button
+              type="button"
+              className="login-advanced-toggle"
+              onClick={() => navigate("/login")}
+              disabled={loading}
+            >
+              Back
+            </button>
           </form>
-
-          <button
-            type="button"
-            className="login-advanced-toggle"
-            onClick={() => setShowAdvanced((value) => !value)}
-          >
-            {showAdvanced
-              ? "Hide advanced connection"
-              : "Show advanced connection"}
-          </button>
-          {showAdvanced ? (
-            <div className="host-picker-list">
-              <button
-                type="button"
-                className="login-button host-picker-add-button"
-                onClick={() => navigate("/login/direct")}
-              >
-                Direct connection (advanced)
-              </button>
-            </div>
-          ) : null}
         </section>
       </div>
     </div>

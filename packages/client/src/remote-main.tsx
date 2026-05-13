@@ -39,6 +39,7 @@ import { FilePage } from "./pages/FilePage";
 import { GitStatusPage } from "./pages/GitStatusPage";
 import { GlobalSessionsPage } from "./pages/GlobalSessionsPage";
 import { HostAccountLoginPage } from "./pages/HostAccountLoginPage";
+import { HostLoginEntryPage } from "./pages/HostLoginEntryPage";
 import { HostPickerPage } from "./pages/HostPickerPage";
 import { InboxPage } from "./pages/InboxPage";
 import { NewSessionPage } from "./pages/NewSessionPage";
@@ -237,7 +238,8 @@ createRoot(rootElement).render(
           <Routes>
             {/* Login routes — redirect to app if already connected */}
             <Route element={<UnauthenticatedGate />}>
-              <Route path="/login" element={<HostAccountLoginPage />} />
+              <Route path="/login" element={<HostLoginEntryPage />} />
+              <Route path="/login/account" element={<HostAccountLoginPage />} />
               <Route path="/login/devices" element={<HostPickerPage />} />
               <Route
                 path="/login/new"
