@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
-import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
+import {
+  type RelayConnectionStatus,
+  useRemoteConnection,
+} from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
-import { upsertRelayHost } from "../lib/hostStorage";
-import { deriveRelayWsUrl } from "../lib/relayGrants";
+import { getHostByRelayUsername, upsertRelayHost } from "../lib/hostStorage";
+import {
+  deriveRelayWsUrl,
+  requestClientConnectGrant,
+} from "../lib/relayGrants";
 
 type AccountMode = "login" | "register";
 
@@ -29,6 +35,90 @@ interface AccountDevice {
 
 const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
 const ACCOUNT_STORAGE_KEY = "agentline.remote.account";
+
+interface RelayHashCredentials {
+  relayUsername: string;
+  accessPassword: string;
+  relayUrl: string;
+  clientGrant?: string;
+}
+
+function parseRelayHashCredentials(): RelayHashCredentials | null {
+  const hash = window.location.hash;
+  if (!hash || hash.length < 2) return null;
+  try {
+    const params = new URLSearchParams(hash.slice(1));
+    const relayUsername = params.get("u")?.trim().toLowerCase() ?? "";
+    const accessPassword = params.get("p") ?? "";
+    const relayUrl = params.get("r")?.trim() || "wss://relay.oneceo.ai/ws";
+    const clientGrant = params.get("cg")?.trim() || undefined;
+    if (!relayUsername || !accessPassword) return null;
+
+    const cleanUrl = `${window.location.pathname}${window.location.search}`;
+    window.history.replaceState(null, "", cleanUrl);
+    return {
+      relayUsername,
+      accessPassword,
+      relayUrl,
+      clientGrant,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function formatHostPickerConnectError(message: string): string {
+  if (message.includes("access_password_required")) {
+    return "Please enter the device access password.";
+  }
+  if (
+    message.includes("account_auth_required") ||
+    message.includes("grant_request_failed_401") ||
+    message.includes("unauthorized")
+  ) {
+    return "Account authorization expired. Please sign in again.";
+  }
+  if (
+    message.includes("grant_invalid") ||
+    message.includes("grant_expired") ||
+    message.includes("grant_consumed") ||
+    message.includes("auth_required")
+  ) {
+    return "Relay authorization failed. Please retry.";
+  }
+  if (
+    message.includes("authentication failed") ||
+    message.includes("Authentication failed") ||
+    message.includes("invalid_identity")
+  ) {
+    return "Access password incorrect. Please retry.";
+  }
+  if (message.includes("server_offline")) {
+    return "Selected device is offline.";
+  }
+  if (message.includes("unknown_username")) {
+    return "Selected device route is unavailable.";
+  }
+  if (message.includes("waiting for server timed out")) {
+    return "Timed out while waiting for the device to accept connection.";
+  }
+  return message;
+}
+
+function getRelayStatusText(status: RelayConnectionStatus | "idle"): string {
+  switch (status) {
+    case "connecting_relay":
+      return "Connecting to relay...";
+    case "waiting_server":
+      return "Waiting for selected device...";
+    case "authenticating":
+      return "Verifying access password...";
+    case "error":
+      return "Connection failed.";
+    default:
+      return "Connecting...";
+  }
+}
 
 function loadSavedAccount(): {
   controlPlaneUrl: string;
@@ -133,24 +223,40 @@ async function fetchDevices(
 export function HostPickerPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { isAutoResuming } = useRemoteConnection();
+  const { connectViaRelay, isAutoResuming, setCurrentHostId } =
+    useRemoteConnection();
   const [accountMode, setAccountMode] = useState<AccountMode>("login");
   const [controlPlaneUrl, setControlPlaneUrl] = useState(
     DEFAULT_CONTROL_PLANE_URL,
   );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [accessPassword, setAccessPassword] = useState("");
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [devices, setDevices] = useState<AccountDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingDevices, setLoadingDevices] = useState(false);
+  const [connectingDeviceId, setConnectingDeviceId] = useState<string | null>(
+    null,
+  );
+  const [relayStatus, setRelayStatus] = useState<
+    RelayConnectionStatus | "idle"
+  >("idle");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hashAutoConnectAttempted = useRef(false);
 
   const selectedDevice = useMemo(
     () => devices.find((item) => item.id === selectedDeviceId) ?? null,
     [devices, selectedDeviceId],
+  );
+  const selectedSavedHost = useMemo(
+    () =>
+      selectedDevice
+        ? (getHostByRelayUsername(selectedDevice.relayUsername) ?? null)
+        : null,
+    [selectedDevice],
   );
 
   const loadDevices = useCallback(async (baseUrl: string, token: string) => {
@@ -183,22 +289,94 @@ export function HostPickerPage() {
     });
   }, [loadDevices]);
 
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash || hash.length < 2) return;
-    const params = new URLSearchParams(hash.slice(1));
-    const relayUsername = params.get("u");
-    const relayPassword = params.get("p");
-    if (!relayUsername || !relayPassword) return;
+  const connectToRelayHost = useCallback(
+    async (params: {
+      relayUsername: string;
+      relayUrl: string;
+      deviceId?: string;
+      accessPassword?: string;
+      clientGrant?: string;
+    }) => {
+      const relayUsername = params.relayUsername.trim().toLowerCase();
+      if (!relayUsername) {
+        setError("Device route is missing.");
+        return;
+      }
 
-    navigate(
-      {
-        pathname: "/login/relay",
-        hash,
-      },
-      { replace: true },
-    );
-  }, [navigate]);
+      const relayUrl =
+        params.relayUrl.trim() || deriveRelayWsUrl(controlPlaneUrl);
+      const savedHost = upsertRelayHost({
+        relayUrl,
+        relayUsername,
+        srpUsername: relayUsername,
+      });
+
+      setCurrentHostId(savedHost.id);
+      setConnectingDeviceId(params.deviceId ?? savedHost.id);
+      setRelayStatus("connecting_relay");
+      setError(null);
+
+      try {
+        const grantPayload = params.clientGrant?.trim()
+          ? { grant: params.clientGrant.trim(), relayUsername }
+          : await requestClientConnectGrant({
+              relayUsername,
+              deviceId: params.deviceId,
+              controlPlaneUrl,
+            });
+
+        const passwordForConnect = params.accessPassword ?? "";
+        const useSavedSession =
+          Boolean(savedHost.session) && !passwordForConnect;
+        if (!useSavedSession && !passwordForConnect) {
+          throw new Error("access_password_required");
+        }
+
+        await connectViaRelay({
+          relayUrl,
+          relayUsername: grantPayload.relayUsername,
+          srpUsername: relayUsername,
+          srpPassword: useSavedSession ? "" : passwordForConnect,
+          rememberMe: true,
+          session: useSavedSession ? savedHost.session : undefined,
+          clientGrant: grantPayload.grant,
+          onStatusChange: setRelayStatus,
+        });
+
+        setAccessPassword("");
+        setRelayStatus("idle");
+        setConnectingDeviceId(null);
+        navigate(
+          `/${encodeURIComponent(grantPayload.relayUsername)}/projects`,
+          {
+            replace: true,
+          },
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Connection failed";
+        setError(formatHostPickerConnectError(message));
+        setRelayStatus("error");
+        setConnectingDeviceId(null);
+      }
+    },
+    [connectViaRelay, controlPlaneUrl, navigate, setCurrentHostId],
+  );
+
+  useEffect(() => {
+    if (hashAutoConnectAttempted.current || isAutoResuming) return;
+    hashAutoConnectAttempted.current = true;
+
+    const hashCreds = parseRelayHashCredentials();
+    if (!hashCreds) return;
+
+    void connectToRelayHost({
+      relayUsername: hashCreds.relayUsername,
+      relayUrl: hashCreds.relayUrl,
+      accessPassword: hashCreds.accessPassword,
+      clientGrant: hashCreds.clientGrant,
+    });
+  }, [connectToRelayHost, isAutoResuming]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,28 +422,11 @@ export function HostPickerPage() {
       setError("Please choose a device first.");
       return;
     }
-
-    const relayUrl = deriveRelayWsUrl(controlPlaneUrl);
-    const savedHost = upsertRelayHost({
-      relayUrl,
+    void connectToRelayHost({
       relayUsername: selectedDevice.relayUsername,
-      srpUsername: selectedDevice.relayUsername,
-    });
-
-    if (savedHost.session) {
-      navigate(`/${encodeURIComponent(selectedDevice.relayUsername)}/projects`);
-      return;
-    }
-
-    navigate("/login/relay", {
-      state: {
-        relayUsername: selectedDevice.relayUsername,
-        relayUrl,
-        controlPlaneUrl,
-        deviceId: selectedDevice.id,
-        lockRelayUsername: true,
-        deviceName: selectedDevice.deviceName,
-      },
+      relayUrl: deriveRelayWsUrl(controlPlaneUrl),
+      deviceId: selectedDevice.id,
+      accessPassword,
     });
   };
 
@@ -436,13 +597,50 @@ export function HostPickerPage() {
                   );
                 })
               )}
+              {selectedDevice ? (
+                <div className="login-field">
+                  <label htmlFor="deviceAccessPassword">
+                    Access Password (hidden when session is valid)
+                  </label>
+                  <input
+                    id="deviceAccessPassword"
+                    type="password"
+                    value={accessPassword}
+                    onChange={(event) => setAccessPassword(event.target.value)}
+                    autoComplete="current-password"
+                    placeholder={
+                      selectedSavedHost?.session
+                        ? "Optional fallback when stored session expires"
+                        : "Enter desktop access password"
+                    }
+                    disabled={loadingDevices || connectingDeviceId !== null}
+                  />
+                  {selectedSavedHost?.session ? (
+                    <p className="login-hint">
+                      Stored session detected for this device. You can connect
+                      directly.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {connectingDeviceId ? (
+                <div className="login-status">
+                  <div className="login-spinner" />
+                  <span>{getRelayStatusText(relayStatus)}</span>
+                </div>
+              ) : null}
               <button
                 type="button"
                 className="login-button host-picker-add-button"
                 onClick={handleConnectSelected}
-                disabled={!selectedDevice || loadingDevices}
+                disabled={
+                  !selectedDevice ||
+                  loadingDevices ||
+                  connectingDeviceId !== null ||
+                  (!selectedSavedHost?.session && !accessPassword)
+                }
               >
-                Continue (Input Access Password)
+                Connect Selected Device
               </button>
             </div>
           ) : null}
@@ -464,13 +662,6 @@ export function HostPickerPage() {
                 onClick={() => navigate("/login/direct")}
               >
                 Direct connection (advanced)
-              </button>
-              <button
-                type="button"
-                className="login-button host-picker-add-button"
-                onClick={() => navigate("/login/relay")}
-              >
-                Manual relay connection (advanced)
               </button>
             </div>
           ) : null}

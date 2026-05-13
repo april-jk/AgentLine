@@ -12,7 +12,7 @@ import { parseUserAgent } from "../lib/deviceDetection";
 import { QRCode } from "./QRCode";
 
 const DEFAULT_RELAY_URL = "wss://relay.oneceo.ai/ws";
-const CONNECT_URL = "https://relay.oneceo.ai/remote/login/relay";
+const CONNECT_URL = "https://relay.oneceo.ai/remote/login";
 
 export interface RemoteAccessSetupProps {
   /** Custom title (default: "Remote Access") */
