@@ -81,6 +81,27 @@ input {
   margin-top: 16px;
 }
 
+.inline-actions {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+.segment .segment-idle {
+  background: #dbe2ea;
+  color: #1f2937;
+}
+
+.segment .segment-active {
+  background: #0f766e;
+  color: #ffffff;
+}
+
 button {
   border: none;
   border-radius: 10px;

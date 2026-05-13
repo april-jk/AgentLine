@@ -3,7 +3,7 @@ use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Extract query string from an app link URL and convert to hash fragment.
 ///
-/// Input:  https://agentline.com/open?u=username&p=password&r=relay_url
+/// Input:  https://relay.oneceo.ai/open?u=username&p=password&r=relay_url
 /// Output: #u=username&p=password&r=relay_url
 ///
 /// The existing remote client's parseHashCredentials() in RelayLoginPage.tsx

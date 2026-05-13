@@ -26,10 +26,36 @@ const TEST_RELAY_USERNAME = "e2e-relay-test";
 const TEST_SRP_PASSWORD = "relay-test-password-123";
 
 /**
- * Helper to navigate to the Relay Login page from the mode selection page.
+ * Helper to navigate to the Relay Login page.
+ * Supports both legacy mode-selector UI and the newer host-picker entry.
  */
 async function goToRelayLogin(page: import("@playwright/test").Page) {
-  await page.click('[data-testid="relay-mode-button"]');
+  const relayForm = page.locator('[data-testid="relay-login-form"]');
+  if (await relayForm.isVisible()) {
+    return;
+  }
+
+  const legacyRelayButton = page.locator('[data-testid="relay-mode-button"]');
+  if (await legacyRelayButton.isVisible()) {
+    await legacyRelayButton.click();
+  } else {
+    const showAdvancedButton = page.getByRole("button", {
+      name: /show advanced connection/i,
+    });
+    if (await showAdvancedButton.isVisible()) {
+      await showAdvancedButton.click();
+      await page
+        .getByRole("button", { name: /manual relay connection/i })
+        .first()
+        .click();
+    } else {
+      const addHostButton = page
+        .getByRole("button", { name: /add new host/i })
+        .first();
+      await addHostButton.click();
+    }
+  }
+
   await expect(page.locator('[data-testid="relay-login-form"]')).toBeVisible();
 }
 
@@ -172,7 +198,7 @@ test.describe("Full Relay Integration", () => {
     } catch {
       // If sidebar isn't visible, check if we're on a failure state and fail with better message
       const modePageVisible = await page
-        .locator('[data-testid="relay-mode-button"]')
+        .locator("#controlPlaneUrl")
         .isVisible();
       const loginFormVisible = await page
         .locator('[data-testid="relay-login-form"]')

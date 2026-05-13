@@ -132,6 +132,19 @@ export class ApiClient {
     });
   }
 
+  async register(payload: LoginRequest): Promise<LoginResponse> {
+    if (!payload.email || !payload.password) {
+      throw new Error("Email and password are required.");
+    }
+
+    await this.request<{ user: AccountUser }>("/api/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    return this.login(payload);
+  }
+
   async listHosts(accessToken: string): Promise<HostItem[]> {
     const payload = await this.request<{ devices: ControlPlaneDevice[] }>(
       "/api/v1/devices",
@@ -270,7 +283,9 @@ export class DirectServerClient {
     return payload.projects ?? [];
   }
 
-  async listProjectSessions(projectId: string): Promise<DirectSessionSummary[]> {
+  async listProjectSessions(
+    projectId: string,
+  ): Promise<DirectSessionSummary[]> {
     const payload = await this.getJson<{ sessions?: DirectSessionSummary[] }>(
       `/api/projects/${encodeURIComponent(projectId)}/sessions`,
     );
@@ -287,9 +302,12 @@ export class DirectServerClient {
   }
 
   async sendMessage(sessionId: string, message: string): Promise<void> {
-    await this.postJson(`/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
-      message,
-    });
+    await this.postJson(
+      `/api/sessions/${encodeURIComponent(sessionId)}/messages`,
+      {
+        message,
+      },
+    );
   }
 
   async resumeSession(

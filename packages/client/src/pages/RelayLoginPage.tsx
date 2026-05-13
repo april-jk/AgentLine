@@ -47,7 +47,7 @@ function parseHashCredentials(): {
 }
 
 /** Default relay URL */
-const DEFAULT_RELAY_URL = "wss://relay.agentline.com/ws";
+const DEFAULT_RELAY_URL = "wss://relay.oneceo.ai/ws";
 
 type ConnectionStatus =
   | "idle"
@@ -64,6 +64,8 @@ export function RelayLoginPage() {
       | {
           relayUsername?: string;
           relayUrl?: string;
+          lockRelayUsername?: boolean;
+          deviceName?: string;
         }
       | undefined) ?? {};
   const { connectViaRelay, isAutoResuming, setCurrentHostId } =
@@ -73,11 +75,15 @@ export function RelayLoginPage() {
   // Form state - relay username is also used as SRP identity
   // Pre-fill from query parameters: ?u=username&r=relay-url
   const initialRelayUrl = locationState.relayUrl ?? searchParams.get("r") ?? "";
+  const lockRelayUsername = locationState.lockRelayUsername === true;
+  const selectedDeviceName = locationState.deviceName;
   const [relayUsername, setRelayUsername] = useState(
     () => locationState.relayUsername ?? searchParams.get("u") ?? "",
   );
   const [srpPassword, setSrpPassword] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(!!initialRelayUrl);
+  const [showAdvanced, setShowAdvanced] = useState(
+    !lockRelayUsername && !!initialRelayUrl,
+  );
   const [customRelayUrl, setCustomRelayUrl] = useState(initialRelayUrl);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -223,6 +229,13 @@ export function RelayLoginPage() {
           <AgentLineLogo />
         </div>
         <p className="login-subtitle">{t("relayLoginTitle")}</p>
+        {lockRelayUsername ? (
+          <p className="login-hint">
+            {selectedDeviceName
+              ? `Machine: ${selectedDeviceName}`
+              : "Machine selected from your account"}
+          </p>
+        ) : null}
 
         <form
           onSubmit={handleSubmit}
@@ -231,18 +244,32 @@ export function RelayLoginPage() {
         >
           <div className="login-field">
             <label htmlFor="relayUsername">{t("relayLoginUsername")}</label>
-            <input
-              id="relayUsername"
-              type="text"
-              value={relayUsername}
-              onChange={(e) => setRelayUsername(e.target.value)}
-              placeholder={t("relayLoginUsernamePlaceholder")}
-              disabled={isConnecting}
-              autoComplete="username"
-              autoCapitalize="none"
-              data-testid="relay-username-input"
-            />
-            <p className="login-field-hint">{t("relayLoginUsernameHint")}</p>
+            {lockRelayUsername ? (
+              <input
+                id="relayUsername"
+                type="text"
+                value={relayUsername}
+                disabled
+                data-testid="relay-username-input"
+              />
+            ) : (
+              <>
+                <input
+                  id="relayUsername"
+                  type="text"
+                  value={relayUsername}
+                  onChange={(e) => setRelayUsername(e.target.value)}
+                  placeholder={t("relayLoginUsernamePlaceholder")}
+                  disabled={isConnecting}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  data-testid="relay-username-input"
+                />
+                <p className="login-field-hint">
+                  {t("relayLoginUsernameHint")}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="login-field">
@@ -257,6 +284,11 @@ export function RelayLoginPage() {
               autoComplete="current-password"
               data-testid="srp-password-input"
             />
+            {lockRelayUsername ? (
+              <p className="login-field-hint">
+                Enter the desktop access password configured on that machine.
+              </p>
+            ) : null}
           </div>
 
           <div className="login-field login-field-checkbox">
@@ -272,18 +304,20 @@ export function RelayLoginPage() {
             </label>
           </div>
 
-          <button
-            type="button"
-            className="login-advanced-toggle"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            disabled={isConnecting}
-          >
-            {showAdvanced
-              ? t("relayLoginHideAdvanced")
-              : t("relayLoginShowAdvanced")}
-          </button>
+          {!lockRelayUsername ? (
+            <button
+              type="button"
+              className="login-advanced-toggle"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              disabled={isConnecting}
+            >
+              {showAdvanced
+                ? t("relayLoginHideAdvanced")
+                : t("relayLoginShowAdvanced")}
+            </button>
+          ) : null}
 
-          {showAdvanced && (
+          {!lockRelayUsername && showAdvanced ? (
             <div className="login-field">
               <label htmlFor="customRelayUrl">
                 {t("relayLoginCustomRelayUrl")}
@@ -301,7 +335,7 @@ export function RelayLoginPage() {
                 {t("relayLoginCustomRelayUrlHint")}
               </p>
             </div>
-          )}
+          ) : null}
 
           {error && (
             <div className="login-error" data-testid="login-error">

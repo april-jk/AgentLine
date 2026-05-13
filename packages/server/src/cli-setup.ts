@@ -17,7 +17,7 @@ import { getDataDir } from "./config.js";
 import { RemoteAccessService } from "./remote-access/RemoteAccessService.js";
 import { InstallService } from "./services/InstallService.js";
 
-const DEFAULT_RELAY_URL = "wss://relay.agentline.com/ws";
+const DEFAULT_RELAY_URL = "wss://relay.oneceo.ai/ws";
 
 /** Timeout for relay registration check (ms) */
 const RELAY_TIMEOUT_MS = 10_000;

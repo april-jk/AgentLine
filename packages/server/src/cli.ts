@@ -100,7 +100,7 @@ SETUP OPTIONS (for headless installation):
                         Exits with error if username is taken.
                         --username: Relay username (3-32 chars, lowercase alphanumeric + hyphens)
                         --password: SRP password (min 8 characters)
-                        --relay: Relay URL (default: wss://relay.agentline.com/ws)
+                        --relay: Relay URL (default: wss://relay.oneceo.ai/ws)
 
 ENVIRONMENT VARIABLES:
   PORT                          Server port (default: 3400)
