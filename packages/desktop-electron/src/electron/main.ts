@@ -2,7 +2,15 @@ import { readFile, writeFile } from "node:fs/promises";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BrowserWindow, Menu, Tray, app, ipcMain, nativeImage } from "electron";
+import {
+  BrowserWindow,
+  Menu,
+  Tray,
+  app,
+  dialog,
+  ipcMain,
+  nativeImage,
+} from "electron";
 import { DESKTOP_DISCOVERY_PORT_CANDIDATES } from "../../../shared/dist/desktop-discovery.js";
 import {
   type ControlPlaneConfig,
@@ -98,6 +106,9 @@ let lastRecoverReason: string | undefined;
 let lastRecoverError: string | undefined;
 let dashboardPort: number = DESKTOP_DISCOVERY_PORT_CANDIDATES[0];
 let serverManager: ServerManager | null = null;
+const FALLBACK_PORT_SCAN_START = 46000;
+const FALLBACK_PORT_SCAN_END = 64998;
+const FALLBACK_PORT_SCAN_STEP = 3;
 
 const runtimeRoot = path.join(process.resourcesPath, "runtime", "agentline");
 const desktopConfigPath = path.join(
@@ -237,8 +248,10 @@ const portIsAvailable = (port: number): Promise<boolean> =>
     });
   });
 
-const resolveDashboardPort = async (): Promise<number> => {
-  for (const candidate of DESKTOP_DISCOVERY_PORT_CANDIDATES) {
+const findAvailablePortTriple = async (
+  candidates: Iterable<number>,
+): Promise<number | null> => {
+  for (const candidate of candidates) {
     const [dashboardOk, maintenanceOk, viteOk] = await Promise.all([
       portIsAvailable(candidate),
       portIsAvailable(candidate + 1),
@@ -249,9 +262,35 @@ const resolveDashboardPort = async (): Promise<number> => {
       return candidate;
     }
   }
+  return null;
+};
+
+const resolveDashboardPort = async (): Promise<number> => {
+  const preferredPort = await findAvailablePortTriple(
+    DESKTOP_DISCOVERY_PORT_CANDIDATES,
+  );
+  if (preferredPort !== null) {
+    return preferredPort;
+  }
+
+  const fallbackCandidates: number[] = [];
+  for (
+    let candidate = FALLBACK_PORT_SCAN_START;
+    candidate <= FALLBACK_PORT_SCAN_END;
+    candidate += FALLBACK_PORT_SCAN_STEP
+  ) {
+    fallbackCandidates.push(candidate);
+  }
+  const fallbackPort = await findAvailablePortTriple(fallbackCandidates);
+  if (fallbackPort !== null) {
+    console.warn(
+      `[desktop-electron] Preferred desktop discovery ports are busy; falling back to ${fallbackPort}-${fallbackPort + 2}`,
+    );
+    return fallbackPort;
+  }
 
   throw new Error(
-    "Unable to find a free dashboard/maintenance/Vite port triple.",
+    "Unable to find a free dashboard/maintenance/Vite port triple (preferred and fallback ranges exhausted).",
   );
 };
 
@@ -783,54 +822,67 @@ const registerIpcHandlers = (): void => {
   );
 };
 
-app.whenReady().then(async () => {
-  await loadDesktopConfig();
-  dashboardPort = await resolveDashboardPort();
-  serverManager = new ServerManager({
-    repoRoot,
-    runtimeRoot,
-    packaged: app.isPackaged,
-    dataDir: path.join(app.getPath("userData"), "agentline-data"),
-    port: dashboardPort,
-    controlPlane: desktopConfig.controlPlane,
-  });
+app
+  .whenReady()
+  .then(async () => {
+    await loadDesktopConfig();
+    dashboardPort = await resolveDashboardPort();
+    serverManager = new ServerManager({
+      repoRoot,
+      runtimeRoot,
+      packaged: app.isPackaged,
+      dataDir: path.join(app.getPath("userData"), "agentline-data"),
+      port: dashboardPort,
+      controlPlane: desktopConfig.controlPlane,
+    });
 
-  getServerManager().updateControlPlaneConfig(desktopConfig.controlPlane ?? {});
-  registerIpcHandlers();
-  getServerManager().on("status", (status) => {
-    broadcastStatus(status);
-    if (status.state === "error") {
-      void recoverServer(status.message ?? "unknown server error");
-    }
-  });
-
-  await ensureBackendReady();
-  await createWindow();
-  createTray();
-
-  dashboardAttachTimer = setInterval(() => {
-    void (async () => {
-      const reachable = await isDashboardReachable();
-      if (reachable) {
-        consecutiveHealthFailures = 0;
-        await tryAttachDashboard();
-        return;
+    getServerManager().updateControlPlaneConfig(
+      desktopConfig.controlPlane ?? {},
+    );
+    registerIpcHandlers();
+    getServerManager().on("status", (status) => {
+      broadcastStatus(status);
+      if (status.state === "error") {
+        void recoverServer(status.message ?? "unknown server error");
       }
+    });
 
-      consecutiveHealthFailures += 1;
-      if (consecutiveHealthFailures >= 3) {
-        consecutiveHealthFailures = 0;
-        await recoverServer("periodic health probe failed 3 times");
+    await ensureBackendReady();
+    await createWindow();
+    createTray();
+
+    dashboardAttachTimer = setInterval(() => {
+      void (async () => {
+        const reachable = await isDashboardReachable();
+        if (reachable) {
+          consecutiveHealthFailures = 0;
+          await tryAttachDashboard();
+          return;
+        }
+
+        consecutiveHealthFailures += 1;
+        if (consecutiveHealthFailures >= 3) {
+          consecutiveHealthFailures = 0;
+          await recoverServer("periodic health probe failed 3 times");
+        }
+      })();
+    }, 4000);
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        void createWindow();
       }
-    })();
-  }, 4000);
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      void createWindow();
-    }
+    });
+  })
+  .catch((error: unknown) => {
+    const message =
+      error instanceof Error
+        ? `${error.message}\n\n${error.stack ?? ""}`
+        : String(error);
+    console.error("[desktop-electron] Failed to initialize app", error);
+    dialog.showErrorBox("AgentLine Desktop startup failed", message);
+    app.quit();
   });
-});
 
 app.on("before-quit", async () => {
   isQuitting = true;
