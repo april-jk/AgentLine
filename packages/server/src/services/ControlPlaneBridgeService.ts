@@ -29,6 +29,14 @@ interface ServerRegisterGrantResponse {
   deviceId: string;
 }
 
+interface ClientConnectGrantResponse {
+  grant: string;
+  grantId: string;
+  expiresAt: string;
+  relayUsername: string;
+  deviceId: string;
+}
+
 interface ErrorResponse {
   error?: string;
 }
@@ -269,6 +277,51 @@ export class ControlPlaneBridgeService {
         throw new Error("control_plane_grant_missing");
       }
       return response.grant;
+    } catch (error) {
+      if (error instanceof ControlPlaneRequestError && error.status === 401) {
+        this.stop();
+        this.state.pausedReason = "unauthorized";
+      }
+      throw error;
+    }
+  }
+
+  async getClientConnectGrant(params?: {
+    relayUsername?: string;
+    deviceId?: string;
+  }): Promise<ClientConnectGrantResponse> {
+    if (!this.isConfigured()) {
+      throw new Error("control_plane_not_configured");
+    }
+
+    if (!this.state.deviceId || !this.state.relayUsername) {
+      await this.syncNow();
+    }
+
+    if (!this.state.deviceId || !this.state.relayUsername) {
+      throw new Error(
+        this.state.lastError ?? "control_plane_device_not_registered",
+      );
+    }
+
+    try {
+      const relayUsername =
+        params?.relayUsername?.trim() || this.state.relayUsername;
+      const deviceId = params?.deviceId?.trim() || this.state.deviceId;
+      const response = await this.request<ClientConnectGrantResponse>(
+        "/api/v1/relay/grants/client-connect",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            relayUsername,
+            deviceId,
+          }),
+        },
+      );
+      if (!response.grant?.trim()) {
+        throw new Error("control_plane_grant_missing");
+      }
+      return response;
     } catch (error) {
       if (error instanceof ControlPlaneRequestError && error.status === 401) {
         this.stop();

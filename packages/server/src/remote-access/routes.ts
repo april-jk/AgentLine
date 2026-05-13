@@ -399,6 +399,47 @@ export function createRemoteAccessRoutes(
   });
 
   /**
+   * POST /api/remote-access/control-plane/grants/client-connect
+   * Issue a short-lived one-time relay client grant using desktop control-plane auth.
+   */
+  app.post("/control-plane/grants/client-connect", async (c) => {
+    if (!controlPlaneBridgeService) {
+      return c.json({ error: "control_plane_bridge_unavailable" }, 503);
+    }
+
+    try {
+      const body = await c.req
+        .json<{
+          relayUsername?: string;
+          deviceId?: string;
+        }>()
+        .catch(() => null);
+
+      const grant = await controlPlaneBridgeService.getClientConnectGrant({
+        relayUsername: body?.relayUsername,
+        deviceId: body?.deviceId,
+      });
+      return c.json(grant, 200);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "control_plane_grant_failed";
+      if (message === "control_plane_not_configured") {
+        return c.json({ error: message }, 400);
+      }
+      if (message === "unauthorized" || message === "control_plane_401") {
+        return c.json({ error: "control_plane_unauthorized" }, 401);
+      }
+      if (message === "device_not_found") {
+        return c.json({ error: message }, 404);
+      }
+      if (message.startsWith("control_plane_")) {
+        return c.json({ error: message }, 502);
+      }
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  /**
    * GET /api/remote-access/sessions
    * List all active remote sessions.
    */

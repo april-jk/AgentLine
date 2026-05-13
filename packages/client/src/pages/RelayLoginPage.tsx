@@ -19,13 +19,15 @@ import { requestClientConnectGrant } from "../lib/relayGrants";
 
 /**
  * Parse credentials from URL hash for auto-login via QR code.
- * Hash format: #u=username&p=password&r=relay_url (r is optional)
+ * Hash format: #u=username&p=password&r=relay_url&cg=client_grant
+ * (r and cg are optional).
  * Clears the hash after reading for security.
  */
 function parseHashCredentials(): {
   username: string;
   password: string;
   relayUrl: string;
+  clientGrant?: string;
 } | null {
   const hash = window.location.hash;
   if (!hash || hash.length < 2) return null;
@@ -35,11 +37,12 @@ function parseHashCredentials(): {
     const username = params.get("u");
     const password = params.get("p");
     const relayUrl = params.get("r") ?? "";
+    const clientGrant = params.get("cg") ?? undefined;
 
     if (username && password) {
       // Clear hash from URL for security (don't leave password in history)
       window.history.replaceState(null, "", window.location.pathname);
-      return { username, password, relayUrl };
+      return { username, password, relayUrl, clientGrant };
     }
   } catch {
     // Ignore parse errors
@@ -105,7 +108,7 @@ export function RelayLoginPage() {
     const hashCreds = parseHashCredentials();
     if (!hashCreds) return;
 
-    const { username, password, relayUrl } = hashCreds;
+    const { username, password, relayUrl, clientGrant } = hashCreds;
     const effectiveRelayUrl = relayUrl || DEFAULT_RELAY_URL;
 
     // Get or create host BEFORE connecting so handleSessionEstablished can sync session
@@ -122,7 +125,14 @@ export function RelayLoginPage() {
     setCurrentHostId(host.id);
 
     setStatus("connecting_relay");
-    requestClientConnectGrant({ relayUsername: username })
+    const grantPromise = clientGrant?.trim()
+      ? Promise.resolve({
+          grant: clientGrant.trim(),
+          relayUsername: username,
+        })
+      : requestClientConnectGrant({ relayUsername: username });
+
+    grantPromise
       .then((grantPayload) =>
         connectViaRelay({
           relayUrl: effectiveRelayUrl,

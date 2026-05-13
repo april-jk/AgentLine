@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
+import { upsertRelayHost } from "../lib/hostStorage";
 import { deriveRelayWsUrl } from "../lib/relayGrants";
 
 type AccountMode = "login" | "register";
@@ -244,10 +245,22 @@ export function HostPickerPage() {
       return;
     }
 
+    const relayUrl = deriveRelayWsUrl(controlPlaneUrl);
+    const savedHost = upsertRelayHost({
+      relayUrl,
+      relayUsername: selectedDevice.relayUsername,
+      srpUsername: selectedDevice.relayUsername,
+    });
+
+    if (savedHost.session) {
+      navigate(`/${encodeURIComponent(selectedDevice.relayUsername)}/projects`);
+      return;
+    }
+
     navigate("/login/relay", {
       state: {
         relayUsername: selectedDevice.relayUsername,
-        relayUrl: deriveRelayWsUrl(controlPlaneUrl),
+        relayUrl,
         controlPlaneUrl,
         deviceId: selectedDevice.id,
         lockRelayUsername: true,

@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { fetchJSON } from "../api/client";
 import { type RelayStatus, useRemoteAccess } from "../hooks/useRemoteAccess";
 import { useI18n } from "../i18n";
 import { parseUserAgent } from "../lib/deviceDetection";
@@ -116,6 +117,14 @@ function getStatusDisplay(
 
 type RelayOption = "default" | "custom";
 
+interface QrClientConnectGrantResponse {
+  grant: string;
+  grantId: string;
+  expiresAt: string;
+  relayUsername: string;
+  deviceId: string;
+}
+
 export function RemoteAccessSetup({
   title = "Remote Access",
   description = "Access your server from anywhere.",
@@ -153,6 +162,9 @@ export function RemoteAccessSetup({
   // Password for QR code generation (kept in memory after successful save)
   const [savedPassword, setSavedPassword] = useState<string | null>(null);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [qrClientGrant, setQrClientGrant] = useState<string | null>(null);
+  const [qrGrantLoading, setQrGrantLoading] = useState(false);
+  const [qrGrantError, setQrGrantError] = useState<string | null>(null);
 
   // Initialize form from existing config
   useEffect(() => {
@@ -353,10 +365,11 @@ export function RemoteAccessSetup({
 
   // Build QR code URL with credentials in hash (for auto-login)
   const qrCodeUrl = (() => {
-    if (!savedPassword || !username) return null;
+    if (!savedPassword || !username || !qrClientGrant) return null;
     const hashParams = new URLSearchParams();
     hashParams.set("u", username);
     hashParams.set("p", savedPassword);
+    hashParams.set("cg", qrClientGrant);
     const relayUrl = getRelayUrl();
     if (relayUrl !== DEFAULT_RELAY_URL) {
       hashParams.set("r", relayUrl);
@@ -364,9 +377,65 @@ export function RemoteAccessSetup({
     return `${CONNECT_URL}#${hashParams.toString()}`;
   })();
 
-  // Can show QR code when connected and we have the password in memory
+  // Can show QR code when connected and we have the password in memory.
+  // Grant is fetched lazily while the QR panel is open.
   const canShowQRCode =
-    isEnabled && relayStatus?.status === "waiting" && qrCodeUrl !== null;
+    isEnabled &&
+    relayStatus?.status === "waiting" &&
+    !!savedPassword &&
+    !!username;
+
+  useEffect(() => {
+    if (!showQRCode || !canShowQRCode || !username.trim()) {
+      setQrClientGrant(null);
+      setQrGrantLoading(false);
+      setQrGrantError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const refreshGrant = async () => {
+      setQrGrantLoading(true);
+      setQrGrantError(null);
+      try {
+        const payload = await fetchJSON<QrClientConnectGrantResponse>(
+          "/remote-access/control-plane/grants/client-connect",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              relayUsername: username.trim().toLowerCase(),
+            }),
+          },
+        );
+        if (cancelled) return;
+        if (!payload.grant?.trim()) {
+          throw new Error("control_plane_grant_missing");
+        }
+        setQrClientGrant(payload.grant);
+      } catch (err) {
+        if (cancelled) return;
+        setQrClientGrant(null);
+        setQrGrantError(
+          err instanceof Error ? err.message : "control_plane_grant_failed",
+        );
+      } finally {
+        if (!cancelled) {
+          setQrGrantLoading(false);
+        }
+      }
+    };
+
+    void refreshGrant();
+    const interval = window.setInterval(() => {
+      void refreshGrant();
+    }, 45_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [showQRCode, canShowQRCode, username]);
 
   // Can toggle on if: has credentials OR has filled in required fields
   const canToggleOn = hasCredentials || (username && password);
@@ -528,14 +597,28 @@ export function RemoteAccessSetup({
                 ? t("remoteSetupHideQr" as never)
                 : t("remoteSetupShowQr" as never)}
             </button>
-            {showQRCode && qrCodeUrl && (
-              <div className="qr-code-container">
-                <QRCode value={qrCodeUrl} size={200} />
-                <p className="qr-code-hint">
-                  {t("remoteSetupQrHint" as never)}
-                </p>
-              </div>
-            )}
+            {showQRCode ? (
+              qrCodeUrl ? (
+                <div className="qr-code-container">
+                  <QRCode value={qrCodeUrl} size={200} />
+                  <p className="qr-code-hint">
+                    {t("remoteSetupQrHint" as never)}
+                  </p>
+                </div>
+              ) : (
+                <div className="qr-code-container">
+                  {qrGrantLoading ? (
+                    <p className="qr-code-hint">Preparing secure QR link…</p>
+                  ) : (
+                    <p className="form-error">
+                      {qrGrantError
+                        ? `QR link unavailable: ${qrGrantError}`
+                        : "QR link unavailable. Please retry."}
+                    </p>
+                  )}
+                </div>
+              )
+            ) : null}
           </div>
         )}
 
