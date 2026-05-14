@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import { api, fetchJSON } from "../../api/client";
 import { useOptionalRemoteConnection } from "../../contexts/RemoteConnectionContext";
 import { useDeveloperMode } from "../../hooks/useDeveloperMode";
 import { useOnboarding } from "../../hooks/useOnboarding";
 import { usePwaInstall } from "../../hooks/usePwaInstall";
 import { useVersion } from "../../hooks/useVersion";
 import { useI18n } from "../../i18n";
-import { activityBus } from "../../lib/activityBus";
+import { DevelopmentSettings } from "./DevelopmentSettings";
 
 export function AboutSettings() {
   const { t } = useI18n();
@@ -26,36 +24,6 @@ export function AboutSettings() {
     (versionInfo?.resumeProtocolVersion ?? 1) >= 2;
   const showRelayResumeUpdateWarning =
     isRelayConnection && !!versionInfo && !hasResumeProtocolSupport;
-
-  // Server restart state
-  const [restarting, setRestarting] = useState(false);
-  const [activeWorkers, setActiveWorkers] = useState(0);
-
-  // Fetch worker activity on mount
-  useEffect(() => {
-    fetchJSON<{ activeWorkers: number; hasActiveWork: boolean }>(
-      "/status/workers",
-    )
-      .then((data) => setActiveWorkers(data.activeWorkers))
-      .catch(() => {});
-  }, []);
-
-  // When activity bus reconnects after restart, clear restarting state
-  useEffect(() => {
-    if (!restarting) return;
-    return activityBus.on("reconnect", () => {
-      setRestarting(false);
-    });
-  }, [restarting]);
-
-  const handleRestart = useCallback(async () => {
-    setRestarting(true);
-    try {
-      await api.restartServer();
-    } catch {
-      // Expected - server drops connection during restart
-    }
-  }, []);
 
   return (
     <section className="settings-section">
@@ -137,32 +105,6 @@ export function AboutSettings() {
         </div>
         <div className="settings-item">
           <div className="settings-item-info">
-            <strong>{t("developmentRestartTitle")}</strong>
-            <p>{t("developmentRestartDescription")}</p>
-            {activeWorkers > 0 && !restarting && (
-              <p className="settings-warning">
-                {t("developmentInterruptedWarning", {
-                  count: activeWorkers,
-                  suffix: activeWorkers !== 1 ? "s " : " ",
-                })}
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            className={`settings-button ${activeWorkers > 0 ? "settings-button-danger" : ""}`}
-            onClick={handleRestart}
-            disabled={restarting}
-          >
-            {restarting
-              ? t("developmentRestarting")
-              : activeWorkers > 0
-                ? t("developmentRestartAnyway")
-                : t("developmentRestart")}
-          </button>
-        </div>
-        <div className="settings-item">
-          <div className="settings-item-info">
             <strong>{t("aboutReportBugTitle")}</strong>
             <p>{t("aboutReportBugDescription")}</p>
           </div>
@@ -203,6 +145,8 @@ export function AboutSettings() {
           </label>
         </div>
       </div>
+
+      <DevelopmentSettings embedded />
     </section>
   );
 }

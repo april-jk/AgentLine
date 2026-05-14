@@ -6,7 +6,13 @@ import { useSchemaValidation } from "../../hooks/useSchemaValidation";
 import { useServerSettings } from "../../hooks/useServerSettings";
 import { useI18n } from "../../i18n";
 
-export function DevelopmentSettings() {
+interface DevelopmentSettingsProps {
+  embedded?: boolean;
+}
+
+export function DevelopmentSettings({
+  embedded = false,
+}: DevelopmentSettingsProps) {
   const { t } = useI18n();
   const {
     isManualReloadMode,
@@ -41,10 +47,16 @@ export function DevelopmentSettings() {
     return null;
   }
 
-  return (
-    <section className="settings-section">
-      <h2>{t("developmentSectionTitle")}</h2>
+  const title = embedded ? (
+    <h3 className="settings-subsection-title">
+      {t("settingsDevelopmentTitle")}
+    </h3>
+  ) : (
+    <h2>{t("developmentSectionTitle")}</h2>
+  );
 
+  const content = (
+    <>
       <div className="settings-group">
         <div className="settings-item">
           <div className="settings-item-info">
@@ -150,6 +162,22 @@ export function DevelopmentSettings() {
           </button>
         </div>
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="settings-subsection">
+        {title}
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <section className="settings-section">
+      {title}
+      {content}
     </section>
   );
 }

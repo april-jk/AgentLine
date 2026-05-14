@@ -1,11 +1,9 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader } from "../../components/PageHeader";
-import { useReloadNotifications } from "../../hooks/useReloadNotifications";
 import { useRemoteBasePath } from "../../hooks/useRemoteBasePath";
 import { useVersion } from "../../hooks/useVersion";
 import { useI18n } from "../../i18n";
 import {
-  getDevelopmentCategory,
   getEmulatorCategory,
   getSettingsCategories,
 } from "../../i18n-settings";
@@ -13,7 +11,6 @@ import { useNavigationLayout } from "../../layouts";
 import { AboutSettings } from "./AboutSettings";
 import { AgentContextSettings } from "./AgentContextSettings";
 import { AppearanceSettings } from "./AppearanceSettings";
-import { DevelopmentSettings } from "./DevelopmentSettings";
 import { DevicesSettings } from "./DevicesSettings";
 import { EmulatorSettings } from "./EmulatorSettings";
 import { LifecycleWebhooksSettings } from "./LifecycleWebhooksSettings";
@@ -41,7 +38,6 @@ const CATEGORY_COMPONENTS: Record<string, React.ComponentType> = {
   "remote-executors": RemoteExecutorsSettings,
   emulator: EmulatorSettings,
   about: AboutSettings,
-  development: DevelopmentSettings,
 };
 
 interface SettingsCategoryItemProps {
@@ -80,11 +76,10 @@ export function SettingsLayout() {
   const basePath = useRemoteBasePath();
   const { openSidebar, isWideScreen, toggleSidebar, isSidebarCollapsed } =
     useNavigationLayout();
-  const { isManualReloadMode } = useReloadNotifications();
   const { version: versionInfo } = useVersion();
   const capabilities = versionInfo?.capabilities ?? [];
 
-  // Build the list of categories, conditionally including emulator and dev
+  // Build the list of categories, conditionally including emulator.
   const categories: SettingsCategory[] = [
     ...getSettingsCategories((key) => t(key as never)),
   ];
@@ -101,13 +96,11 @@ export function SettingsLayout() {
       getEmulatorCategory((key) => t(key as never)),
     );
   }
-  if (isManualReloadMode) {
-    categories.push(getDevelopmentCategory((key) => t(key as never)));
-  }
+  const normalizedCategory = category === "development" ? "about" : category;
 
   // On wide screen, default to first category if none selected
   const effectiveCategory =
-    category || (isWideScreen ? categories[0]?.id : undefined);
+    normalizedCategory || (isWideScreen ? categories[0]?.id : undefined);
 
   const handleCategoryClick = (categoryId: string) => {
     navigate(`${basePath}/settings/${categoryId}`);
@@ -156,7 +149,7 @@ export function SettingsLayout() {
     }
 
     // Show category detail with back button
-    const currentCategory = categories.find((c) => c.id === category);
+    const currentCategory = categories.find((c) => c.id === normalizedCategory);
     return (
       <div className="main-content-mobile">
         <div className="main-content-mobile-inner">

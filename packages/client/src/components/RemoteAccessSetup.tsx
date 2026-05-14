@@ -326,22 +326,6 @@ export function RemoteAccessSetup({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) {
-    return (
-      <div className="remote-access-setup">
-        <div className="remote-access-header">
-          <div>
-            <h3>{title}</h3>
-            <p>{description}</p>
-          </div>
-        </div>
-        <div className="remote-access-loading">
-          {t("remoteSetupLoading" as never)}
-        </div>
-      </div>
-    );
-  }
-
   const status = getStatusDisplay(
     relayStatus?.status ?? null,
     isEnabled,
@@ -436,6 +420,22 @@ export function RemoteAccessSetup({
       window.clearInterval(interval);
     };
   }, [showQRCode, canShowQRCode, username]);
+
+  if (loading) {
+    return (
+      <div className="remote-access-setup">
+        <div className="remote-access-header">
+          <div>
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </div>
+        </div>
+        <div className="remote-access-loading">
+          {t("remoteSetupLoading" as never)}
+        </div>
+      </div>
+    );
+  }
 
   // Can toggle on if: has credentials OR has filled in required fields
   const canToggleOn = hasCredentials || (username && password);
