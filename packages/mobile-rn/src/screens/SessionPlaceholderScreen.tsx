@@ -41,10 +41,6 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
   };
 
   useEffect(() => {
-    navigation.setOptions({ title: route.params.title });
-  }, [navigation, route.params.title]);
-
-  useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (event) => {
       if (!canGoBackInWebView) return;
       event.preventDefault();

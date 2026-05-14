@@ -127,7 +127,7 @@ export function RootNavigator() {
       <Stack.Screen
         name="Console"
         component={SessionPlaceholderScreen}
-        options={{ title: "控制台" }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
