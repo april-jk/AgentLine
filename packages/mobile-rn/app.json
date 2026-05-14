@@ -15,7 +15,7 @@
       "backgroundColor": "#181818"
     },
     "ios": {
-      "bundleIdentifier": "com.agentline.mobile.rn",
+      "bundleIdentifier": "ai.oneceo.agentline.mobile.rn",
       "supportsTablet": false,
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "AgentLine uses local network access to discover and connect to your desktop host securely.",
@@ -23,7 +23,7 @@
       }
     },
     "android": {
-      "package": "com.agentline.mobile.rn",
+      "package": "ai.oneceo.agentline.mobile.rn",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
