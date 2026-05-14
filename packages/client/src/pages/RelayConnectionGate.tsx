@@ -11,14 +11,18 @@
  */
 
 import { useEffect, useState } from "react";
-import { Navigate, Outlet, useParams } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { ConnectedAppContent } from "../RemoteApp";
 import { HostOfflineModal } from "../components/HostOfflineModal";
 import {
   type AutoResumeError,
   useRemoteConnection,
 } from "../contexts/RemoteConnectionContext";
-import { getHostById, getHostByRelayUsername } from "../lib/hostStorage";
+import {
+  getHostById,
+  getHostByRelayUsername,
+  upsertRelayHost,
+} from "../lib/hostStorage";
 
 type ConnectionState =
   | "checking"
@@ -27,6 +31,60 @@ type ConnectionState =
   | "no_host"
   | "no_session"
   | "error";
+
+interface RelayHashCredentials {
+  relayUsername: string;
+  accessPassword: string;
+  relayUrl: string;
+  clientGrant?: string;
+}
+
+function hasMobileEntry(search: string): boolean {
+  try {
+    return Boolean(new URLSearchParams(search).get("mobile_entry"));
+  } catch {
+    return false;
+  }
+}
+
+function isNativeShellFlow(search: string): boolean {
+  const nativeFlag = (
+    window as { __AGENTLINE_NATIVE_SHELL__?: boolean } | undefined
+  )?.__AGENTLINE_NATIVE_SHELL__;
+  if (nativeFlag) return true;
+  return hasMobileEntry(search);
+}
+
+function clearHashPreservePathAndSearch(): void {
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${window.location.search}`,
+  );
+}
+
+function parseRelayHashCredentials(): RelayHashCredentials | null {
+  const hash = window.location.hash;
+  if (!hash || hash.length < 2) return null;
+  try {
+    const params = new URLSearchParams(hash.slice(1));
+    const relayUsername = params.get("u")?.trim().toLowerCase() ?? "";
+    const accessPassword = params.get("p") ?? "";
+    const relayUrl = params.get("r")?.trim() || "wss://relay.oneceo.ai/ws";
+    const clientGrant = params.get("cg")?.trim() || undefined;
+
+    if (!relayUsername || !accessPassword) return null;
+    clearHashPreservePathAndSearch();
+    return {
+      relayUsername,
+      accessPassword,
+      relayUrl,
+      clientGrant,
+    };
+  } catch {
+    return null;
+  }
+}
 
 /** Create an AutoResumeError from an exception */
 function createAutoResumeError(
@@ -79,6 +137,7 @@ function createAutoResumeError(
  * Layout route that manages relay connection and renders child routes when connected.
  */
 export function RelayConnectionGate() {
+  const location = useLocation();
   const { relayUsername } = useParams<{ relayUsername: string }>();
   const {
     connection,
@@ -89,6 +148,7 @@ export function RelayConnectionGate() {
     isIntentionalDisconnect,
     disconnect,
   } = useRemoteConnection();
+  const isMobileEntryFlow = isNativeShellFlow(location.search);
 
   const [state, setState] = useState<ConnectionState>("checking");
   const [error, setError] = useState<AutoResumeError | null>(null);
@@ -171,6 +231,54 @@ export function RelayConnectionGate() {
     );
 
     if (!host) {
+      if (isMobileEntryFlow) {
+        const hashCreds = parseRelayHashCredentials();
+        if (!hashCreds) {
+          setError({
+            reason: "auth_failed",
+            mode: "relay",
+            relayUsername: relayUsername ?? "",
+            message: "Missing relay credentials from mobile entry.",
+          });
+          setState("error");
+          return;
+        }
+
+        const normalizedUsername =
+          relayUsername?.trim().toLowerCase() || hashCreds.relayUsername;
+        const mobileHost = upsertRelayHost({
+          relayUrl: hashCreds.relayUrl,
+          relayUsername: normalizedUsername,
+          srpUsername: normalizedUsername,
+        });
+
+        setState("connecting");
+        setCurrentHostId(mobileHost.id);
+        connectViaRelay({
+          relayUrl: hashCreds.relayUrl,
+          relayUsername: normalizedUsername,
+          srpUsername: normalizedUsername,
+          srpPassword: hashCreds.accessPassword,
+          rememberMe: true,
+          clientGrant: hashCreds.clientGrant,
+          onStatusChange: () => {},
+        })
+          .then(() => {
+            setState("connected");
+          })
+          .catch((err) => {
+            setError(
+              createAutoResumeError(
+                err,
+                normalizedUsername,
+                hashCreds.relayUrl,
+              ),
+            );
+            setState("error");
+          });
+        return;
+      }
+
       console.log(
         `[RelayConnectionGate] No saved host for "${relayUsername}", redirecting to login`,
       );
@@ -179,6 +287,37 @@ export function RelayConnectionGate() {
     }
 
     if (!host.session || !host.relayUrl) {
+      if (isMobileEntryFlow) {
+        const hashCreds = parseRelayHashCredentials();
+        if (hashCreds) {
+          setState("connecting");
+          setCurrentHostId(host.id);
+          connectViaRelay({
+            relayUrl: hashCreds.relayUrl,
+            relayUsername: host.relayUsername ?? relayUsername,
+            srpUsername: host.srpUsername,
+            srpPassword: hashCreds.accessPassword,
+            rememberMe: true,
+            clientGrant: hashCreds.clientGrant,
+            onStatusChange: () => {},
+          })
+            .then(() => {
+              setState("connected");
+            })
+            .catch((err) => {
+              setError(
+                createAutoResumeError(
+                  err,
+                  host.relayUsername ?? relayUsername ?? "",
+                  hashCreds.relayUrl,
+                ),
+              );
+              setState("error");
+            });
+          return;
+        }
+      }
+
       console.log(
         `[RelayConnectionGate] Host "${relayUsername}" has no session or relayUrl, redirecting to login`,
       );
@@ -222,6 +361,7 @@ export function RelayConnectionGate() {
     currentHostId,
     isIntentionalDisconnect,
     disconnect,
+    isMobileEntryFlow,
   ]);
 
   switch (state) {
@@ -236,6 +376,14 @@ export function RelayConnectionGate() {
 
     case "no_host":
     case "no_session":
+      if (isMobileEntryFlow) {
+        return (
+          <div className="auto-resume-loading">
+            <div className="loading-spinner" />
+            <p>Missing relay session details from mobile entry.</p>
+          </div>
+        );
+      }
       return (
         <Navigate
           to={`/login/relay?u=${encodeURIComponent(relayUsername ?? "")}`}

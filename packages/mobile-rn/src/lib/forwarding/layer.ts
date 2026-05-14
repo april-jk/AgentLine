@@ -19,6 +19,7 @@ export type ForwardingInput =
       relayWsUrl?: string;
       relayUsername?: string;
       relayPassword?: string;
+      relayClientGrant?: string;
       themeMode?: ThemeMode;
     };
 
@@ -70,7 +71,8 @@ function buildModeBootstrapScript(
 }
 
 function appendMobileEntryMarker(url: string): string {
-  const [withoutHash, hash = ""] = url.split("#", 2);
+  const [withoutHashRaw, hash = ""] = url.split("#", 2);
+  const withoutHash = withoutHashRaw ?? "";
   if (withoutHash.includes("mobile_entry=")) return url;
   const separator = withoutHash.includes("?") ? "&" : "?";
   const withMarker =
@@ -94,14 +96,22 @@ function isLocalRemoteDevBase(baseUrl: string): boolean {
   );
 }
 
-function normalizeRelayLoginUrl(controlPlaneUrl: string): string {
+function normalizeRelayEntryUrl(
+  controlPlaneUrl: string,
+  relayUsername?: string,
+): string {
   const base = normalizeRelayWebBaseUrl(controlPlaneUrl);
+  const username = relayUsername?.trim().toLowerCase();
   if (isLocalRemoteDevBase(base)) {
-    return `${base}/login/relay`;
+    if (username) {
+      return `${base}/${encodeURIComponent(username)}/projects`;
+    }
+    return `${base}/projects`;
   }
-  // Use same-origin remote entry in production so mobile does not
-  // bounce between multiple hosted entries.
-  return `${base}/remote/login/relay`;
+  if (username) {
+    return `${base}/remote/${encodeURIComponent(username)}/projects`;
+  }
+  return `${base}/remote/projects`;
 }
 
 function normalizeDirectWebBaseUrl(directServerUrl: string): string {
@@ -135,16 +145,16 @@ function isLoopbackOrEmulatorHost(host: string): boolean {
   return host === "127.0.0.1" || host === "localhost" || host === "10.0.2.2";
 }
 
-function normalizeDirectLoginUrl(directServerUrl: string): string {
+function normalizeDirectEntryUrl(directServerUrl: string): string {
   const base = normalizeDirectWebBaseUrl(directServerUrl);
   const parsed = parseBaseUrlParts(base);
   if (parsed && isLoopbackOrEmulatorHost(parsed.host)) {
-    return `${parsed.protocol}//${parsed.host}:${String(parsed.port + 2)}/login/direct`;
+    return `${parsed.protocol}//${parsed.host}:${String(parsed.port + 2)}/projects`;
   }
   if (isLocalRemoteDevBase(base)) {
-    return `${base}/login/direct`;
+    return `${base}/projects`;
   }
-  return `${base}/remote/login/direct`;
+  return `${base}/remote/projects`;
 }
 
 function normalizeDirectWsUrl(rawValue: string): string {
@@ -182,10 +192,12 @@ function buildRelayHash(
   const params: string[] = [];
   const username = input.relayUsername?.trim().toLowerCase();
   const password = input.relayPassword?.trim();
+  const clientGrant = input.relayClientGrant?.trim();
   const relayWsUrl = normalizeRelayWsUrl(input.relayWsUrl ?? "");
 
   if (username) params.push(`u=${encodeURIComponent(username)}`);
   if (password) params.push(`p=${encodeURIComponent(password)}`);
+  if (clientGrant) params.push(`cg=${encodeURIComponent(clientGrant)}`);
   params.push(`r=${encodeURIComponent(relayWsUrl)}`);
 
   const serialized = params.join("&");
@@ -214,7 +226,7 @@ export function resolveForwardingTarget(
   if (input.mode === "direct") {
     const directServerUrl = normalizeHttpBaseUrl(input.directServerUrl);
     const url = appendMobileEntryMarker(
-      `${normalizeDirectLoginUrl(input.directServerUrl)}${buildDirectHash(input)}`,
+      `${normalizeDirectEntryUrl(input.directServerUrl)}${buildDirectHash(input)}`,
     );
     return {
       mode: "direct",
@@ -229,7 +241,7 @@ export function resolveForwardingTarget(
   }
 
   const url = appendMobileEntryMarker(
-    `${normalizeRelayLoginUrl(input.controlPlaneUrl)}${buildRelayHash(input)}`,
+    `${normalizeRelayEntryUrl(input.controlPlaneUrl, input.relayUsername)}${buildRelayHash(input)}`,
   );
   const controlPlaneBaseUrl = normalizeRelayWebBaseUrl(input.controlPlaneUrl);
   return {

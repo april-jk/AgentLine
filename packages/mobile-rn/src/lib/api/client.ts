@@ -33,6 +33,14 @@ export type SessionPlaceholder = {
   message: string;
 };
 
+export type RelayClientConnectGrant = {
+  grant: string;
+  grantId: string;
+  expiresAt: string;
+  relayUsername: string;
+  deviceId: string;
+};
+
 type ControlPlaneDevice = {
   id: string;
   deviceName: string;
@@ -169,6 +177,31 @@ export class ApiClient {
       state: "pending",
       message: `已拿到 relay 用户名 ${host.relayUsername}，下一步接入加密会话通道。`,
     };
+  }
+
+  async requestClientConnectGrant(
+    accessToken: string,
+    relayUsername: string,
+    deviceId?: string,
+  ): Promise<RelayClientConnectGrant> {
+    if (!accessToken.trim()) {
+      throw new Error("缺少平台账号令牌");
+    }
+    if (!relayUsername.trim()) {
+      throw new Error("缺少 relay 用户名");
+    }
+
+    return this.request<RelayClientConnectGrant>(
+      "/api/v1/relay/grants/client-connect",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          relayUsername: relayUsername.trim().toLowerCase(),
+          deviceId,
+        }),
+      },
+      accessToken,
+    );
   }
 
   getBaseUrl(): string {

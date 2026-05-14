@@ -326,32 +326,49 @@ export function LoginScreen({ navigation, route }: Props) {
         Alert.alert("请选择主机", "先选择要连接的电脑");
         return;
       }
+      if (!accountToken.trim()) {
+        Alert.alert("会话已失效", "平台账号状态已失效，请重新登录。");
+        return;
+      }
       if (!accessPassword.trim()) {
         Alert.alert("缺少访问密码", "请输入桌面端设置的访问密码");
         return;
       }
 
+      const controlPlaneBaseUrl = normalizeHttpBaseUrl(controlPlaneUrl);
+      const client = new ApiClient(controlPlaneBaseUrl);
+      const grantPayload = await client.requestClientConnectGrant(
+        accountToken,
+        selectedHost.relayUsername,
+        selectedHost.id,
+      );
+
+      const resolvedRelayUsername =
+        grantPayload.relayUsername?.trim().toLowerCase() ||
+        selectedHost.relayUsername;
+
       const target = resolveForwardingTarget({
         mode: "relay",
-        controlPlaneUrl,
+        controlPlaneUrl: controlPlaneBaseUrl,
         relayWsUrl: deriveRelayWsUrl(controlPlaneUrl),
-        relayUsername: selectedHost.relayUsername,
+        relayUsername: resolvedRelayUsername,
         relayPassword: accessPassword,
+        relayClientGrant: grantPayload.grant,
         themeMode,
       });
 
       await setSecureItem(secureStorageKeys.connectionMode, "relay");
       await setSecureItem(
         secureStorageKeys.controlPlaneUrl,
-        normalizeHttpBaseUrl(controlPlaneUrl),
+        controlPlaneBaseUrl,
       );
       await setSecureItem(
         secureStorageKeys.relayWsUrl,
-        deriveRelayWsUrl(controlPlaneUrl),
+        deriveRelayWsUrl(controlPlaneBaseUrl),
       );
       await setSecureItem(
         secureStorageKeys.relayUsername,
-        selectedHost.relayUsername,
+        resolvedRelayUsername,
       );
       await setSecureItem(secureStorageKeys.relayPassword, accessPassword);
       await setSecureItem(
