@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Modal } from "../../components/ui/Modal";
 import { useProviders } from "../../hooks/useProviders";
 import { useServerSettings } from "../../hooks/useServerSettings";
 import { useI18n } from "../../i18n";
@@ -168,23 +169,104 @@ function OllamaSettings() {
   );
 }
 
+type ProviderTone = "claude" | "codex" | "gemini" | "opencode";
+
+function getProviderTone(providerId: string): ProviderTone {
+  if (providerId === "claude" || providerId === "claude-ollama") {
+    return "claude";
+  }
+  if (
+    providerId === "gemini" ||
+    providerId === "gemini-acp" ||
+    providerId === "aion"
+  ) {
+    return "gemini";
+  }
+  if (providerId === "codex" || providerId === "codex-oss") {
+    return "codex";
+  }
+  return "opencode";
+}
+
+const PROVIDER_LOGO_MAP: Record<string, string> = {
+  claude: "/provider-logos/claude.svg",
+  "claude-ollama": "/provider-logos/ollama.svg",
+  gemini: "/provider-logos/gemini.svg",
+  "gemini-acp": "/provider-logos/gemini.svg",
+  codex: "/provider-logos/codex-mark.svg",
+  "codex-oss": "/provider-logos/codex-mark.svg",
+  opencode: "/provider-logos/opencode.png",
+};
+
+function ProviderLogo({
+  providerId,
+  displayName,
+}: {
+  providerId: string;
+  displayName: string;
+}) {
+  const logoSrc = PROVIDER_LOGO_MAP[providerId] ?? "/icon-192.png";
+
+  return (
+    <img
+      src={logoSrc}
+      alt={`${displayName} logo`}
+      className="provider-card-logo-image"
+      loading="lazy"
+      decoding="async"
+    />
+  );
+}
+
 export function ProvidersSettings() {
   const { t } = useI18n();
   const { providers: serverProviders, loading: providersLoading } =
     useProviders();
+  const [activeProviderId, setActiveProviderId] = useState<string | null>(null);
 
-  // Merge server detection status with client-side metadata
-  const registeredProviders = getAllProviders();
-  const providerDisplayList = registeredProviders.map((clientProvider) => {
-    const serverInfo = serverProviders.find(
-      (p) => p.name === clientProvider.id,
+  const providerDisplayList = useMemo(() => {
+    // Merge server detection status with client-side metadata
+    const mergedProviders = getAllProviders().map((clientProvider, index) => {
+      const serverInfo = serverProviders.find(
+        (provider) => provider.name === clientProvider.id,
+      );
+      return {
+        ...clientProvider,
+        installed: serverInfo?.installed ?? false,
+        authenticated: serverInfo?.authenticated ?? false,
+        originalIndex: index,
+      };
+    });
+
+    // Configured providers first, then unconfigured.
+    // Priority: authenticated > installed > not configured.
+    mergedProviders.sort((left, right) => {
+      const leftRank = left.authenticated ? 2 : left.installed ? 1 : 0;
+      const rightRank = right.authenticated ? 2 : right.installed ? 1 : 0;
+      if (leftRank !== rightRank) {
+        return rightRank - leftRank;
+      }
+      return left.originalIndex - right.originalIndex;
+    });
+
+    return mergedProviders.map(
+      ({ originalIndex: _drop, ...provider }) => provider,
     );
-    return {
-      ...clientProvider,
-      installed: serverInfo?.installed ?? false,
-      authenticated: serverInfo?.authenticated ?? false,
-    };
-  });
+  }, [serverProviders]);
+
+  const activeProvider = useMemo(
+    () =>
+      activeProviderId
+        ? providerDisplayList.find(
+            (provider) => provider.id === activeProviderId,
+          )
+        : undefined,
+    [activeProviderId, providerDisplayList],
+  );
+
+  const closeProviderModal = useCallback(() => {
+    setActiveProviderId(null);
+  }, []);
 
   return (
     <section className="settings-section">
@@ -192,13 +274,65 @@ export function ProvidersSettings() {
       <p className="settings-section-description">
         {t("providersSectionDescription")}
       </p>
-      <div className="settings-group">
+      <div className="providers-card-grid">
         {providerDisplayList.map((provider) => (
-          <div key={provider.id} className="settings-item">
-            <div className="settings-item-info">
-              <div className="settings-item-header">
-                <strong>{provider.displayName}</strong>
-                {provider.installed ? (
+          <article key={provider.id} className="providers-card">
+            <div
+              className={`providers-card-logo providers-card-logo-${getProviderTone(provider.id)}`}
+            >
+              <ProviderLogo
+                providerId={provider.id}
+                displayName={provider.displayName}
+              />
+            </div>
+            <div className="providers-card-main">
+              <h3 className="providers-card-title">{provider.displayName}</h3>
+              {providersLoading ? (
+                <span className="settings-status-badge settings-status-not-detected">
+                  {t("agentContextLoading")}
+                </span>
+              ) : provider.installed ? (
+                <span className="settings-status-badge settings-status-detected">
+                  {t("providersDetected")}
+                </span>
+              ) : (
+                <span className="settings-status-badge settings-status-not-detected">
+                  {t("providersNotDetected")}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              className="settings-button providers-card-settings-button"
+              onClick={() => setActiveProviderId(provider.id)}
+            >
+              {t("pageTitleSettings")}
+            </button>
+          </article>
+        ))}
+      </div>
+      {activeProvider ? (
+        <Modal
+          title={`${activeProvider.displayName} · ${t("pageTitleSettings")}`}
+          onClose={closeProviderModal}
+        >
+          <div className="providers-modal-content">
+            <div className="providers-modal-summary">
+              <div
+                className={`providers-card-logo providers-card-logo-${getProviderTone(activeProvider.id)} providers-card-logo-large`}
+              >
+                <ProviderLogo
+                  providerId={activeProvider.id}
+                  displayName={activeProvider.displayName}
+                />
+              </div>
+              <div className="providers-modal-summary-text">
+                <strong>{activeProvider.displayName}</strong>
+                {providersLoading ? (
+                  <span className="settings-status-badge settings-status-not-detected">
+                    {t("agentContextLoading")}
+                  </span>
+                ) : activeProvider.installed ? (
                   <span className="settings-status-badge settings-status-detected">
                     {t("providersDetected")}
                   </span>
@@ -208,29 +342,39 @@ export function ProvidersSettings() {
                   </span>
                 )}
               </div>
-              <p>{provider.metadata.description}</p>
-              {provider.metadata.limitations.length > 0 && (
-                <ul className="settings-limitations">
-                  {provider.metadata.limitations.map((limitation) => (
-                    <li key={limitation}>{limitation}</li>
-                  ))}
-                </ul>
-              )}
-              {provider.id === "claude-ollama" && <OllamaSettings />}
             </div>
-            {provider.metadata.website && (
+
+            <p className="settings-section-description providers-modal-description">
+              {activeProvider.metadata.description}
+            </p>
+
+            {activeProvider.metadata.limitations.length > 0 && (
+              <ul className="settings-limitations providers-modal-limitations">
+                {activeProvider.metadata.limitations.map((limitation) => (
+                  <li key={limitation}>{limitation}</li>
+                ))}
+              </ul>
+            )}
+
+            {activeProvider.id === "claude-ollama" && (
+              <div className="providers-modal-setting-group">
+                <OllamaSettings />
+              </div>
+            )}
+
+            {activeProvider.metadata.website && (
               <a
-                href={provider.metadata.website}
+                href={activeProvider.metadata.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="settings-link"
+                className="settings-link providers-modal-link"
               >
                 {t("providersWebsite")}
               </a>
             )}
           </div>
-        ))}
-      </div>
+        </Modal>
+      ) : null}
     </section>
   );
 }
