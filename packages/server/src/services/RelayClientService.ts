@@ -114,6 +114,8 @@ export class RelayClientService {
   private waitingWs: WebSocket | null = null;
   /** WebSocket that is currently connecting/registering (not yet waiting) */
   private connectingWs: WebSocket | null = null;
+  /** WebSockets that have been claimed and handed off to the relay session layer */
+  private claimedSockets = new Set<WebSocket>();
   private backoff: ExponentialBackoff;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
@@ -160,6 +162,17 @@ export class RelayClientService {
       this.waitingWs.close();
       this.waitingWs = null;
     }
+
+    // Claimed sockets are managed by the relay session layer, but must still be
+    // force-closed on hard stop/logout so existing remote control sessions are revoked.
+    for (const ws of this.claimedSockets) {
+      try {
+        ws.close();
+      } catch {
+        // Ignore close errors
+      }
+    }
+    this.claimedSockets.clear();
 
     this.updateState({ status: "disconnected", reconnectAttempts: 0 });
   }
@@ -375,8 +388,28 @@ export class RelayClientService {
     // This prevents duplicate message processing
     ws.removeAllListeners();
 
-    // Hand off to the WebSocket relay handler with frame type info
-    this.config.onRelayConnection(ws, firstMessage, isBinary);
+    this.claimedSockets.add(ws);
+    const cleanupClaimed = () => {
+      this.claimedSockets.delete(ws);
+    };
+    ws.once("close", cleanupClaimed);
+    ws.once("error", cleanupClaimed);
+
+    try {
+      // Hand off to the WebSocket relay handler with frame type info
+      this.config.onRelayConnection(ws, firstMessage, isBinary);
+    } catch (error) {
+      this.claimedSockets.delete(ws);
+      console.error(
+        "[RelayClient] Failed to hand off claimed relay connection:",
+        error,
+      );
+      try {
+        ws.close();
+      } catch {
+        // Ignore close errors
+      }
+    }
 
     // Immediately open a new waiting connection
     this.connect();

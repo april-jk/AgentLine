@@ -812,6 +812,20 @@ const registerIpcHandlers = (): void => {
       registerControlPlaneAccount(payload),
   );
   ipcMain.handle("control-plane:clear", async () => {
+    try {
+      await callDesktopProtectedApi<{ success: boolean }>(
+        "/api/remote-access/control-plane/config",
+        {
+          method: "DELETE",
+        },
+      );
+    } catch (error) {
+      console.warn(
+        "[desktop-electron] Failed to clear control-plane bridge during clear:",
+        error,
+      );
+    }
+
     desktopConfig.controlPlane = undefined;
     await saveDesktopConfig();
     getServerManager().updateControlPlaneConfig({});

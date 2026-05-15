@@ -32,6 +32,25 @@ const { MockWebSocket, MockWebSocketInstances } = vi.hoisted(() => {
       this.listeners.set(event, list);
     }
 
+    once(event: string, listener: Listener): void {
+      const onceListener: Listener = (...args: unknown[]) => {
+        this.removeListener(event, onceListener);
+        listener(...args);
+      };
+      this.on(event, onceListener);
+    }
+
+    removeListener(event: string, listener: Listener): void {
+      const list = this.listeners.get(event);
+      if (!list) return;
+      const next = list.filter((entry) => entry !== listener);
+      if (next.length === 0) {
+        this.listeners.delete(event);
+        return;
+      }
+      this.listeners.set(event, next);
+    }
+
     private callListeners(event: string, ...args: unknown[]): void {
       const list = this.listeners.get(event) ?? [];
       for (const listener of list) {
@@ -244,6 +263,34 @@ describe("RelayClientService", () => {
 
       // No new connections should have been created
       expect(MockWebSocketInstances.length).toBe(instanceCount);
+    });
+
+    it("closes claimed sockets on stop", async () => {
+      service.start({
+        relayUrl: "wss://relay.example.com/ws",
+        username: "testuser",
+        installId: "install-123",
+        onRelayConnection: mockOnRelayConnection,
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      const firstWs = MockWebSocketInstances[0];
+      firstWs.simulateMessage(JSON.stringify({ type: "server_registered" }));
+      firstWs.simulateMessage(
+        JSON.stringify({
+          type: "srp_hello",
+          identity: "testuser",
+          A: "ephemeral",
+        }),
+      );
+
+      expect(mockOnRelayConnection).toHaveBeenCalledTimes(1);
+      expect(firstWs.readyState).toBe(MockWebSocket.OPEN);
+
+      service.stop();
+
+      expect(firstWs.readyState).toBe(MockWebSocket.CLOSED);
     });
   });
 

@@ -443,6 +443,9 @@ export function createRemoteAccessRoutes(
       if (message === "device_not_found") {
         return c.json({ error: message }, 404);
       }
+      if (message === "device_offline") {
+        return c.json({ error: message }, 409);
+      }
       if (message.startsWith("control_plane_")) {
         return c.json({ error: message }, 502);
       }
