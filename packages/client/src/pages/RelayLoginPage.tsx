@@ -41,13 +41,49 @@ function parseHashCredentials(): {
 
     if (username && password) {
       // Clear hash from URL for security (don't leave password in history)
-      window.history.replaceState(null, "", window.location.pathname);
+      // Keep search params (mobile_entry, relay username hints, etc.).
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`,
+      );
       return { username, password, relayUrl, clientGrant };
     }
   } catch {
     // Ignore parse errors
   }
   return null;
+}
+
+function parseNativeBootstrapCredentials(): {
+  username: string;
+  password: string;
+  relayUrl: string;
+  clientGrant?: string;
+} | null {
+  try {
+    const payload = (
+      window as unknown as {
+        __AGENTLINE_NATIVE_BOOTSTRAP__?: {
+          relay?: {
+            relayUrl?: string;
+            relayUsername?: string;
+            relayPassword?: string;
+            relayClientGrant?: string;
+          };
+        };
+      }
+    ).__AGENTLINE_NATIVE_BOOTSTRAP__;
+    const relay = payload?.relay;
+    const username = relay?.relayUsername?.trim().toLowerCase() ?? "";
+    const password = relay?.relayPassword ?? "";
+    const relayUrl = relay?.relayUrl?.trim() || "";
+    const clientGrant = relay?.relayClientGrant?.trim() || undefined;
+    if (!username || !password) return null;
+    return { username, password, relayUrl, clientGrant };
+  } catch {
+    return null;
+  }
 }
 
 /** Default relay URL */
@@ -106,9 +142,16 @@ export function RelayLoginPage() {
     autoLoginAttempted.current = true;
 
     const hashCreds = parseHashCredentials();
-    if (!hashCreds) return;
+    const bootstrapCreds = hashCreds ? null : parseNativeBootstrapCredentials();
+    const resolvedCreds = hashCreds ?? bootstrapCreds;
+    console.log("[RelayLoginPage] Auto-login credential source:", {
+      source: hashCreds ? "hash" : bootstrapCreds ? "native_bootstrap" : "none",
+      hasHash: Boolean(window.location.hash),
+      search: window.location.search,
+    });
+    if (!resolvedCreds) return;
 
-    const { username, password, relayUrl, clientGrant } = hashCreds;
+    const { username, password, relayUrl, clientGrant } = resolvedCreds;
     const effectiveRelayUrl = relayUrl || DEFAULT_RELAY_URL;
 
     // Get or create host BEFORE connecting so handleSessionEstablished can sync session

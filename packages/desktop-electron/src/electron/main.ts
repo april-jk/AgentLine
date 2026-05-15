@@ -506,6 +506,20 @@ const logoutControlPlane = async (): Promise<ControlPlaneAccountSummary> => {
     }
   }
 
+  try {
+    await callDesktopProtectedApi<{ success: boolean }>(
+      "/api/remote-access/control-plane/config",
+      {
+        method: "DELETE",
+      },
+    );
+  } catch (error) {
+    console.warn(
+      "[desktop-electron] Failed to clear control-plane bridge during logout:",
+      error,
+    );
+  }
+
   desktopConfig.controlPlane = {
     ...(desktopConfig.controlPlane ?? {}),
     accessToken: "",

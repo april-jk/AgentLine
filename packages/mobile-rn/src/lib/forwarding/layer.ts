@@ -35,16 +35,33 @@ export type ForwardingTarget = {
   injectedJavaScriptBeforeContentLoaded?: string;
 };
 
+type NativeBootstrapPayload = {
+  relay?: {
+    relayUrl?: string;
+    relayUsername?: string;
+    relayPassword?: string;
+    relayClientGrant?: string;
+  };
+  direct?: {
+    wsUrl?: string;
+    username?: string;
+    password?: string;
+  };
+};
+
 function buildModeBootstrapScript(
   mode: ForwardMode,
   themeMode: ThemeMode = DEFAULT_REMOTE_THEME,
+  payload?: NativeBootstrapPayload,
 ): string {
   return `
     window.__AGENTLINE_NATIVE_SHELL__ = true;
     window.__AGENTLINE_FORWARD_MODE__ = ${JSON.stringify(mode)};
+    window.__AGENTLINE_NATIVE_BOOTSTRAP__ = ${JSON.stringify(payload ?? {})};
     try {
       const themeMode = ${JSON.stringify(themeMode)};
       localStorage.setItem("agentline-theme", themeMode);
+      localStorage.setItem("agentline-native-shell", "1");
       document.documentElement.setAttribute("data-theme", themeMode);
 
       const postTheme = () => {
@@ -96,22 +113,12 @@ function isLocalRemoteDevBase(baseUrl: string): boolean {
   );
 }
 
-function normalizeRelayEntryUrl(
-  controlPlaneUrl: string,
-  relayUsername?: string,
-): string {
+function normalizeRelayLoginUrl(controlPlaneUrl: string): string {
   const base = normalizeRelayWebBaseUrl(controlPlaneUrl);
-  const username = relayUsername?.trim().toLowerCase();
   if (isLocalRemoteDevBase(base)) {
-    if (username) {
-      return `${base}/${encodeURIComponent(username)}/projects`;
-    }
-    return `${base}/projects`;
+    return `${base}/login/relay`;
   }
-  if (username) {
-    return `${base}/remote/${encodeURIComponent(username)}/projects`;
-  }
-  return `${base}/remote/projects`;
+  return `${base}/remote/login/relay`;
 }
 
 function normalizeDirectWebBaseUrl(directServerUrl: string): string {
@@ -225,6 +232,9 @@ export function resolveForwardingTarget(
 ): ForwardingTarget {
   if (input.mode === "direct") {
     const directServerUrl = normalizeHttpBaseUrl(input.directServerUrl);
+    const directWsUrl = normalizeDirectWsUrl(input.directServerUrl);
+    const directUsername = input.directUsername?.trim() || "";
+    const directPassword = input.directPassword?.trim() || "";
     const url = appendMobileEntryMarker(
       `${normalizeDirectEntryUrl(input.directServerUrl)}${buildDirectHash(input)}`,
     );
@@ -236,12 +246,27 @@ export function resolveForwardingTarget(
       injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript(
         "direct",
         input.themeMode,
+        {
+          direct: {
+            wsUrl: directWsUrl,
+            username: directUsername,
+            password: directPassword,
+          },
+        },
       ),
     };
   }
 
+  const relayWsUrl = normalizeRelayWsUrl(input.relayWsUrl ?? "");
+  const relayUsername = input.relayUsername?.trim().toLowerCase() || "";
+  const relayPassword = input.relayPassword?.trim() || "";
+  const relayClientGrant = input.relayClientGrant?.trim() || "";
+  // Use relay login entry as the canonical mobile handoff target. This is
+  // compatible with both older and newer remote deployments and avoids the
+  // /:relayUsername/projects gate when host storage is empty in WebView.
+  const relayEntryUrl = normalizeRelayLoginUrl(input.controlPlaneUrl);
   const url = appendMobileEntryMarker(
-    `${normalizeRelayEntryUrl(input.controlPlaneUrl, input.relayUsername)}${buildRelayHash(input)}`,
+    `${relayEntryUrl}${buildRelayHash(input)}`,
   );
   const controlPlaneBaseUrl = normalizeRelayWebBaseUrl(input.controlPlaneUrl);
   return {
@@ -252,6 +277,14 @@ export function resolveForwardingTarget(
     injectedJavaScriptBeforeContentLoaded: buildModeBootstrapScript(
       "relay",
       input.themeMode,
+      {
+        relay: {
+          relayUrl: relayWsUrl,
+          relayUsername,
+          relayPassword,
+          relayClientGrant,
+        },
+      },
     ),
   };
 }

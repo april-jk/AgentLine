@@ -369,11 +369,22 @@ export function createRemoteAccessRoutes(
       return c.json({ error: "control_plane_bridge_unavailable" }, 503);
     }
 
+    const existingUsername = remoteAccessService.getUsername();
+
     await controlPlaneBridgeService.reconfigure({
       baseUrl: undefined,
       accessToken: undefined,
       relayUrl: undefined,
     });
+    if (remoteSessionService && existingUsername) {
+      const revokedCount =
+        await remoteSessionService.invalidateUserSessions(existingUsername);
+      if (revokedCount > 0) {
+        console.log(
+          `[RemoteAccess] Control-plane logout revoked ${revokedCount} remote session(s) for ${existingUsername}`,
+        );
+      }
+    }
     await remoteAccessService.clearRelayConfig();
     await onRelayConfigChanged?.();
     await serverSettingsService?.updateSettings({

@@ -14,6 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../../../shared/dist/desktop-discovery.js";
 import {
   ApiClient,
+  ApiRequestError,
+  DirectServerClient,
   type HostItem,
   normalizeHttpBaseUrl,
 } from "../lib/api/client";
@@ -75,6 +77,12 @@ function deriveRelayWsUrl(controlPlaneUrl: string): string {
   }
 }
 
+function redactForwardingUri(rawUri: string): string {
+  return rawUri
+    .replace(/([#&]p=)[^&]*/gi, "$1***")
+    .replace(/([#&]cg=)[^&]*/gi, "$1***");
+}
+
 function statusColor(
   relayState: HostItem["relayState"],
   theme: AppTheme,
@@ -82,6 +90,94 @@ function statusColor(
   if (relayState === "paired") return "#16a34a";
   if (relayState === "waiting") return "#f59e0b";
   return theme.textMuted;
+}
+
+function formatHeartbeatAge(ageMs?: number): string {
+  if (typeof ageMs !== "number") return "未知";
+  const seconds = Math.floor(ageMs / 1000);
+  if (seconds < 60) return `${String(seconds)} 秒前`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${String(minutes)} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  return `${String(hours)} 小时前`;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("timeout")), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+type RelayRecovery = {
+  title: string;
+  message: string;
+  clearAccount: boolean;
+};
+
+function resolveRelayRecovery(error: unknown): RelayRecovery {
+  if (error instanceof ApiRequestError) {
+    if (
+      error.status === 401 ||
+      error.code === "unauthorized" ||
+      error.code === "control_plane_unauthorized"
+    ) {
+      return {
+        title: "账号已失效",
+        message: "平台账号会话已失效，请重新登录平台账号后再连接桌面设备。",
+        clearAccount: true,
+      };
+    }
+
+    if (error.code === "device_not_found") {
+      return {
+        title: "桌面端已退出",
+        message:
+          "目标设备已不可用或已解绑，请在电脑端重新登录并保持在线后重试。",
+        clearAccount: false,
+      };
+    }
+  }
+
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    if (
+      msg.includes("unauthorized") ||
+      msg.includes("account_auth_required") ||
+      msg.includes("grant_invalid") ||
+      msg.includes("grant_expired") ||
+      msg.includes("grant_consumed")
+    ) {
+      return {
+        title: "账号已失效",
+        message: "平台账号会话已失效，请重新登录平台账号后再连接桌面设备。",
+        clearAccount: true,
+      };
+    }
+
+    if (msg.includes("device_not_found")) {
+      return {
+        title: "桌面端已退出",
+        message:
+          "目标设备已不可用或已解绑，请在电脑端重新登录并保持在线后重试。",
+        clearAccount: false,
+      };
+    }
+  }
+
+  return {
+    title: "连接失败",
+    message: error instanceof Error ? error.message : "连接失败，请稍后重试。",
+    clearAccount: false,
+  };
 }
 
 export function LoginScreen({ navigation, route }: Props) {
@@ -123,6 +219,25 @@ export function LoginScreen({ navigation, route }: Props) {
   const showRelayDevicePage = loginMode === "relay" && hasAccountToken;
   const showRelayBottomSwitch = loginMode === "relay";
 
+  const recoverToRelayLogin = useCallback(
+    async (recovery: RelayRecovery) => {
+      if (recovery.clearAccount) {
+        setAccountToken("");
+        setHosts([]);
+        setSelectedHostId(null);
+        await setSecureItem(secureStorageKeys.controlPlaneAccessToken, "");
+        await setSecureItem(secureStorageKeys.selectedRelayDeviceId, "");
+      }
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Login", params: { mode: "relay" } }],
+      });
+      Alert.alert(recovery.title, recovery.message);
+    },
+    [navigation],
+  );
+
   const loadRelayHosts = useCallback(
     async (token: string, urlOverride?: string) => {
       const targetUrl = (urlOverride ?? controlPlaneUrl).trim();
@@ -140,15 +255,17 @@ export function LoginScreen({ navigation, route }: Props) {
           return list[0]?.id ?? null;
         });
       } catch (error) {
-        Alert.alert(
-          "加载主机失败",
-          error instanceof Error ? error.message : "无法获取设备列表",
-        );
+        const recovery = resolveRelayRecovery(error);
+        if (recovery.clearAccount) {
+          await recoverToRelayLogin(recovery);
+        } else {
+          Alert.alert(recovery.title, recovery.message);
+        }
       } finally {
         setRelayBusy(false);
       }
     },
-    [controlPlaneUrl],
+    [controlPlaneUrl, recoverToRelayLogin],
   );
 
   useEffect(() => {
@@ -235,6 +352,16 @@ export function LoginScreen({ navigation, route }: Props) {
         }
         if (!directUsername.trim()) {
           Alert.alert("缺少用户名", "请填写直连用户名");
+          return;
+        }
+
+        const preflightClient = new DirectServerClient(serverUrl);
+        const heartbeat = await withTimeout(preflightClient.getHealth(), 2500);
+        if (heartbeat.status !== "ok") {
+          Alert.alert(
+            "桌面端不可达",
+            "心跳校验失败：当前无法访问桌面端服务，请确认电脑端 AgentLine 已启动并与手机处于同一网络。",
+          );
           return;
         }
 
@@ -337,15 +464,51 @@ export function LoginScreen({ navigation, route }: Props) {
 
       const controlPlaneBaseUrl = normalizeHttpBaseUrl(controlPlaneUrl);
       const client = new ApiClient(controlPlaneBaseUrl);
+      const latestHosts = await client.listHosts(accountToken);
+      setHosts(latestHosts);
+      const latestHost =
+        latestHosts.find((item) => item.id === selectedHost.id) ?? null;
+      if (!latestHost) {
+        Alert.alert(
+          "桌面端已退出",
+          "该设备已不在在线列表，请刷新设备列表后重试。",
+        );
+        return;
+      }
+      if (latestHost.relayState === "offline") {
+        Alert.alert(
+          "桌面端离线",
+          "桌面端当前未连接中继，请先在电脑端保持 AgentLine 在线。",
+        );
+        return;
+      }
+      if (!latestHost.heartbeatFresh) {
+        Alert.alert(
+          "心跳已过期",
+          `最近心跳：${formatHeartbeatAge(latestHost.heartbeatAgeMs)}。请确认桌面端正在运行并刷新设备列表后再试。`,
+        );
+        return;
+      }
+      const relayOnline = await client.isRelayHostOnline(
+        latestHost.relayUsername,
+      );
+      if (!relayOnline) {
+        Alert.alert(
+          "桌面端未就绪",
+          "中继路由当前不可达，请稍后重试或在电脑端重新打开 AgentLine。",
+        );
+        return;
+      }
+
       const grantPayload = await client.requestClientConnectGrant(
         accountToken,
-        selectedHost.relayUsername,
-        selectedHost.id,
+        latestHost.relayUsername,
+        latestHost.id,
       );
 
       const resolvedRelayUsername =
         grantPayload.relayUsername?.trim().toLowerCase() ||
-        selectedHost.relayUsername;
+        latestHost.relayUsername;
 
       const target = resolveForwardingTarget({
         mode: "relay",
@@ -355,6 +518,12 @@ export function LoginScreen({ navigation, route }: Props) {
         relayPassword: accessPassword,
         relayClientGrant: grantPayload.grant,
         themeMode,
+      });
+      console.log("[LoginScreen] Opening relay WebView target", {
+        hostId: latestHost.id,
+        relayUsername: resolvedRelayUsername,
+        relayState: latestHost.relayState,
+        uri: redactForwardingUri(target.source.uri),
       });
 
       await setSecureItem(secureStorageKeys.connectionMode, "relay");
@@ -373,14 +542,12 @@ export function LoginScreen({ navigation, route }: Props) {
       await setSecureItem(secureStorageKeys.relayPassword, accessPassword);
       await setSecureItem(
         secureStorageKeys.selectedRelayDeviceId,
-        selectedHost.id,
+        latestHost.id,
       );
       navigation.navigate("Console", target);
     } catch (error) {
-      Alert.alert(
-        "打开失败",
-        error instanceof Error ? error.message : "未知错误",
-      );
+      const recovery = resolveRelayRecovery(error);
+      await recoverToRelayLogin(recovery);
     }
   };
 
@@ -589,6 +756,16 @@ export function LoginScreen({ navigation, route }: Props) {
                             </Text>
                             <Text style={styles.hostMetaText}>
                               状态：{host.relayState}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.hostMetaText,
+                                !host.heartbeatFresh
+                                  ? styles.hostMetaWarnText
+                                  : null,
+                              ]}
+                            >
+                              心跳：{formatHeartbeatAge(host.heartbeatAgeMs)}
                             </Text>
                           </View>
                         </Pressable>
@@ -953,6 +1130,9 @@ const createStyles = (theme: AppTheme) =>
     hostMetaText: {
       color: theme.textMuted,
       fontSize: 12,
+    },
+    hostMetaWarnText: {
+      color: theme.warning,
     },
     emptyText: {
       color: theme.textMuted,

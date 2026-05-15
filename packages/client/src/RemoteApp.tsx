@@ -73,6 +73,23 @@ function isNativeShellFlow(search: string): boolean {
     window as { __AGENTLINE_NATIVE_SHELL__?: boolean } | undefined
   )?.__AGENTLINE_NATIVE_SHELL__;
   if (nativeFlag) return true;
+  try {
+    if (
+      typeof window.ReactNativeWebView?.postMessage === "function" ||
+      /reactnativewebview/i.test(navigator.userAgent)
+    ) {
+      return true;
+    }
+  } catch {
+    // ignore runtime detection failures
+  }
+  try {
+    if (window.localStorage.getItem("agentline-native-shell") === "1") {
+      return true;
+    }
+  } catch {
+    // ignore storage errors
+  }
   return hasMobileEntry(search);
 }
 

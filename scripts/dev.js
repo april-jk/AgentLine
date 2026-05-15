@@ -16,6 +16,7 @@
 
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { createServer as createNetServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { exitIfUnsafeHome } from "./safe-home.js";
@@ -147,17 +148,85 @@ if (noFrontendReload) console.log("  Frontend HMR: DISABLED");
 if (!backendWatch && !noFrontendReload)
   console.log("  Frontend HMR: ENABLED, Backend: manual restart only");
 
+function probePortOnHost(port, host) {
+  return new Promise((resolve, reject) => {
+    const server = createNetServer();
+    server.unref();
+
+    server.once("error", (error) => {
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? error.code
+          : undefined;
+      if (code === "EAFNOSUPPORT") {
+        // Host family unsupported on this machine; ignore it.
+        resolve(true);
+        return;
+      }
+      if (
+        error &&
+        typeof error === "object" &&
+        ("code" in error ? error.code === "EADDRINUSE" : false)
+      ) {
+        resolve(false);
+        return;
+      }
+      reject(error);
+    });
+
+    server.listen({ port, host, exclusive: true }, () => {
+      server.close((closeError) => {
+        if (closeError) {
+          reject(closeError);
+          return;
+        }
+        resolve(true);
+      });
+    });
+  });
+}
+
+async function probePortAvailability(port) {
+  const [ipv4Available, ipv6Available] = await Promise.all([
+    probePortOnHost(port, "0.0.0.0"),
+    probePortOnHost(port, "::"),
+  ]);
+  return ipv4Available && ipv6Available;
+}
+
+async function resolvePreferredPort({
+  preferredPort,
+  label,
+  excludedPorts = new Set(),
+  maxAttempts = 20,
+}) {
+  let candidate = preferredPort;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (excludedPorts.has(candidate)) {
+      candidate += 1;
+      continue;
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    const available = await probePortAvailability(candidate);
+    if (available) {
+      if (candidate !== preferredPort) {
+        console.warn(
+          `  ${label}: preferred port ${preferredPort} is unavailable, using ${candidate} instead`,
+        );
+      }
+      return candidate;
+    }
+    candidate += 1;
+  }
+
+  throw new Error(
+    `${label}: no available port found starting from ${preferredPort}`,
+  );
+}
+
 // Build environment for child processes
-const env = {
-  ...process.env,
-  // When not using --watch, enable manual reload mode (shows banner on file changes)
-  NO_BACKEND_RELOAD: backendWatch ? "" : "true",
-  NO_FRONTEND_RELOAD: noFrontendReload ? "true" : "",
-  // Pass vite port to both server and client for consistency
-  VITE_PORT: String(vitePort),
-  REMOTE_PORT: String(remotePort),
-  REMOTE_BASE: process.env.REMOTE_BASE || "/remote/",
-};
+let env = {};
 
 // Track child processes for cleanup
 const children = [];
@@ -253,16 +322,12 @@ function startClient() {
  * This serves the /remote/* login/app entry used by mobile direct/relay flows.
  */
 function startRemoteClient() {
-  const remoteClient = spawn(
-    pnpmBin,
-    ["--filter", "client", "dev:remote"],
-    {
-      cwd: rootDir,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-      ...shellOption,
-    },
-  );
+  const remoteClient = spawn(pnpmBin, ["--filter", "client", "dev:remote"], {
+    cwd: rootDir,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+    ...shellOption,
+  });
 
   forwardWithLineFilter(
     remoteClient.stdout,
@@ -287,6 +352,39 @@ function startRemoteClient() {
 }
 
 // Start both processes
-startServer();
-startClient();
-startRemoteClient();
+async function main() {
+  const resolvedVitePort = await resolvePreferredPort({
+    preferredPort: vitePort,
+    label: "Client Vite",
+  });
+  const resolvedRemotePort = await resolvePreferredPort({
+    preferredPort: remotePort,
+    label: "Remote Vite",
+    excludedPorts: new Set([resolvedVitePort]),
+  });
+
+  console.log(
+    `  Active ports: server=${basePort}, maintenance=${basePort + 1}, vite=${resolvedVitePort}, remote=${resolvedRemotePort}`,
+  );
+
+  env = {
+    ...process.env,
+    // When not using --watch, enable manual reload mode (shows banner on file changes)
+    NO_BACKEND_RELOAD: backendWatch ? "" : "true",
+    NO_FRONTEND_RELOAD: noFrontendReload ? "true" : "",
+    // Pass resolved ports to both server and clients for consistency
+    VITE_PORT: String(resolvedVitePort),
+    REMOTE_PORT: String(resolvedRemotePort),
+    REMOTE_BASE: process.env.REMOTE_BASE || "/remote/",
+  };
+
+  startServer();
+  startClient();
+  startRemoteClient();
+}
+
+main().catch((error) => {
+  console.error("Failed to start dev services:", error);
+  cleanup();
+  process.exit(1);
+});

@@ -17,14 +17,20 @@
 
 console.log("[RemoteClient] Loading remote-main.tsx entry point");
 
-import { Fragment, StrictMode } from "react";
+import { Fragment, StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
 // Toggle to disable StrictMode for easier debugging (avoids double renders)
 const STRICT_MODE = false;
 const Wrapper = STRICT_MODE ? StrictMode : Fragment;
 
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 import { ConnectionGate, RemoteApp, UnauthenticatedGate } from "./RemoteApp";
 import { initializeFontSize } from "./hooks/useFontSize";
 import { initializeTabSize } from "./hooks/useTabSize";
@@ -188,6 +194,107 @@ function resolveRemoteBasename(): string | undefined {
 
 const basename = resolveRemoteBasename();
 
+function detectNativeShellRuntime(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const nativeFlag = (
+    window as { __AGENTLINE_NATIVE_SHELL__?: boolean } | undefined
+  )?.__AGENTLINE_NATIVE_SHELL__;
+  if (nativeFlag) {
+    try {
+      localStorage.setItem("agentline-native-shell", "1");
+    } catch {
+      // ignore storage failures
+    }
+    return true;
+  }
+
+  try {
+    const queryFlag = Boolean(
+      new URLSearchParams(window.location.search).get("mobile_entry"),
+    );
+    if (queryFlag) {
+      localStorage.setItem("agentline-native-shell", "1");
+      return true;
+    }
+  } catch {
+    // ignore malformed query
+  }
+
+  try {
+    if (
+      typeof window.ReactNativeWebView?.postMessage === "function" ||
+      /reactnativewebview/i.test(navigator.userAgent)
+    ) {
+      localStorage.setItem("agentline-native-shell", "1");
+      return true;
+    }
+  } catch {
+    // ignore runtime detection failures
+  }
+
+  try {
+    return localStorage.getItem("agentline-native-shell") === "1";
+  } catch {
+    return false;
+  }
+}
+
+const nativeShellRuntime = detectNativeShellRuntime();
+
+function inferNativeLoginReason(pathname: string, search: string): string {
+  try {
+    const params = new URLSearchParams(search);
+    const explicitReason = params.get("reason");
+    if (explicitReason?.trim()) return explicitReason.trim();
+  } catch {
+    // ignore malformed query
+  }
+
+  if (pathname.includes("/login/relay")) return "relay_auth_required";
+  if (pathname.includes("/login/direct")) return "direct_auth_required";
+  return "web_login_blocked";
+}
+
+function NativeShellLoginBypass() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const reason = inferNativeLoginReason(location.pathname, location.search);
+    const emit = () => {
+      try {
+        window.ReactNativeWebView?.postMessage(
+          JSON.stringify({
+            type: "agentline-login-route-blocked",
+            reason,
+            pathname: location.pathname,
+          }),
+        );
+      } catch {
+        // ignore bridge errors
+      }
+    };
+
+    if (reason === "web_login_blocked") {
+      const timer = window.setTimeout(emit, 1000);
+      return () => window.clearTimeout(timer);
+    }
+
+    try {
+      emit();
+    } catch {
+      // ignore bridge errors
+    }
+  }, [location.pathname, location.search]);
+
+  return (
+    <div className="auto-resume-loading">
+      <div className="loading-spinner" />
+      <p>Returning to mobile sign-in…</p>
+    </div>
+  );
+}
+
 /**
  * Shared app routes used by both direct mode (ConnectionGate) and
  * relay mode (RelayConnectionGate). Uses relative paths so they resolve
@@ -238,9 +345,36 @@ createRoot(rootElement).render(
           <Routes>
             {/* Login routes — redirect to app if already connected */}
             <Route element={<UnauthenticatedGate />}>
-              <Route path="/login" element={<HostLoginEntryPage />} />
-              <Route path="/login/account" element={<HostAccountLoginPage />} />
-              <Route path="/login/devices" element={<HostPickerPage />} />
+              <Route
+                path="/login"
+                element={
+                  nativeShellRuntime ? (
+                    <NativeShellLoginBypass />
+                  ) : (
+                    <HostLoginEntryPage />
+                  )
+                }
+              />
+              <Route
+                path="/login/account"
+                element={
+                  nativeShellRuntime ? (
+                    <NativeShellLoginBypass />
+                  ) : (
+                    <HostAccountLoginPage />
+                  )
+                }
+              />
+              <Route
+                path="/login/devices"
+                element={
+                  nativeShellRuntime ? (
+                    <NativeShellLoginBypass />
+                  ) : (
+                    <HostPickerPage />
+                  )
+                }
+              />
               <Route
                 path="/login/new"
                 element={<Navigate to="/login" replace />}
