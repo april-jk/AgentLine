@@ -11,7 +11,7 @@ import {
   ipcMain,
   nativeImage,
 } from "electron";
-import { DESKTOP_DISCOVERY_PORT_CANDIDATES } from "../../../shared/dist/desktop-discovery.js";
+import { DESKTOP_DISCOVERY_PORT_CANDIDATES } from "../common/desktopDiscovery.js";
 import {
   type ControlPlaneConfig,
   ServerManager,
@@ -127,8 +127,101 @@ const deriveRelayWsUrl = (baseUrl: string): string => {
   return url.toString();
 };
 
-const normalizeHttpUrl = (urlInput: string): string =>
-  urlInput.trim().replace(/\/+$/, "");
+const CONTROL_PLANE_FETCH_TIMEOUT_MS = 5000;
+
+const normalizeHttpUrl = (urlInput: string): string => {
+  const trimmed = urlInput.trim();
+  if (!trimmed) {
+    throw new Error("control_plane_base_url_required");
+  }
+
+  const withScheme =
+    trimmed.startsWith("http://") || trimmed.startsWith("https://")
+      ? trimmed
+      : `https://${trimmed}`;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(withScheme);
+  } catch {
+    throw new Error("control_plane_base_url_invalid");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("control_plane_base_url_invalid_protocol");
+  }
+
+  parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/+$/, "");
+};
+
+const extractErrorCode = (value: unknown): string | undefined => {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+  const maybeCode = (value as { code?: unknown }).code;
+  return typeof maybeCode === "string" && maybeCode.length > 0
+    ? maybeCode
+    : undefined;
+};
+
+const mapControlPlaneFetchError = (error: unknown): Error => {
+  if (error instanceof Error && error.message.startsWith("control_plane_")) {
+    return error;
+  }
+
+  if (error instanceof Error && error.name === "TimeoutError") {
+    return new Error("control_plane_request_timeout");
+  }
+
+  const rootCode =
+    extractErrorCode(error) ||
+    extractErrorCode(
+      error instanceof Error
+        ? (error as { cause?: unknown }).cause
+        : undefined,
+    );
+
+  switch (rootCode) {
+    case "ERR_INVALID_URL":
+      return new Error("control_plane_base_url_invalid");
+    case "ENOTFOUND":
+    case "EAI_AGAIN":
+      return new Error("control_plane_dns_unresolved");
+    case "ECONNREFUSED":
+      return new Error("control_plane_connection_refused");
+    case "ECONNRESET":
+      return new Error("control_plane_connection_reset");
+    case "ETIMEDOUT":
+    case "UND_ERR_CONNECT_TIMEOUT":
+      return new Error("control_plane_request_timeout");
+    case "SELF_SIGNED_CERT_IN_CHAIN":
+    case "DEPTH_ZERO_SELF_SIGNED_CERT":
+    case "ERR_TLS_CERT_ALTNAME_INVALID":
+    case "UNABLE_TO_VERIFY_LEAF_SIGNATURE":
+    case "UNABLE_TO_GET_ISSUER_CERT":
+      return new Error("control_plane_tls_error");
+    case "ENETUNREACH":
+    case "EHOSTUNREACH":
+      return new Error("control_plane_network_unreachable");
+    default:
+      break;
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("failed to parse url")) {
+      return new Error("control_plane_base_url_invalid");
+    }
+    if (message.includes("timed out")) {
+      return new Error("control_plane_request_timeout");
+    }
+  }
+
+  return new Error("control_plane_fetch_failed");
+};
 
 const getControlPlanePublicConfig = (): ControlPlanePublicConfig => ({
   baseUrl: desktopConfig.controlPlane?.baseUrl,
@@ -379,15 +472,28 @@ const loginToControlPlane = async (
       ? payload.relayWsUrl.trim()
       : deriveRelayWsUrl(baseUrl);
 
-  const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: payload.email.trim(),
-      password: payload.password,
-    }),
-    signal: AbortSignal.timeout(5000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: payload.email.trim(),
+        password: payload.password,
+      }),
+      signal: AbortSignal.timeout(CONTROL_PLANE_FETCH_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const mappedError = mapControlPlaneFetchError(error);
+    console.error(
+      "[desktop-electron] control-plane login request failed",
+      JSON.stringify({
+        baseUrl,
+        code: mappedError.message,
+      }),
+    );
+    throw mappedError;
+  }
   if (!response.ok) {
     let message = `login_failed_${response.status}`;
     try {
@@ -420,15 +526,28 @@ const registerControlPlaneAccount = async (
   payload: ControlPlaneLoginPayload,
 ): Promise<ControlPlanePublicConfig> => {
   const baseUrl = normalizeHttpUrl(payload.baseUrl);
-  const registerResponse = await fetch(`${baseUrl}/api/v1/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: payload.email.trim(),
-      password: payload.password,
-    }),
-    signal: AbortSignal.timeout(5000),
-  });
+  let registerResponse: Response;
+  try {
+    registerResponse = await fetch(`${baseUrl}/api/v1/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: payload.email.trim(),
+        password: payload.password,
+      }),
+      signal: AbortSignal.timeout(CONTROL_PLANE_FETCH_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const mappedError = mapControlPlaneFetchError(error);
+    console.error(
+      "[desktop-electron] control-plane register request failed",
+      JSON.stringify({
+        baseUrl,
+        code: mappedError.message,
+      }),
+    );
+    throw mappedError;
+  }
 
   if (!registerResponse.ok && registerResponse.status !== 409) {
     let message = `register_failed_${registerResponse.status}`;

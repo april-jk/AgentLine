@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../../../shared/dist/desktop-discovery.js";
+import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../common/desktopDiscovery";
 
 type ServerState = "stopped" | "starting" | "running" | "stopping" | "error";
 type AccountMode = "login" | "register";
@@ -56,6 +56,44 @@ const stateClass: Record<ServerState, string> = {
 };
 
 const DEFAULT_CONTROL_PLANE_BASE_URL = "https://relay.oneceo.ai";
+
+const CONTROL_PLANE_ERROR_LABELS: Record<string, string> = {
+  control_plane_base_url_required: "请输入平台地址（Control Plane URL）。",
+  control_plane_base_url_invalid: "平台地址格式无效，请检查 URL。",
+  control_plane_base_url_invalid_protocol:
+    "平台地址协议无效，仅支持 http:// 或 https://。",
+  control_plane_dns_unresolved: "无法解析平台域名，请检查网络或 DNS 配置。",
+  control_plane_connection_refused:
+    "平台服务拒绝连接，请确认服务地址和端口是否正确。",
+  control_plane_connection_reset: "连接被重置，请稍后重试。",
+  control_plane_request_timeout:
+    "连接平台超时（5 秒），请检查网络连通性或稍后重试。",
+  control_plane_tls_error:
+    "平台 TLS 证书校验失败，请检查 HTTPS 证书配置。",
+  control_plane_network_unreachable: "网络不可达，请检查当前网络连接。",
+  control_plane_fetch_failed:
+    "请求平台失败，请检查平台地址、网络和证书配置。",
+  fetch_failed:
+    "请求失败，请检查平台地址、网络和证书配置。",
+};
+
+function toDisplayError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Control-plane account authentication failed";
+  }
+
+  const code = error.message.trim();
+  if (Object.prototype.hasOwnProperty.call(CONTROL_PLANE_ERROR_LABELS, code)) {
+    return CONTROL_PLANE_ERROR_LABELS[code] ?? code;
+  }
+
+  const normalized = code.toLowerCase();
+  if (normalized === "failed to fetch" || normalized === "fetch failed") {
+    return CONTROL_PLANE_ERROR_LABELS.fetch_failed ?? code;
+  }
+
+  return code;
+}
 
 export function App() {
   const desktopApi = window.desktopApi;
@@ -201,11 +239,7 @@ export function App() {
         setError("Login succeeded. You must set Host Access Password now.");
       }
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Control-plane account authentication failed",
-      );
+      setError(toDisplayError(e));
     } finally {
       setBusy(false);
     }
