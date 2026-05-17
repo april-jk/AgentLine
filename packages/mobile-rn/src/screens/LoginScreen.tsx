@@ -102,6 +102,14 @@ function formatHeartbeatAge(ageMs?: number): string {
   return `${String(hours)} 小时前`;
 }
 
+function resolveRelayOfflineHint(host: HostItem): string {
+  const heartbeatText = `最近心跳：${formatHeartbeatAge(host.heartbeatAgeMs)}`;
+  if (host.heartbeatOffline) {
+    return `${heartbeatText}，已超过离线阈值（1 分钟）。请确认电脑端已登录平台账号并保持 AgentLine 前台运行。`;
+  }
+  return `${heartbeatText}。请确认电脑端 AgentLine 正在运行并已登录平台账号。`;
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("timeout")), timeoutMs);
@@ -137,9 +145,9 @@ function resolveRelayRecovery(error: unknown): RelayRecovery {
       };
     }
 
-    if (error.code === "device_not_found") {
+    if (error.code === "device_not_found" || error.code === "device_offline") {
       return {
-        title: "桌面端已退出",
+        title: error.code === "device_offline" ? "桌面端离线" : "桌面端已退出",
         message:
           "目标设备已不可用或已解绑，请在电脑端重新登录并保持在线后重试。",
         clearAccount: false,
@@ -163,9 +171,9 @@ function resolveRelayRecovery(error: unknown): RelayRecovery {
       };
     }
 
-    if (msg.includes("device_not_found")) {
+    if (msg.includes("device_not_found") || msg.includes("device_offline")) {
       return {
-        title: "桌面端已退出",
+        title: msg.includes("device_offline") ? "桌面端离线" : "桌面端已退出",
         message:
           "目标设备已不可用或已解绑，请在电脑端重新登录并保持在线后重试。",
         clearAccount: false,
@@ -476,17 +484,11 @@ export function LoginScreen({ navigation, route }: Props) {
         return;
       }
       if (latestHost.relayState === "offline") {
-        Alert.alert(
-          "桌面端离线",
-          "桌面端当前未连接中继，请先在电脑端保持 AgentLine 在线。",
-        );
+        Alert.alert("桌面端离线", resolveRelayOfflineHint(latestHost));
         return;
       }
       if (!latestHost.heartbeatFresh) {
-        Alert.alert(
-          "心跳已过期",
-          `最近心跳：${formatHeartbeatAge(latestHost.heartbeatAgeMs)}。请确认桌面端正在运行并刷新设备列表后再试。`,
-        );
+        Alert.alert("心跳已过期", resolveRelayOfflineHint(latestHost));
         return;
       }
       const relayOnline = await client.isRelayHostOnline(
@@ -766,6 +768,7 @@ export function LoginScreen({ navigation, route }: Props) {
                               ]}
                             >
                               心跳：{formatHeartbeatAge(host.heartbeatAgeMs)}
+                              {host.heartbeatOffline ? "（离线）" : ""}
                             </Text>
                           </View>
                         </Pressable>
