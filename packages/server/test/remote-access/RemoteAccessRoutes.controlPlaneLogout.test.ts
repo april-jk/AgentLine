@@ -4,6 +4,7 @@ import { createRemoteAccessRoutes } from "../../src/remote-access/routes.js";
 describe("Remote access routes - control-plane logout hard invalidation", () => {
   it("DELETE /control-plane/config clears relay config and revokes remote sessions", async () => {
     const invalidateUserSessions = vi.fn().mockResolvedValue(2);
+    const bumpAuthEpoch = vi.fn().mockResolvedValue(3);
     const clearRelayConfig = vi.fn().mockResolvedValue(undefined);
     const onRelayConfigChanged = vi.fn().mockResolvedValue(undefined);
     const updateSettings = vi.fn().mockResolvedValue(undefined);
@@ -16,6 +17,7 @@ describe("Remote access routes - control-plane logout hard invalidation", () => 
 
     const remoteAccessService = {
       getUsername: vi.fn().mockReturnValue("desktop-a1b2c3"),
+      bumpAuthEpoch,
       clearRelayConfig,
       getConfig: vi.fn().mockReturnValue({
         enabled: true,
@@ -53,6 +55,7 @@ describe("Remote access routes - control-plane logout hard invalidation", () => 
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
+    expect(bumpAuthEpoch).toHaveBeenCalledTimes(1);
     expect(reconfigure).toHaveBeenCalledWith({
       baseUrl: undefined,
       accessToken: undefined,

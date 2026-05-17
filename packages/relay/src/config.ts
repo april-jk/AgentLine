@@ -30,6 +30,8 @@ export interface RelayConfig {
   telemetry: RelayTelemetryRuntimeConfig;
   /** Optional dist directory for serving remote web client under /remote */
   remoteClientDistDir?: string;
+  /** Device heartbeat timeout in ms before control-plane marks it offline */
+  deviceHeartbeatOfflineTimeoutMs: number;
 }
 
 function getEnvNumber(name: string, defaultValue: number): number {
@@ -78,5 +80,9 @@ export function loadConfig(): RelayConfig {
       ),
     },
     remoteClientDistDir: process.env.RELAY_REMOTE_CLIENT_DIST_DIR?.trim(),
+    deviceHeartbeatOfflineTimeoutMs: Math.max(
+      10_000,
+      getEnvNumber("RELAY_DEVICE_HEARTBEAT_OFFLINE_TIMEOUT_MS", 60_000),
+    ),
   };
 }

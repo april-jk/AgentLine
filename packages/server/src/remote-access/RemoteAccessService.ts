@@ -31,6 +31,8 @@ export interface RemoteAccessState {
   version: number;
   /** Whether remote access is enabled */
   enabled: boolean;
+  /** Monotonic epoch incremented whenever desktop account logout invalidates relay access. */
+  authEpoch?: number;
   /** SRP credentials (undefined = not configured) */
   credentials?: {
     /** SRP identity (username used during SRP handshake) */
@@ -81,6 +83,7 @@ export class RemoteAccessService {
 
       if (parsed.version === CURRENT_VERSION) {
         this.state = parsed;
+        this.state.authEpoch = parsed.authEpoch ?? 0;
         // Backward compatibility: older state files don't persist SRP identity.
         // In those versions, relay username implicitly acted as identity.
         if (this.state.credentials && !this.state.credentials.identity) {
@@ -95,6 +98,7 @@ export class RemoteAccessService {
         this.state = {
           version: CURRENT_VERSION,
           enabled: parsed.enabled ?? false,
+          authEpoch: parsed.authEpoch ?? 0,
           credentials: parsed.credentials,
         };
         await this.save();
@@ -106,7 +110,7 @@ export class RemoteAccessService {
           error,
         );
       }
-      this.state = { version: CURRENT_VERSION, enabled: false };
+      this.state = { version: CURRENT_VERSION, enabled: false, authEpoch: 0 };
     }
   }
 
@@ -131,6 +135,10 @@ export class RemoteAccessService {
    */
   isConfigured(): boolean {
     return !!this.state.credentials;
+  }
+
+  getAuthEpoch(): number {
+    return this.state.authEpoch ?? 0;
   }
 
   /**
@@ -278,6 +286,13 @@ export class RemoteAccessService {
   async clearRelayConfig(): Promise<void> {
     this.state.relay = undefined;
     await this.save();
+  }
+
+  async bumpAuthEpoch(): Promise<number> {
+    const nextEpoch = (this.state.authEpoch ?? 0) + 1;
+    this.state.authEpoch = nextEpoch;
+    await this.save();
+    return nextEpoch;
   }
 
   /**

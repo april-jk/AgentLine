@@ -59,4 +59,16 @@ describe("RemoteAccessService file permissions", () => {
     expect(service.getUsername()).toBe("local-host");
     expect(service.getCredentials()).toBeTruthy();
   });
+
+  it("persists auth epoch bumps", async () => {
+    expect(service.getAuthEpoch()).toBe(0);
+
+    const nextEpoch = await service.bumpAuthEpoch();
+    expect(nextEpoch).toBe(1);
+    expect(service.getAuthEpoch()).toBe(1);
+
+    const reloaded = new RemoteAccessService({ dataDir: testDir });
+    await reloaded.initialize();
+    expect(reloaded.getAuthEpoch()).toBe(1);
+  });
 });

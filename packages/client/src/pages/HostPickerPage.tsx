@@ -26,6 +26,16 @@ interface RelayHashCredentials {
   clientGrant?: string;
 }
 
+function formatHeartbeatAgeText(ageMs?: number): string {
+  if (typeof ageMs !== "number") return "未知";
+  const seconds = Math.floor(ageMs / 1000);
+  if (seconds < 60) return `${String(seconds)}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${String(minutes)}m`;
+  const hours = Math.floor(minutes / 60);
+  return `${String(hours)}h`;
+}
+
 type SavedAccessPasswordMap = Record<string, string>;
 
 const DEVICE_ACCESS_PASSWORDS_STORAGE_KEY =
@@ -263,6 +273,21 @@ export function HostPickerPage() {
         setError("Device route is missing.");
         return false;
       }
+      const selectedDevice =
+        params.deviceId && devices.length > 0
+          ? (devices.find((item) => item.id === params.deviceId) ?? null)
+          : null;
+      const isHeartbeatOffline =
+        selectedDevice?.machine?.heartbeat?.offline === true;
+      const relayOffline =
+        selectedDevice?.relayState === "offline" || isHeartbeatOffline;
+      if (relayOffline) {
+        const ageMs = selectedDevice?.machine?.heartbeat?.ageMs;
+        setError(
+          `Selected device is offline (${formatHeartbeatAgeText(ageMs)} since last heartbeat). Keep desktop AgentLine logged in and online, then refresh devices.`,
+        );
+        return false;
+      }
 
       const relayUrl =
         params.relayUrl.trim() || deriveRelayWsUrl(controlPlaneUrl);
@@ -338,7 +363,7 @@ export function HostPickerPage() {
       }
       return true;
     },
-    [connectViaRelay, controlPlaneUrl, navigate, setCurrentHostId],
+    [connectViaRelay, controlPlaneUrl, devices, navigate, setCurrentHostId],
   );
 
   useEffect(() => {
@@ -505,6 +530,13 @@ export function HostPickerPage() {
                       </span>
                       <span className="host-picker-last-connected">
                         {device.relayState}
+                      </span>
+                      <span className="host-picker-last-connected">
+                        hb{" "}
+                        {formatHeartbeatAgeText(
+                          device.machine?.heartbeat?.ageMs,
+                        )}
+                        {device.machine?.heartbeat?.offline ? " (offline)" : ""}
                       </span>
                     </div>
                     {selected ? (

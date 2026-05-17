@@ -13,6 +13,7 @@ import type { ActiveRelayServer } from "./connections.js";
 const ACCESS_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const SERVER_REGISTER_GRANT_TTL_MS = 60_000;
 const CLIENT_CONNECT_GRANT_TTL_MS = 60_000;
+const DEFAULT_DEVICE_HEARTBEAT_OFFLINE_TIMEOUT_MS = 60_000;
 
 export type RelayGrantType = "server_register" | "client_connect";
 
@@ -106,8 +107,18 @@ export interface AccountDeviceView extends AccountDevice {
     };
     heartbeat: {
       lastSeenAt: string;
+      ageMs: number;
+      offlineTimeoutMs: number;
+      offline: boolean;
     };
   };
+}
+
+export interface RelayDeviceHeartbeatView {
+  lastSeenAt: string;
+  ageMs: number;
+  offlineTimeoutMs: number;
+  offline: boolean;
 }
 
 interface UserRow {
@@ -231,19 +242,33 @@ function isPgUniqueViolation(error: unknown): boolean {
 export function toMachineCompatibleDeviceView(
   device: AccountDevice,
   relayState: DeviceRelayState,
+  options?: {
+    nowMs?: number;
+    offlineTimeoutMs?: number;
+  },
 ): AccountDeviceView {
+  const nowMs = options?.nowMs ?? Date.now();
+  const offlineTimeoutMs =
+    options?.offlineTimeoutMs ?? DEFAULT_DEVICE_HEARTBEAT_OFFLINE_TIMEOUT_MS;
+  const seenMs = Date.parse(device.lastSeenAt);
+  const parsedSeenMs = Number.isFinite(seenMs) ? seenMs : nowMs;
+  const ageMs = Math.max(0, nowMs - parsedSeenMs);
+  const offline = ageMs > offlineTimeoutMs;
   const owner = toOwner(device.userId);
+  const effectiveRelayState: DeviceRelayState = offline
+    ? "offline"
+    : relayState;
   const relayEndpoint: MachineEndpointView = {
     kind: "relay",
     routeId: device.relayUsername,
     relayUsername: device.relayUsername,
-    relayState,
+    relayState: effectiveRelayState,
     lastSeenAt: device.lastSeenAt,
   };
 
   return {
     ...device,
-    relayState,
+    relayState: effectiveRelayState,
     machineId: device.id,
     owner,
     machine: {
@@ -256,6 +281,9 @@ export function toMachineCompatibleDeviceView(
       },
       heartbeat: {
         lastSeenAt: device.lastSeenAt,
+        ageMs,
+        offlineTimeoutMs,
+        offline,
       },
     },
   };
@@ -263,9 +291,18 @@ export function toMachineCompatibleDeviceView(
 
 export class RelayControlPlaneService {
   private readonly store: ControlPlaneStore;
+  private readonly deviceHeartbeatOfflineTimeoutMs: number;
 
-  constructor(store: ControlPlaneStore) {
+  constructor(
+    store: ControlPlaneStore,
+    options?: {
+      deviceHeartbeatOfflineTimeoutMs?: number;
+    },
+  ) {
     this.store = store;
+    this.deviceHeartbeatOfflineTimeoutMs =
+      options?.deviceHeartbeatOfflineTimeoutMs ??
+      DEFAULT_DEVICE_HEARTBEAT_OFFLINE_TIMEOUT_MS;
   }
 
   async registerUser(
@@ -574,6 +611,9 @@ export class RelayControlPlaneService {
     if (!device) {
       throw new Error("device_not_found");
     }
+    if (this.isDeviceOffline(device)) {
+      throw new Error("device_offline");
+    }
 
     return this.createRelayGrant({
       grantType: "client_connect",
@@ -584,6 +624,31 @@ export class RelayControlPlaneService {
       installId: null,
       ttlMs: CLIENT_CONNECT_GRANT_TTL_MS,
     });
+  }
+
+  async getDeviceHeartbeatByRelayUsername(
+    relayUsernameInput: string,
+  ): Promise<RelayDeviceHeartbeatView | null> {
+    const relayUsername = relayUsernameInput.trim().toLowerCase();
+    if (!relayUsername) return null;
+
+    const device = await this.getDeviceByRelayUsername(relayUsername);
+    if (!device) return null;
+
+    const seenMs = Date.parse(device.last_seen_at);
+    const parsedSeenMs = Number.isFinite(seenMs) ? seenMs : Number.NaN;
+    const nowMs = Date.now();
+    const ageMs = Number.isFinite(parsedSeenMs)
+      ? Math.max(0, nowMs - parsedSeenMs)
+      : this.deviceHeartbeatOfflineTimeoutMs + 1;
+    const offline = ageMs > this.deviceHeartbeatOfflineTimeoutMs;
+
+    return {
+      lastSeenAt: device.last_seen_at,
+      ageMs,
+      offlineTimeoutMs: this.deviceHeartbeatOfflineTimeoutMs,
+      offline,
+    };
   }
 
   async consumeRelayGrant(params: {
@@ -823,13 +888,17 @@ export class RelayControlPlaneService {
     const activeByUsername = new Map(
       activeServers.map((server) => [server.username, server.state] as const),
     );
+    const nowMs = Date.now();
 
     return rows.map((row) => {
       const device = toDevice(row);
       const state = activeByUsername.get(device.relayUsername);
       const relayState: DeviceRelayState =
         state === "waiting" || state === "paired" ? state : "offline";
-      return toMachineCompatibleDeviceView(device, relayState);
+      return toMachineCompatibleDeviceView(device, relayState, {
+        nowMs,
+        offlineTimeoutMs: this.deviceHeartbeatOfflineTimeoutMs,
+      });
     });
   }
 
@@ -996,6 +1065,26 @@ export class RelayControlPlaneService {
       .get(userId, relayUsername) as DeviceRow | undefined;
   }
 
+  private async getDeviceByRelayUsername(
+    relayUsername: string,
+  ): Promise<DeviceRow | undefined> {
+    if (isPgPool(this.store)) {
+      const result = await this.store.query<DeviceRow>(
+        `
+          SELECT *
+          FROM devices
+          WHERE relay_username = $1
+          LIMIT 1
+        `,
+        [relayUsername],
+      );
+      return result.rows[0];
+    }
+    return this.store
+      .prepare("SELECT * FROM devices WHERE relay_username = ? LIMIT 1")
+      .get(relayUsername) as DeviceRow | undefined;
+  }
+
   private async createRelayGrant(params: {
     grantType: RelayGrantType;
     userId: string;
@@ -1129,5 +1218,11 @@ export class RelayControlPlaneService {
       .prepare("SELECT 1 FROM devices WHERE relay_username = ?")
       .get(relayUsername);
     return Boolean(row);
+  }
+
+  private isDeviceOffline(device: DeviceRow): boolean {
+    const seenMs = Date.parse(device.last_seen_at);
+    if (!Number.isFinite(seenMs)) return true;
+    return Date.now() - seenMs > this.deviceHeartbeatOfflineTimeoutMs;
   }
 }

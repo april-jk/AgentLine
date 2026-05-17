@@ -77,6 +77,7 @@ export interface ControlPlaneBridgeServiceOptions {
   config: ControlPlaneBridgeConfig;
   remoteAccessService: RemoteAccessService;
   onRelayConfigChanged: () => Promise<void>;
+  onStateChanged?: (state: ControlPlaneBridgeState) => void;
   fetchImpl?: typeof fetch;
 }
 
@@ -84,6 +85,7 @@ export class ControlPlaneBridgeService {
   private readonly config: ControlPlaneBridgeConfig;
   private readonly remoteAccessService: RemoteAccessService;
   private readonly onRelayConfigChanged: () => Promise<void>;
+  private readonly onStateChanged?: (state: ControlPlaneBridgeState) => void;
   private readonly fetchImpl: typeof fetch;
   private readonly state: ControlPlaneBridgeState;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -93,6 +95,7 @@ export class ControlPlaneBridgeService {
     this.config = options.config;
     this.remoteAccessService = options.remoteAccessService;
     this.onRelayConfigChanged = options.onRelayConfigChanged;
+    this.onStateChanged = options.onStateChanged;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.state = {
       enabled: this.isConfigured(),
@@ -108,11 +111,16 @@ export class ControlPlaneBridgeService {
     return { ...this.state };
   }
 
+  private emitStateChanged(): void {
+    this.onStateChanged?.(this.getState());
+  }
+
   async start(): Promise<void> {
     if (!this.isConfigured()) {
       this.state.enabled = false;
       this.state.running = false;
       this.state.pausedReason = "control_plane_not_configured";
+      this.emitStateChanged();
       return;
     }
     if (this.timer) {
@@ -122,6 +130,7 @@ export class ControlPlaneBridgeService {
     this.state.enabled = true;
     this.state.running = true;
     this.state.pausedReason = undefined;
+    this.emitStateChanged();
     await this.syncNow();
     if (!this.state.running) {
       return;
@@ -138,6 +147,7 @@ export class ControlPlaneBridgeService {
       this.timer = null;
     }
     this.state.running = false;
+    this.emitStateChanged();
   }
 
   /**
@@ -189,12 +199,14 @@ export class ControlPlaneBridgeService {
       this.state.deviceId = undefined;
       this.state.relayUsername = undefined;
       this.state.lastError = undefined;
+      this.emitStateChanged();
       return this.getState();
     }
 
     this.state.enabled = true;
     this.state.running = true;
     this.state.pausedReason = undefined;
+    this.emitStateChanged();
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
@@ -230,6 +242,7 @@ export class ControlPlaneBridgeService {
       this.state.lastError = undefined;
       this.state.pausedReason = undefined;
       this.state.consecutiveFailures = 0;
+      this.emitStateChanged();
     } catch (error) {
       this.state.consecutiveFailures += 1;
       this.state.lastError =
@@ -238,6 +251,9 @@ export class ControlPlaneBridgeService {
       if (error instanceof ControlPlaneRequestError && error.status === 401) {
         this.stop();
         this.state.pausedReason = "unauthorized";
+        this.emitStateChanged();
+      } else {
+        this.emitStateChanged();
       }
     } finally {
       this.syncing = false;
@@ -281,6 +297,7 @@ export class ControlPlaneBridgeService {
       if (error instanceof ControlPlaneRequestError && error.status === 401) {
         this.stop();
         this.state.pausedReason = "unauthorized";
+        this.emitStateChanged();
       }
       throw error;
     }
@@ -326,6 +343,7 @@ export class ControlPlaneBridgeService {
       if (error instanceof ControlPlaneRequestError && error.status === 401) {
         this.stop();
         this.state.pausedReason = "unauthorized";
+        this.emitStateChanged();
       }
       throw error;
     }

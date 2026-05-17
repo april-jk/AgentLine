@@ -265,6 +265,7 @@ export class ServerManager extends EventEmitter {
       AGENTLINE_DATA_DIR: this.dataDir,
       DESKTOP_AUTH_TOKEN: this.desktopAuthToken,
       OPEN_BROWSER: "false",
+      CONTROL_PLANE_DESKTOP_MANAGED: "true",
       ...(this.controlPlane.baseUrl
         ? { CONTROL_PLANE_BASE_URL: this.controlPlane.baseUrl }
         : {}),

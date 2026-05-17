@@ -379,8 +379,26 @@ createRoot(rootElement).render(
                 path="/login/new"
                 element={<Navigate to="/login" replace />}
               />
-              <Route path="/login/direct" element={<DirectLoginPage />} />
-              <Route path="/login/relay" element={<RelayLoginPage />} />
+              <Route
+                path="/login/direct"
+                element={
+                  nativeShellRuntime ? (
+                    <NativeShellLoginBypass />
+                  ) : (
+                    <DirectLoginPage />
+                  )
+                }
+              />
+              <Route
+                path="/login/relay"
+                element={
+                  nativeShellRuntime ? (
+                    <NativeShellLoginBypass />
+                  ) : (
+                    <RelayLoginPage />
+                  )
+                }
+              />
             </Route>
 
             {/* Direct mode — requires connection, no relay username in URL */}

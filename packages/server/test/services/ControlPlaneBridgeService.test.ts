@@ -126,6 +126,41 @@ describe("ControlPlaneBridgeService", () => {
     expect(state.consecutiveFailures).toBe(1);
   });
 
+  it("emits state change when unauthorized pauses bridge", async () => {
+    const fetchImpl = vi.fn(async (): Promise<Response> => {
+      return jsonResponse(401, { error: "unauthorized" });
+    });
+    const onStateChanged = vi.fn();
+
+    const service = new ControlPlaneBridgeService({
+      config: {
+        baseUrl: "http://relay.local:4400",
+        accessToken: "bad-token",
+        relayUrl: "ws://relay.local:4400/ws",
+        installId: "install-123",
+        deviceName: "Desktop Mac",
+        deviceType: "desktop-electron",
+        heartbeatIntervalMs: 60_000,
+      },
+      remoteAccessService: {
+        getRelayConfig: () => null,
+        setRelayConfig: async () => {},
+      } as never,
+      onRelayConfigChanged: async () => {},
+      onStateChanged,
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+
+    await service.start();
+
+    expect(onStateChanged).toHaveBeenCalled();
+    const latestState = onStateChanged.mock.calls.at(-1)?.[0] as
+      | { pausedReason?: string; running?: boolean }
+      | undefined;
+    expect(latestState?.running).toBe(false);
+    expect(latestState?.pausedReason).toBe("unauthorized");
+  });
+
   it("supports runtime reconfigure for web-host login flows", async () => {
     const fetchImpl = vi.fn(
       async (input: RequestInfo | URL): Promise<Response> => {

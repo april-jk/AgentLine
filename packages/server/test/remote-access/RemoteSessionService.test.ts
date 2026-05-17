@@ -35,6 +35,17 @@ describe("RemoteSessionService", () => {
       const session = service.getSession(sessionId);
       expect(session).not.toBeNull();
       expect(session?.username).toBe("testuser");
+      expect(session?.authEpoch).toBe(0);
+    });
+
+    it("stores the auth epoch used at session creation", async () => {
+      const sessionKey = new Uint8Array(32).fill(0x42);
+      const sessionId = await service.createSession("testuser", sessionKey, {
+        authEpoch: 7,
+      });
+
+      const session = service.getSession(sessionId);
+      expect(session?.authEpoch).toBe(7);
     });
 
     it("stores session key correctly", async () => {
@@ -199,6 +210,27 @@ describe("RemoteSessionService", () => {
         sessionId,
         proof,
         "challenge-b",
+      );
+      expect(validatedSession).toBeNull();
+    });
+
+    it("rejects proof when the desktop auth epoch has changed", async () => {
+      const sessionKey = new Uint8Array(32).fill(0x42);
+      const sessionId = await service.createSession("testuser", sessionKey, {
+        authEpoch: 2,
+      });
+      const challenge = "test-challenge";
+
+      const timestamp = Date.now();
+      const proofData = JSON.stringify({ timestamp, sessionId, challenge });
+      const { nonce, ciphertext } = encrypt(proofData, sessionKey);
+      const proof = JSON.stringify({ nonce, ciphertext });
+
+      const validatedSession = await service.validateProof(
+        sessionId,
+        proof,
+        challenge,
+        3,
       );
       expect(validatedSession).toBeNull();
     });

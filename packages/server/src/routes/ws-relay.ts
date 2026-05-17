@@ -12,6 +12,7 @@ import type {
   BrowserProfileService,
   ConnectedBrowsersService,
 } from "../services/index.js";
+import type { DesktopConnectionAdmissionService } from "../services/index.js";
 import type { Supervisor } from "../supervisor/Supervisor.js";
 import type { UploadManager } from "../uploads/manager.js";
 import type { EventBus, FocusedSessionWatchManager } from "../watcher/index.js";
@@ -60,6 +61,8 @@ export interface WsRelayDeps {
   focusedSessionWatchManager?: FocusedSessionWatchManager;
   /** Emulator bridge service for Android emulator streaming (optional) */
   deviceBridgeService?: DeviceBridgeService;
+  /** Desktop-side relay admission gate for remote relay connections */
+  desktopConnectionAdmissionService?: DesktopConnectionAdmissionService;
 }
 
 /**
@@ -89,6 +92,8 @@ export interface AcceptRelayConnectionDeps {
   focusedSessionWatchManager?: FocusedSessionWatchManager;
   /** Emulator bridge service for Android emulator streaming (optional) */
   deviceBridgeService?: DeviceBridgeService;
+  /** Desktop-side relay admission gate for remote relay connections */
+  desktopConnectionAdmissionService?: DesktopConnectionAdmissionService;
 }
 
 /**
@@ -169,6 +174,7 @@ export function createWsRelayRoutes(
     browserProfileService,
     focusedSessionWatchManager,
     deviceBridgeService,
+    desktopConnectionAdmissionService,
   } = deps;
 
   // Build handler dependencies
@@ -184,6 +190,7 @@ export function createWsRelayRoutes(
     browserProfileService,
     focusedSessionWatchManager,
     deviceBridgeService,
+    desktopConnectionAdmissionService,
   };
 
   // Return the WebSocket handler with origin validation
@@ -345,6 +352,7 @@ export function createAcceptRelayConnection(
     browserProfileService,
     focusedSessionWatchManager,
     deviceBridgeService,
+    desktopConnectionAdmissionService,
   } = deps;
 
   // Build handler dependencies
@@ -360,6 +368,7 @@ export function createAcceptRelayConnection(
     browserProfileService,
     focusedSessionWatchManager,
     deviceBridgeService,
+    desktopConnectionAdmissionService,
   };
 
   // Return the accept relay connection handler
@@ -382,6 +391,7 @@ export function createAcceptRelayConnection(
     // Connection state - requires authentication for relay connections
     const connState: ConnectionState = createConnectionState();
     connState.connectionPolicy = "srp_required";
+    connState.isRelayConnection = true;
 
     // Create WSAdapter for raw WebSocket
     const wsAdapter = createWSAdapter(rawWs);

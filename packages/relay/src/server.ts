@@ -112,6 +112,7 @@ export async function createRelayServer(
       nodeId: options.telemetryNodeId ?? "relay-test",
       sampleIntervalMs: options.telemetrySampleIntervalMs ?? 60_000,
     },
+    deviceHeartbeatOfflineTimeoutMs: 60_000,
   };
 
   // Initialize logger (simple pino for server factory - no file logging in tests)

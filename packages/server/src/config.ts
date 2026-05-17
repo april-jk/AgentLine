@@ -130,6 +130,8 @@ export interface Config {
   controlPlaneBaseUrl?: string;
   /** Optional relay control-plane bearer token */
   controlPlaneAccessToken?: string;
+  /** When true, env config is authoritative and saved control-plane settings are ignored. */
+  controlPlaneDesktopManaged: boolean;
   /** Optional relay websocket URL used after fetching relay username */
   controlPlaneRelayWsUrl?: string;
   /** Optional device display name for control-plane registration */
@@ -311,15 +313,18 @@ export function loadConfig(): Config {
     controlPlaneBaseUrl: process.env.CONTROL_PLANE_BASE_URL || undefined,
     controlPlaneAccessToken:
       process.env.CONTROL_PLANE_ACCESS_TOKEN || undefined,
-    controlPlaneRelayWsUrl:
-      process.env.CONTROL_PLANE_RELAY_WS_URL || undefined,
-    controlPlaneDeviceName:
-      process.env.CONTROL_PLANE_DEVICE_NAME || undefined,
+    controlPlaneDesktopManaged:
+      process.env.CONTROL_PLANE_DESKTOP_MANAGED === "true",
+    controlPlaneRelayWsUrl: process.env.CONTROL_PLANE_RELAY_WS_URL || undefined,
+    controlPlaneDeviceName: process.env.CONTROL_PLANE_DEVICE_NAME || undefined,
     controlPlaneDeviceType:
       process.env.CONTROL_PLANE_DEVICE_TYPE || "desktop-electron",
     controlPlaneHeartbeatIntervalMs: Math.max(
       10_000,
-      parseIntOrDefault(process.env.CONTROL_PLANE_HEARTBEAT_INTERVAL_MS, 30_000),
+      parseIntOrDefault(
+        process.env.CONTROL_PLANE_HEARTBEAT_INTERVAL_MS,
+        30_000,
+      ),
     ),
   };
 }

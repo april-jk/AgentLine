@@ -113,12 +113,21 @@ function isLocalRemoteDevBase(baseUrl: string): boolean {
   );
 }
 
-function normalizeRelayLoginUrl(controlPlaneUrl: string): string {
+function normalizeRelayEntryUrl(
+  controlPlaneUrl: string,
+  relayUsername?: string,
+): string {
   const base = normalizeRelayWebBaseUrl(controlPlaneUrl);
-  if (isLocalRemoteDevBase(base)) {
-    return `${base}/login/relay`;
+  const normalizedRelayUsername = relayUsername?.trim().toLowerCase();
+  if (!normalizedRelayUsername) {
+    throw new Error("Missing relay username for native relay handoff.");
   }
-  return `${base}/remote/login/relay`;
+
+  const encodedRelayUsername = encodeURIComponent(normalizedRelayUsername);
+  if (isLocalRemoteDevBase(base)) {
+    return `${base}/${encodedRelayUsername}/projects`;
+  }
+  return `${base}/remote/${encodedRelayUsername}/projects`;
 }
 
 function normalizeDirectWebBaseUrl(directServerUrl: string): string {
@@ -261,10 +270,13 @@ export function resolveForwardingTarget(
   const relayUsername = input.relayUsername?.trim().toLowerCase() || "";
   const relayPassword = input.relayPassword?.trim() || "";
   const relayClientGrant = input.relayClientGrant?.trim() || "";
-  // Use relay login entry as the canonical mobile handoff target. This is
-  // compatible with both older and newer remote deployments and avoids the
-  // /:relayUsername/projects gate when host storage is empty in WebView.
-  const relayEntryUrl = normalizeRelayLoginUrl(input.controlPlaneUrl);
+  // Mobile relay should enter through the relay username gate so WebView only
+  // renders connected-app flows. RelayConnectionGate can bootstrap the session
+  // from injected native credentials without surfacing the web login UI.
+  const relayEntryUrl = normalizeRelayEntryUrl(
+    input.controlPlaneUrl,
+    relayUsername,
+  );
   const url = appendMobileEntryMarker(
     `${relayEntryUrl}${buildRelayHash(input)}`,
   );

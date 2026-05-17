@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchJSON, type GlobalSessionItem } from "../api/client";
+import { type GlobalSessionItem, fetchJSON } from "../api/client";
 import { useOptionalRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useDrafts } from "../hooks/useDrafts";
 import { useGlobalSessions } from "../hooks/useGlobalSessions";
@@ -10,6 +10,12 @@ import { useRecentProjects } from "../hooks/useRecentProjects";
 import { useRemoteBasePath } from "../hooks/useRemoteBasePath";
 import { useVersion } from "../hooks/useVersion";
 import { useI18n } from "../i18n";
+import {
+  DEFAULT_CONTROL_PLANE_URL,
+  deriveRelayWsUrl,
+  normalizeControlPlaneBaseUrl,
+  toControlPlaneDisplayError,
+} from "../lib/controlPlane";
 import { getSessionDisplayTitle } from "../utils";
 import { AgentLineLogo } from "./AgentLineLogo";
 import { AgentsNavItem } from "./AgentsNavItem";
@@ -24,7 +30,6 @@ const SWIPE_THRESHOLD = 50; // Minimum distance to trigger close
 const SWIPE_ENGAGE_THRESHOLD = 15; // Minimum horizontal distance before swipe engages
 const RECENT_SESSIONS_INITIAL = 12; // Initial number of recent sessions to show
 const RECENT_SESSIONS_INCREMENT = 10; // How many more to show on each expand
-const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
 const ACCOUNT_STORAGE_KEY = "agentline.remote.account";
 
 type AccountMode = "login" | "register";
@@ -112,25 +117,6 @@ interface HostAccessConfig {
   hostAccessConfigured: boolean;
 }
 
-function normalizeControlPlaneBaseUrl(rawUrl: string): string {
-  const trimmed = rawUrl.trim();
-  if (!trimmed) return DEFAULT_CONTROL_PLANE_URL;
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed.replace(/\/+$/, "");
-  }
-  return `https://${trimmed.replace(/\/+$/, "")}`;
-}
-
-function deriveRelayWsUrl(controlPlaneUrl: string): string {
-  const base = normalizeControlPlaneBaseUrl(controlPlaneUrl);
-  const url = new URL(base);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/ws";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
-}
-
 function loadStoredAccountState(): StoredAccountState | null {
   try {
     const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
@@ -159,6 +145,24 @@ function saveStoredAccountState(state: StoredAccountState): void {
 
 function clearStoredAccountState(): void {
   localStorage.removeItem(ACCOUNT_STORAGE_KEY);
+}
+
+function toAccountErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+  const message = error.message.trim();
+  if (!message) {
+    return fallback;
+  }
+  if (
+    message.startsWith("control_plane_") ||
+    message.toLowerCase() === "failed to fetch" ||
+    message.toLowerCase() === "fetch failed"
+  ) {
+    return toControlPlaneDisplayError(error);
+  }
+  return message;
 }
 
 interface SidebarProps {
@@ -280,7 +284,7 @@ export function Sidebar({
     useState(false);
 
   const refreshHostAccessConfig =
-    async (): Promise<HostAccessConfig | null> => {
+    useCallback(async (): Promise<HostAccessConfig | null> => {
       try {
         const nextConfig = desktopApi
           ? await desktopApi.getRemoteAccessConfig()
@@ -291,38 +295,41 @@ export function Sidebar({
         setHostAccessConfig(null);
         return null;
       }
-    };
+    }, [desktopApi]);
 
-  const configureLocalControlPlaneBridge = async (params: {
-    baseUrl: string;
-    accessToken: string;
-    email?: string;
-  }): Promise<ControlPlaneBridgeStatus> => {
-    const payload = await fetchJSON<{
-      success?: boolean;
-      state: ControlPlaneBridgeStatus;
-    }>("/remote-access/control-plane/config", {
-      method: "PUT",
-      body: JSON.stringify({
-        baseUrl: params.baseUrl,
-        accessToken: params.accessToken,
-        relayWsUrl: deriveRelayWsUrl(params.baseUrl),
-        lastEmail: params.email,
-      }),
-    });
-    return payload.state;
-  };
+  const configureLocalControlPlaneBridge = useCallback(
+    async (params: {
+      baseUrl: string;
+      accessToken: string;
+      email?: string;
+    }): Promise<ControlPlaneBridgeStatus> => {
+      const payload = await fetchJSON<{
+        success?: boolean;
+        state: ControlPlaneBridgeStatus;
+      }>("/remote-access/control-plane/config", {
+        method: "PUT",
+        body: JSON.stringify({
+          baseUrl: params.baseUrl,
+          accessToken: params.accessToken,
+          relayWsUrl: deriveRelayWsUrl(params.baseUrl),
+          lastEmail: params.email,
+        }),
+      });
+      return payload.state;
+    },
+    [],
+  );
 
-  const clearLocalControlPlaneBridge = async (): Promise<void> => {
+  const clearLocalControlPlaneBridge = useCallback(async (): Promise<void> => {
     await fetchJSON<{ success: boolean }>(
       "/remote-access/control-plane/config",
       {
         method: "DELETE",
       },
     );
-  };
+  }, []);
 
-  const refreshAccountState = async () => {
+  const refreshAccountState = useCallback(async () => {
     if (desktopApi) {
       const account = await desktopApi.getControlPlaneAccount();
       setAccountInfo(account);
@@ -357,19 +364,16 @@ export function Sidebar({
     setAccountEmail(stored.email);
     setAccountProfileEmail(stored.email);
     try {
-      const response = await fetch(`${baseUrl}/api/v1/me`, {
-        headers: {
-          Authorization: `Bearer ${stored.accessToken}`,
+      const payload = await fetchJSON<{ user: AccountUser }>(
+        "/remote-access/control-plane/me",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            baseUrl,
+            accessToken: stored.accessToken,
+          }),
         },
-      });
-      if (!response.ok) {
-        throw new Error(
-          response.status === 401
-            ? "unauthorized"
-            : `me_failed_${response.status}`,
-        );
-      }
-      const payload = (await response.json()) as { user: AccountUser };
+      );
       setAccountInfo({
         baseUrl,
         lastEmail: payload.user.email,
@@ -411,11 +415,11 @@ export function Sidebar({
       setHostAccessPassword("");
       setHostAccessPasswordConfirm("");
     }
-  };
+  }, [configureLocalControlPlaneBridge, desktopApi, refreshHostAccessConfig]);
 
   useEffect(() => {
     void refreshAccountState();
-  }, [desktopApi]);
+  }, [refreshAccountState]);
 
   useEffect(() => {
     if (!accountPanelOpen) {
@@ -432,7 +436,7 @@ export function Sidebar({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [accountPanelOpen, requireAccessPasswordSetup]);
 
-  useEffect(() => {
+  const resetAccountFormState = useCallback(() => {
     setAccountError(null);
     setAccountPassword("");
     setAccountConfirmPassword("");
@@ -440,7 +444,7 @@ export function Sidebar({
     setAccountNewPassword("");
     setAccountConfirmNewPassword("");
     setAccountProfileEditing(false);
-  }, [accountMode]);
+  }, []);
 
   const isAccountLoggedIn =
     accountInfo.authenticated && Boolean(accountInfo.user);
@@ -507,7 +511,7 @@ export function Sidebar({
       setAccountError(null);
     } catch (error) {
       setAccountError(
-        error instanceof Error ? error.message : "访问密码设置失败，请重试。",
+        toAccountErrorMessage(error, "访问密码设置失败，请重试。"),
       );
     } finally {
       setAccountBusy(false);
@@ -560,40 +564,18 @@ export function Sidebar({
         email: accountEmail.trim(),
         password: accountPassword,
       };
-
-      if (accountMode === "register") {
-        const registerResponse = await fetch(
-          `${baseUrl}/api/v1/auth/register`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(credentials),
-          },
-        );
-        if (!registerResponse.ok && registerResponse.status !== 409) {
-          const data = (await registerResponse
-            .json()
-            .catch(() => ({ error: "register_failed" }))) as {
-            error?: string;
-          };
-          throw new Error(data.error ?? "register_failed");
-        }
-      }
-
-      const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      const payload = await fetchJSON<{
+        baseUrl?: string;
+        accessToken: string;
+      }>("/remote-access/control-plane/auth", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify({
+          mode: accountMode,
+          baseUrl,
+          email: credentials.email,
+          password: credentials.password,
+        }),
       });
-      if (!loginResponse.ok) {
-        const data = (await loginResponse
-          .json()
-          .catch(() => ({ error: "login_failed" }))) as {
-          error?: string;
-        };
-        throw new Error(data.error ?? "login_failed");
-      }
-      const payload = (await loginResponse.json()) as { accessToken: string };
       const bridgeState = await configureLocalControlPlaneBridge({
         baseUrl,
         accessToken: payload.accessToken,
@@ -622,9 +604,7 @@ export function Sidebar({
 
     void run()
       .catch((error: unknown) => {
-        setAccountError(
-          error instanceof Error ? error.message : "Authentication failed",
-        );
+        setAccountError(toAccountErrorMessage(error, "Authentication failed"));
       })
       .finally(() => setAccountBusy(false));
   };
@@ -666,27 +646,19 @@ export function Sidebar({
           throw new Error("not_logged_in");
         }
         const baseUrl = normalizeControlPlaneBaseUrl(stored.controlPlaneUrl);
-        const response = await fetch(`${baseUrl}/api/v1/me`, {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${stored.accessToken}`,
-            "Content-Type": "application/json",
+        const payload = await fetchJSON<{ user: AccountUser }>(
+          "/remote-access/control-plane/me",
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              baseUrl,
+              accessToken: stored.accessToken,
+              currentPassword: accountCurrentPassword,
+              email: emailChanged ? accountProfileEmail.trim() : undefined,
+              newPassword: wantsPasswordChange ? accountNewPassword : undefined,
+            }),
           },
-          body: JSON.stringify({
-            currentPassword: accountCurrentPassword,
-            email: emailChanged ? accountProfileEmail.trim() : undefined,
-            newPassword: wantsPasswordChange ? accountNewPassword : undefined,
-          }),
-        });
-        if (!response.ok) {
-          const data = (await response
-            .json()
-            .catch(() => ({ error: `update_failed_${response.status}` }))) as {
-            error?: string;
-          };
-          throw new Error(data.error ?? `update_failed_${response.status}`);
-        }
-        const payload = (await response.json()) as { user: AccountUser };
+        );
         setAccountInfo({
           baseUrl,
           lastEmail: payload.user.email,
@@ -722,9 +694,7 @@ export function Sidebar({
 
     void run()
       .catch((error: unknown) => {
-        setAccountError(
-          error instanceof Error ? error.message : "Update failed",
-        );
+        setAccountError(toAccountErrorMessage(error, "Update failed"));
       })
       .finally(() => setAccountBusy(false));
   };
@@ -739,12 +709,16 @@ export function Sidebar({
         const stored = loadStoredAccountState();
         if (stored) {
           const baseUrl = normalizeControlPlaneBaseUrl(stored.controlPlaneUrl);
-          await fetch(`${baseUrl}/api/v1/auth/logout`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${stored.accessToken}`,
+          await fetchJSON<{ success: boolean }>(
+            "/remote-access/control-plane/auth/logout",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                baseUrl,
+                accessToken: stored.accessToken,
+              }),
             },
-          }).catch(() => undefined);
+          ).catch(() => undefined);
         }
         clearStoredAccountState();
         await clearLocalControlPlaneBridge().catch((error) => {
@@ -770,9 +744,7 @@ export function Sidebar({
 
     void run()
       .catch((error: unknown) => {
-        setAccountError(
-          error instanceof Error ? error.message : "Logout failed",
-        );
+        setAccountError(toAccountErrorMessage(error, "Logout failed"));
       })
       .finally(() => setAccountBusy(false));
   };
@@ -1320,8 +1292,11 @@ export function Sidebar({
       {accountPanelOpen && (
         <div
           className="sidebar-account-modal-overlay"
-          onClick={() => {
-            if (!requireAccessPasswordSetup) {
+          onClick={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !requireAccessPasswordSetup
+            ) {
               setAccountPanelOpen(false);
             }
           }}
@@ -1334,10 +1309,7 @@ export function Sidebar({
           tabIndex={0}
           aria-label="Close account dialog"
         >
-          <div
-            className="sidebar-account-modal"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <div className="sidebar-account-modal">
             <h3>
               {isAccountLoggedIn
                 ? "用户信息"
@@ -1413,7 +1385,6 @@ export function Sidebar({
                         }
                         disabled={accountBusy}
                         placeholder="you@example.com"
-                        autoFocus
                       />
                     </label>
                     <label className="sidebar-account-field">
@@ -1464,7 +1435,6 @@ export function Sidebar({
                     onChange={(event) => setAccountEmail(event.target.value)}
                     disabled={accountBusy}
                     placeholder="you@example.com"
-                    autoFocus
                   />
                 </label>
                 <label className="sidebar-account-field">
@@ -1589,11 +1559,12 @@ export function Sidebar({
                 {accountMode === "login" ? "还没有账号？" : "已有账号？"}
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    resetAccountFormState();
                     setAccountMode((current) =>
                       current === "login" ? "register" : "login",
-                    )
-                  }
+                    );
+                  }}
                   disabled={accountBusy}
                 >
                   {accountMode === "login" ? "去注册" : "去登录"}

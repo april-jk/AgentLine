@@ -19,6 +19,13 @@ export {
 } from "./ControlPlaneBridgeService.js";
 
 export {
+  DesktopConnectionAdmissionService,
+  type DesktopConnectionAdmissionResult,
+  type DesktopConnectionRejectReason,
+  type DesktopConnectionAdmissionServiceOptions,
+} from "./DesktopConnectionAdmissionService.js";
+
+export {
   NetworkBindingService,
   type NetworkBindingServiceOptions,
   type NetworkBindingState,

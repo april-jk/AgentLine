@@ -59,4 +59,13 @@ describe("loadConfig codex paths", () => {
       "/var/tmp",
     ]);
   });
+
+  it("marks control-plane config as desktop-managed when launched by Electron", async () => {
+    vi.stubEnv("CONTROL_PLANE_DESKTOP_MANAGED", "true");
+
+    const { loadConfig } = await import("../src/config.js");
+    const config = loadConfig();
+
+    expect(config.controlPlaneDesktopManaged).toBe(true);
+  });
 });

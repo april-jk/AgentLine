@@ -139,6 +139,65 @@ function normalizeDirectWsUrl(rawValue: string): string {
   return wsUrl;
 }
 
+function emitNativeShellRecovery(reason: string): void {
+  try {
+    window.ReactNativeWebView?.postMessage(
+      JSON.stringify({
+        type: "agentline-native-shell-recovery",
+        reason,
+        pathname: window.location.pathname,
+      }),
+    );
+  } catch {
+    // ignore native bridge errors
+  }
+}
+
+function mapDirectErrorToNativeReason(message: string): string {
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("authentication") ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("invalid_identity") ||
+    normalized.includes("password") ||
+    normalized.includes("missing direct connection credentials")
+  ) {
+    return "direct_auth_required";
+  }
+
+  if (
+    normalized.includes("websocket") ||
+    normalized.includes("econnrefused") ||
+    normalized.includes("connection refused") ||
+    normalized.includes("failed to connect") ||
+    normalized.includes("network error")
+  ) {
+    return "direct_unreachable";
+  }
+
+  return "web_login_blocked";
+}
+
+function NativeShellDirectRecovery({
+  reason,
+  message,
+}: {
+  reason: string;
+  message: string;
+}) {
+  useEffect(() => {
+    emitNativeShellRecovery(reason);
+  }, [reason]);
+
+  return (
+    <div className="auto-resume-loading">
+      <div className="loading-spinner" />
+      <p>{message}</p>
+    </div>
+  );
+}
+
 /**
  * Wrapper for connected app content. Runs hooks that require an active
  * SecureConnection. Used by both ConnectionGate (direct mode) and
@@ -320,20 +379,6 @@ export function ConnectionGate() {
     mobileDirectAttempted,
   ]);
 
-  const retryMobileDirectConnect = useCallback(() => {
-    const credentials = directCredsRef.current;
-    if (!credentials) {
-      setMobileDirectError("Direct credentials are missing from mobile link.");
-      return;
-    }
-    setMobileDirectError(null);
-    void attemptMobileDirectConnect(credentials).catch((error) => {
-      setMobileDirectError(
-        error instanceof Error ? error.message : "Direct connection failed",
-      );
-    });
-  }, [attemptMobileDirectConnect]);
-
   // During reconnection, stay on the current page — don't redirect to /login.
   // ConnectionManager is the source of truth; React connection state may be stale.
   if (connectionManager.state === "reconnecting") {
@@ -355,6 +400,15 @@ export function ConnectionGate() {
   if (!connection) {
     // If auto-resume failed with a connection error, show the modal
     if (autoResumeError) {
+      if (isMobileEntryFlow) {
+        return (
+          <NativeShellDirectRecovery
+            reason={mapDirectErrorToNativeReason(autoResumeError.message)}
+            message="Returning to mobile direct flow..."
+          />
+        );
+      }
+
       return (
         <HostOfflineModal
           error={autoResumeError}
@@ -365,6 +419,15 @@ export function ConnectionGate() {
     }
 
     if (isMobileEntryFlow) {
+      if (mobileDirectError) {
+        return (
+          <NativeShellDirectRecovery
+            reason={mapDirectErrorToNativeReason(mobileDirectError)}
+            message="Returning to mobile direct flow..."
+          />
+        );
+      }
+
       return (
         <div className="auto-resume-loading">
           <div className="loading-spinner" />
@@ -373,18 +436,6 @@ export function ConnectionGate() {
               ? "Authenticating direct session..."
               : "Preparing direct session..."}
           </p>
-          {mobileDirectError ? (
-            <div className="host-offline-actions">
-              <p className="host-offline-message">{mobileDirectError}</p>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={retryMobileDirectConnect}
-              >
-                Retry
-              </button>
-            </div>
-          ) : null}
         </div>
       );
     }

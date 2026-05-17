@@ -158,4 +158,107 @@ describe("RelayControlPlaneService", () => {
 
     db.close();
   });
+
+  it("marks stale heartbeat devices offline in account device views", async () => {
+    const db = createTestDb();
+    const service = new RelayControlPlaneService(db, {
+      deviceHeartbeatOfflineTimeoutMs: 60_000,
+    });
+    const user = await service.registerUser("user@example.com", "password123");
+
+    const device = await service.registerOrUpdateDevice({
+      userId: user.id,
+      installId: "install-stale",
+      deviceName: "Desktop Stale",
+      deviceType: "desktop",
+    });
+    const staleIso = new Date(Date.now() - 120_000).toISOString();
+    db.prepare(
+      "UPDATE devices SET last_seen_at = ?, updated_at = ? WHERE id = ?",
+    ).run(staleIso, staleIso, device.id);
+
+    const devices = await service.listDevices(user.id, [
+      {
+        username: device.relayUsername,
+        installId: "install-stale",
+        connectedAt: new Date().toISOString(),
+        state: "waiting",
+      },
+    ]);
+    const view = devices.find((item) => item.id === device.id);
+
+    expect(view?.relayState).toBe("offline");
+    expect(view?.machine.heartbeat.offline).toBe(true);
+    expect(view?.machine.heartbeat.offlineTimeoutMs).toBe(60_000);
+    expect(view?.machine.heartbeat.ageMs).toBeGreaterThan(60_000);
+
+    db.close();
+  });
+
+  it("blocks client grants while heartbeat is stale and recovers after heartbeat", async () => {
+    const db = createTestDb();
+    const service = new RelayControlPlaneService(db, {
+      deviceHeartbeatOfflineTimeoutMs: 60_000,
+    });
+    const user = await service.registerUser("user@example.com", "password123");
+    const login = await service.login("user@example.com", "password123");
+
+    const device = await service.registerOrUpdateDevice({
+      userId: user.id,
+      installId: "install-grant-stale",
+      deviceName: "Desktop Grant",
+      deviceType: "desktop",
+    });
+    const staleIso = new Date(Date.now() - 121_000).toISOString();
+    db.prepare(
+      "UPDATE devices SET last_seen_at = ?, updated_at = ? WHERE id = ?",
+    ).run(staleIso, staleIso, device.id);
+
+    await expect(
+      service.issueClientConnectGrant({
+        userId: user.id,
+        sessionId: login.session.id,
+        deviceId: device.id,
+      }),
+    ).rejects.toThrow("device_offline");
+
+    await service.touchDevice({ userId: user.id, deviceId: device.id });
+
+    const grant = await service.issueClientConnectGrant({
+      userId: user.id,
+      sessionId: login.session.id,
+      deviceId: device.id,
+    });
+    expect(grant.relayUsername).toBe(device.relayUsername);
+
+    db.close();
+  });
+
+  it("returns heartbeat metadata by relay username", async () => {
+    const db = createTestDb();
+    const service = new RelayControlPlaneService(db, {
+      deviceHeartbeatOfflineTimeoutMs: 60_000,
+    });
+    const user = await service.registerUser("user@example.com", "password123");
+    const device = await service.registerOrUpdateDevice({
+      userId: user.id,
+      installId: "install-hb-meta",
+      deviceName: "Desktop HB",
+      deviceType: "desktop",
+    });
+
+    const heartbeat = await service.getDeviceHeartbeatByRelayUsername(
+      device.relayUsername,
+    );
+    expect(heartbeat).not.toBeNull();
+    expect(heartbeat?.lastSeenAt).toBeTruthy();
+    expect(heartbeat?.offlineTimeoutMs).toBe(60_000);
+    expect(heartbeat?.offline).toBe(false);
+
+    const unknown =
+      await service.getDeviceHeartbeatByRelayUsername("unknown-user");
+    expect(unknown).toBeNull();
+
+    db.close();
+  });
 });

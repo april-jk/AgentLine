@@ -48,6 +48,8 @@ export interface SessionConnectionMetadata {
   userAgent?: string;
   /** Origin URL where the connection came from */
   origin?: string;
+  /** Desktop account auth epoch current when the session was created */
+  authEpoch?: number;
 }
 
 export interface RemoteSession {
@@ -69,6 +71,8 @@ export interface RemoteSession {
   origin?: string;
   /** When the session was last actively connected (ISO timestamp) */
   lastConnectedAt?: string;
+  /** Desktop account auth epoch current when the session was created */
+  authEpoch?: number;
 }
 
 interface RemoteSessionsState {
@@ -253,6 +257,7 @@ export class RemoteSessionService {
       userAgent: metadata?.userAgent,
       origin: metadata?.origin,
       lastConnectedAt: now,
+      authEpoch: metadata?.authEpoch ?? 0,
     };
 
     this.state.sessions[sessionId] = session;
@@ -298,9 +303,16 @@ export class RemoteSessionService {
     sessionId: string,
     proof: string,
     expectedChallenge: string,
+    requiredAuthEpoch?: number,
   ): Promise<RemoteSession | null> {
     const session = this.getSession(sessionId);
     if (!session) return null;
+    if (
+      typeof requiredAuthEpoch === "number" &&
+      (session.authEpoch ?? 0) !== requiredAuthEpoch
+    ) {
+      return null;
+    }
 
     try {
       // Parse the proof (should be JSON with nonce and ciphertext)

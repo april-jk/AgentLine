@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
 import { useRemoteConnection } from "../contexts/RemoteConnectionContext";
 import { useI18n } from "../i18n";
+import { toControlPlaneDisplayError } from "../lib/controlPlane";
 import {
   type AccountMode,
   DEFAULT_CONTROL_PLANE_URL,
@@ -74,7 +75,7 @@ export function HostAccountLoginPage() {
       setPassword("");
       navigate("/login/devices", { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Authentication failed");
+      setError(toControlPlaneDisplayError(e));
     } finally {
       setLoading(false);
     }

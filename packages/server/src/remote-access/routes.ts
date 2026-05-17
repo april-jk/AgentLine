@@ -35,6 +35,28 @@ export function createRemoteAccessRoutes(
     onRelayConfigChanged,
   } = options;
   const app = new Hono();
+  const CONTROL_PLANE_FETCH_TIMEOUT_MS = 5000;
+  const asStatusCode = (status: number) => status as 200;
+
+  const invalidateDesktopRelayAccess = async (
+    reason: string,
+    username = remoteAccessService.getUsername(),
+  ): Promise<void> => {
+    const nextEpoch = await remoteAccessService.bumpAuthEpoch();
+    console.log(
+      `[RemoteAccess] Bumped desktop auth epoch to ${nextEpoch} (${reason})`,
+    );
+
+    if (remoteSessionService && username) {
+      const revokedCount =
+        await remoteSessionService.invalidateUserSessions(username);
+      if (revokedCount > 0) {
+        console.log(
+          `[RemoteAccess] ${reason} revoked ${revokedCount} remote session(s) for ${username}`,
+        );
+      }
+    }
+  };
 
   const normalizeControlPlaneBaseUrl = (rawValue: string): string => {
     const trimmed = rawValue.trim();
@@ -55,6 +77,127 @@ export function createRemoteAccessRoutes(
     url.search = "";
     url.hash = "";
     return url.toString();
+  };
+
+  const extractErrorCode = (value: unknown): string | undefined => {
+    if (!value || typeof value !== "object") {
+      return undefined;
+    }
+    const maybeCode = (value as { code?: unknown }).code;
+    return typeof maybeCode === "string" && maybeCode.length > 0
+      ? maybeCode
+      : undefined;
+  };
+
+  const mapControlPlaneFetchError = (error: unknown): Error => {
+    if (error instanceof Error && error.message.startsWith("control_plane_")) {
+      return error;
+    }
+
+    if (error instanceof Error && error.name === "TimeoutError") {
+      return new Error("control_plane_request_timeout");
+    }
+
+    const rootCode =
+      extractErrorCode(error) ||
+      extractErrorCode(
+        error instanceof Error
+          ? (error as { cause?: unknown }).cause
+          : undefined,
+      );
+
+    switch (rootCode) {
+      case "ERR_INVALID_URL":
+        return new Error("control_plane_base_url_invalid");
+      case "ENOTFOUND":
+      case "EAI_AGAIN":
+        return new Error("control_plane_dns_unresolved");
+      case "ECONNREFUSED":
+        return new Error("control_plane_connection_refused");
+      case "ECONNRESET":
+        return new Error("control_plane_connection_reset");
+      case "ETIMEDOUT":
+      case "UND_ERR_CONNECT_TIMEOUT":
+        return new Error("control_plane_request_timeout");
+      case "SELF_SIGNED_CERT_IN_CHAIN":
+      case "DEPTH_ZERO_SELF_SIGNED_CERT":
+      case "ERR_TLS_CERT_ALTNAME_INVALID":
+      case "UNABLE_TO_VERIFY_LEAF_SIGNATURE":
+      case "UNABLE_TO_GET_ISSUER_CERT":
+        return new Error("control_plane_tls_error");
+      case "ENETUNREACH":
+      case "EHOSTUNREACH":
+        return new Error("control_plane_network_unreachable");
+      default:
+        break;
+    }
+
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes("failed to fetch") ||
+        message.includes("fetch failed")
+      ) {
+        return new Error("control_plane_fetch_failed");
+      }
+      if (message.includes("failed to parse url")) {
+        return new Error("control_plane_base_url_invalid");
+      }
+      if (message.includes("timed out")) {
+        return new Error("control_plane_request_timeout");
+      }
+    }
+
+    return new Error("control_plane_fetch_failed");
+  };
+
+  const readControlPlaneError = async (
+    response: Response,
+    fallback: string,
+  ): Promise<string> => {
+    try {
+      const payload = (await response.json()) as { error?: unknown };
+      if (typeof payload.error === "string" && payload.error.length > 0) {
+        return payload.error;
+      }
+    } catch {
+      // ignore non-json response body
+    }
+    return fallback;
+  };
+
+  const resolveControlPlaneAuthContext = (params: {
+    baseUrl?: string;
+    accessToken?: string;
+  }):
+    | { baseUrl: string; accessToken: string }
+    | { error: string; status: number } => {
+    const rawBaseUrl = params.baseUrl ?? "";
+    const rawAccessToken = params.accessToken ?? "";
+    if (!rawBaseUrl.trim() || !rawAccessToken.trim()) {
+      return {
+        error: "control_plane_base_url_and_access_token_required",
+        status: 400,
+      };
+    }
+
+    let baseUrl: string;
+    try {
+      baseUrl = normalizeControlPlaneBaseUrl(rawBaseUrl);
+    } catch (error) {
+      return {
+        error:
+          error instanceof Error
+            ? error.message
+            : "control_plane_base_url_invalid",
+        status: 400,
+      };
+    }
+
+    return {
+      baseUrl,
+      accessToken: rawAccessToken.trim(),
+    };
   };
 
   /**
@@ -294,6 +437,286 @@ export function createRemoteAccessRoutes(
   });
 
   /**
+   * POST /api/remote-access/control-plane/auth
+   * Proxy control-plane account login/register through desktop server to avoid
+   * browser-side cross-origin/network fetch issues in embedded clients.
+   */
+  app.post("/control-plane/auth", async (c) => {
+    const body = await c.req
+      .json<{
+        mode?: "login" | "register";
+        baseUrl?: string;
+        email?: string;
+        password?: string;
+      }>()
+      .catch(() => null);
+
+    const mode = body?.mode === "register" ? "register" : "login";
+    const rawBaseUrl = body?.baseUrl ?? "";
+    const email = body?.email?.trim() ?? "";
+    const password = body?.password ?? "";
+
+    if (!email || !password) {
+      return c.json({ error: "email_and_password_required" }, 400);
+    }
+
+    let baseUrl: string;
+    try {
+      baseUrl = normalizeControlPlaneBaseUrl(rawBaseUrl);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "control_plane_base_url_invalid";
+      return c.json({ error: message }, 400);
+    }
+
+    try {
+      const credentials = JSON.stringify({
+        email,
+        password,
+      });
+
+      if (mode === "register") {
+        const registerResponse = await fetch(
+          `${baseUrl}/api/v1/auth/register`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: credentials,
+            signal: AbortSignal.timeout(CONTROL_PLANE_FETCH_TIMEOUT_MS),
+          },
+        );
+        if (!registerResponse.ok && registerResponse.status !== 409) {
+          const error = await readControlPlaneError(
+            registerResponse,
+            `register_failed_${registerResponse.status}`,
+          );
+          return c.json({ error }, asStatusCode(registerResponse.status));
+        }
+      }
+
+      const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: credentials,
+        signal: AbortSignal.timeout(CONTROL_PLANE_FETCH_TIMEOUT_MS),
+      });
+      if (!loginResponse.ok) {
+        const error = await readControlPlaneError(
+          loginResponse,
+          `login_failed_${loginResponse.status}`,
+        );
+        return c.json({ error }, asStatusCode(loginResponse.status));
+      }
+
+      const payload = (await loginResponse.json()) as {
+        accessToken?: string;
+        expiresAt?: string;
+        user?: {
+          id: string;
+          email: string;
+        };
+      };
+
+      if (!payload.accessToken) {
+        return c.json({ error: "login_failed_invalid_payload" }, 502);
+      }
+
+      return c.json({
+        baseUrl,
+        accessToken: payload.accessToken,
+        expiresAt: payload.expiresAt,
+        user: payload.user,
+      });
+    } catch (error) {
+      const mapped = mapControlPlaneFetchError(error);
+      return c.json({ error: mapped.message }, 502);
+    }
+  });
+
+  /**
+   * POST /api/remote-access/control-plane/me
+   * Fetch current control-plane account user profile with explicit auth context.
+   */
+  app.post("/control-plane/me", async (c) => {
+    const body = await c.req
+      .json<{
+        baseUrl?: string;
+        accessToken?: string;
+      }>()
+      .catch(() => null);
+
+    const auth = resolveControlPlaneAuthContext({
+      baseUrl: body?.baseUrl,
+      accessToken: body?.accessToken,
+    });
+    if ("error" in auth) {
+      return c.json({ error: auth.error }, asStatusCode(auth.status));
+    }
+
+    try {
+      const response = await fetch(`${auth.baseUrl}/api/v1/me`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        signal: AbortSignal.timeout(CONTROL_PLANE_FETCH_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        const error = await readControlPlaneError(
+          response,
+          `me_failed_${response.status}`,
+        );
+        return c.json({ error }, asStatusCode(response.status));
+      }
+
+      const payload = (await response.json()) as {
+        user?: {
+          id: string;
+          email: string;
+          createdAt?: string;
+        };
+      };
+
+      if (!payload.user) {
+        return c.json({ error: "me_failed_invalid_payload" }, 502);
+      }
+
+      return c.json({
+        baseUrl: auth.baseUrl,
+        user: payload.user,
+      });
+    } catch (error) {
+      const mapped = mapControlPlaneFetchError(error);
+      return c.json({ error: mapped.message }, 502);
+    }
+  });
+
+  /**
+   * PATCH /api/remote-access/control-plane/me
+   * Update control-plane account profile with explicit auth context.
+   */
+  app.patch("/control-plane/me", async (c) => {
+    const body = await c.req
+      .json<{
+        baseUrl?: string;
+        accessToken?: string;
+        currentPassword?: string;
+        email?: string;
+        newPassword?: string;
+      }>()
+      .catch(() => null);
+
+    const auth = resolveControlPlaneAuthContext({
+      baseUrl: body?.baseUrl,
+      accessToken: body?.accessToken,
+    });
+    if ("error" in auth) {
+      return c.json({ error: auth.error }, asStatusCode(auth.status));
+    }
+
+    const currentPassword = body?.currentPassword ?? "";
+    const email = body?.email?.trim() || undefined;
+    const newPassword = body?.newPassword ?? undefined;
+    if (!currentPassword.trim()) {
+      return c.json({ error: "current_password_required" }, 400);
+    }
+    if (!email && !newPassword) {
+      return c.json({ error: "no_changes_to_save" }, 400);
+    }
+
+    try {
+      const response = await fetch(`${auth.baseUrl}/api/v1/me`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          currentPassword,
+          email,
+          newPassword,
+        }),
+        signal: AbortSignal.timeout(CONTROL_PLANE_FETCH_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        const error = await readControlPlaneError(
+          response,
+          `update_failed_${response.status}`,
+        );
+        return c.json({ error }, asStatusCode(response.status));
+      }
+
+      const payload = (await response.json()) as {
+        user?: {
+          id: string;
+          email: string;
+          createdAt?: string;
+        };
+      };
+      if (!payload.user) {
+        return c.json({ error: "update_failed_invalid_payload" }, 502);
+      }
+      return c.json({
+        baseUrl: auth.baseUrl,
+        user: payload.user,
+      });
+    } catch (error) {
+      const mapped = mapControlPlaneFetchError(error);
+      return c.json({ error: mapped.message }, 502);
+    }
+  });
+
+  /**
+   * POST /api/remote-access/control-plane/auth/logout
+   * Invalidate control-plane auth token remotely with explicit auth context.
+   */
+  app.post("/control-plane/auth/logout", async (c) => {
+    const body = await c.req
+      .json<{
+        baseUrl?: string;
+        accessToken?: string;
+      }>()
+      .catch(() => null);
+
+    const auth = resolveControlPlaneAuthContext({
+      baseUrl: body?.baseUrl,
+      accessToken: body?.accessToken,
+    });
+    if ("error" in auth) {
+      return c.json({ error: auth.error }, asStatusCode(auth.status));
+    }
+
+    try {
+      const response = await fetch(`${auth.baseUrl}/api/v1/auth/logout`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        signal: AbortSignal.timeout(CONTROL_PLANE_FETCH_TIMEOUT_MS),
+      });
+
+      if (!response.ok && response.status !== 401) {
+        const error = await readControlPlaneError(
+          response,
+          `logout_failed_${response.status}`,
+        );
+        return c.json({ error }, asStatusCode(response.status));
+      }
+
+      return c.json({ success: true });
+    } catch (error) {
+      const mapped = mapControlPlaneFetchError(error);
+      return c.json({ error: mapped.message }, 502);
+    }
+  });
+
+  /**
    * PUT /api/remote-access/control-plane/config
    * Configure control-plane bridge credentials at runtime and sync immediately.
    */
@@ -370,21 +793,16 @@ export function createRemoteAccessRoutes(
     }
 
     const existingUsername = remoteAccessService.getUsername();
+    await invalidateDesktopRelayAccess(
+      "control-plane logout",
+      existingUsername ?? undefined,
+    );
 
     await controlPlaneBridgeService.reconfigure({
       baseUrl: undefined,
       accessToken: undefined,
       relayUrl: undefined,
     });
-    if (remoteSessionService && existingUsername) {
-      const revokedCount =
-        await remoteSessionService.invalidateUserSessions(existingUsername);
-      if (revokedCount > 0) {
-        console.log(
-          `[RemoteAccess] Control-plane logout revoked ${revokedCount} remote session(s) for ${existingUsername}`,
-        );
-      }
-    }
     await remoteAccessService.clearRelayConfig();
     await onRelayConfigChanged?.();
     await serverSettingsService?.updateSettings({

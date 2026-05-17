@@ -179,9 +179,7 @@ const mapControlPlaneFetchError = (error: unknown): Error => {
   const rootCode =
     extractErrorCode(error) ||
     extractErrorCode(
-      error instanceof Error
-        ? (error as { cause?: unknown }).cause
-        : undefined,
+      error instanceof Error ? (error as { cause?: unknown }).cause : undefined,
     );
 
   switch (rootCode) {
@@ -611,19 +609,7 @@ const updateControlPlaneAccount = async (
 
 const logoutControlPlane = async (): Promise<ControlPlaneAccountSummary> => {
   const auth = getControlPlaneAuthContext();
-  if (auth) {
-    try {
-      await fetch(`${auth.baseUrl}/api/v1/auth/logout`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${auth.accessToken}`,
-        },
-        signal: AbortSignal.timeout(5000),
-      });
-    } catch {
-      // ignore network errors on logout, local token clear is authoritative
-    }
-  }
+  const previousControlPlane = desktopConfig.controlPlane ?? {};
 
   try {
     await callDesktopProtectedApi<{ success: boolean }>(
@@ -640,12 +626,27 @@ const logoutControlPlane = async (): Promise<ControlPlaneAccountSummary> => {
   }
 
   desktopConfig.controlPlane = {
-    ...(desktopConfig.controlPlane ?? {}),
+    ...previousControlPlane,
     accessToken: "",
   };
   await saveDesktopConfig();
   getServerManager().updateControlPlaneConfig(desktopConfig.controlPlane);
   await getServerManager().restart();
+
+  if (auth) {
+    try {
+      await fetch(`${auth.baseUrl}/api/v1/auth/logout`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      // Local teardown above is authoritative for desktop admission.
+    }
+  }
+
   return {
     ...getControlPlanePublicConfig(),
     authenticated: false,

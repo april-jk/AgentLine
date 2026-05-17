@@ -1,3 +1,10 @@
+import { fetchJSON } from "../api/client";
+import {
+  deriveRelayWsUrl as deriveRelayWsUrlFromControlPlane,
+  mapControlPlaneNetworkError,
+  normalizeControlPlaneBaseUrl as normalizeControlPlaneBaseUrlShared,
+} from "./controlPlane";
+
 const ACCOUNT_STORAGE_KEY = "agentline.remote.account";
 
 export interface StoredAccountAuth {
@@ -15,22 +22,17 @@ export interface ClientConnectGrantPayload {
 }
 
 export function normalizeControlPlaneBaseUrl(raw: string): string {
-  return raw.trim().replace(/\/+$/, "");
+  if (!raw.trim()) {
+    return "";
+  }
+  return normalizeControlPlaneBaseUrlShared(raw);
 }
 
 export function deriveRelayWsUrl(controlPlaneUrl: string): string {
   const normalized = normalizeControlPlaneBaseUrl(controlPlaneUrl);
-  if (!normalized) return "wss://relay.oneceo.ai/ws";
-  try {
-    const url = new URL(normalized);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.pathname = "/ws";
-    url.search = "";
-    url.hash = "";
-    return url.toString();
-  } catch {
-    return "wss://relay.oneceo.ai/ws";
-  }
+  return normalized
+    ? deriveRelayWsUrlFromControlPlane(normalized)
+    : "wss://relay.oneceo.ai/ws";
 }
 
 export function loadStoredAccountAuth(): StoredAccountAuth | null {
@@ -57,6 +59,33 @@ interface GrantRequestParams {
   controlPlaneUrl?: string;
 }
 
+function shouldFallbackToDirectGrantRequest(error: unknown): boolean {
+  const status =
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof (error as { status?: unknown }).status === "number"
+      ? (error as { status: number }).status
+      : null;
+
+  if (status === 404 || status === 405 || status === 503) {
+    return true;
+  }
+
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("api error: 404") ||
+    message.includes("route not found") ||
+    message.includes("remote client requires secureconnection") ||
+    message.includes("control_plane_bridge_unavailable") ||
+    message.includes("control_plane_not_configured")
+  );
+}
+
 export async function requestClientConnectGrant(
   params: GrantRequestParams,
 ): Promise<
@@ -72,20 +101,49 @@ export async function requestClientConnectGrant(
     throw new Error("account_auth_required");
   }
 
-  const response = await fetch(
-    `${controlPlaneUrl}/api/v1/relay/grants/client-connect`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${stored.accessToken}`,
-        "Content-Type": "application/json",
+  try {
+    const payload = await fetchJSON<ClientConnectGrantPayload>(
+      "/remote-access/control-plane/grants/client-connect",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          relayUsername: params.relayUsername,
+          deviceId: params.deviceId,
+        }),
       },
-      body: JSON.stringify({
-        deviceId: params.deviceId,
-        relayUsername: params.relayUsername,
-      }),
-    },
-  );
+    );
+    if (!payload.grant || !payload.relayUsername) {
+      throw new Error("grant_response_invalid");
+    }
+    return {
+      ...payload,
+      controlPlaneUrl,
+    };
+  } catch (error) {
+    if (!shouldFallbackToDirectGrantRequest(error)) {
+      throw mapControlPlaneNetworkError(error);
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${controlPlaneUrl}/api/v1/relay/grants/client-connect`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${stored.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          deviceId: params.deviceId,
+          relayUsername: params.relayUsername,
+        }),
+      },
+    );
+  } catch (error) {
+    throw mapControlPlaneNetworkError(error);
+  }
 
   if (!response.ok) {
     let errorMessage = `grant_request_failed_${response.status}`;

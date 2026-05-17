@@ -159,6 +159,58 @@ function buildRelayLoginRedirectPath(
   return `/login/relay${query ? `?${query}` : ""}${hash ?? ""}`;
 }
 
+function emitNativeShellRecovery(reason: string): void {
+  try {
+    window.ReactNativeWebView?.postMessage(
+      JSON.stringify({
+        type: "agentline-native-shell-recovery",
+        reason,
+        pathname: window.location.pathname,
+      }),
+    );
+  } catch {
+    // ignore native bridge errors
+  }
+}
+
+function mapAutoResumeErrorToNativeReason(error: AutoResumeError): string {
+  switch (error.reason) {
+    case "server_offline":
+      return "server_offline";
+    case "unknown_username":
+      return "unknown_username";
+    case "relay_timeout":
+      return "relay_timeout";
+    case "relay_unreachable":
+      return "relay_unreachable";
+    case "auth_failed":
+      return "auth_failed";
+    case "resume_incompatible":
+      return "relay_auth_required";
+    default:
+      return "web_login_blocked";
+  }
+}
+
+function NativeShellRelayRecovery({
+  reason,
+  message,
+}: {
+  reason: string;
+  message: string;
+}) {
+  useEffect(() => {
+    emitNativeShellRecovery(reason);
+  }, [reason]);
+
+  return (
+    <div className="auto-resume-loading">
+      <div className="loading-spinner" />
+      <p>{message}</p>
+    </div>
+  );
+}
+
 /** Create an AutoResumeError from an exception */
 function createAutoResumeError(
   err: unknown,
@@ -481,6 +533,15 @@ export function RelayConnectionGate() {
 
     case "no_host":
     case "no_session": {
+      if (isMobileEntryFlow) {
+        return (
+          <NativeShellRelayRecovery
+            reason="relay_auth_required"
+            message="Returning to mobile relay flow..."
+          />
+        );
+      }
+
       const to = buildRelayLoginRedirectPath(
         relayUsername,
         location.search,
@@ -499,6 +560,16 @@ export function RelayConnectionGate() {
         relayUsername: relayUsername ?? "",
         message: "Connection failed",
       };
+
+      if (isMobileEntryFlow) {
+        return (
+          <NativeShellRelayRecovery
+            reason={mapAutoResumeErrorToNativeReason(error ?? defaultError)}
+            message="Returning to mobile connection flow..."
+          />
+        );
+      }
+
       return (
         <HostOfflineModal
           error={error ?? defaultError}

@@ -26,6 +26,8 @@ export type HostItem = {
   deviceType: string;
   heartbeatLastSeenAt?: string;
   heartbeatAgeMs?: number;
+  heartbeatOfflineTimeoutMs?: number;
+  heartbeatOffline?: boolean;
   heartbeatFresh: boolean;
   hostServiceListening?: boolean;
   lanEndpoint?: {
@@ -62,6 +64,9 @@ type ControlPlaneDevice = {
     };
     heartbeat?: {
       lastSeenAt?: string;
+      ageMs?: number;
+      offlineTimeoutMs?: number;
+      offline?: boolean;
     };
     endpoints?: {
       lan?: {
@@ -72,7 +77,7 @@ type ControlPlaneDevice = {
   };
 };
 
-const RELAY_HEARTBEAT_STALE_MS = 2 * 60 * 1000;
+const RELAY_HEARTBEAT_STALE_MS = 60 * 1000;
 
 function resolveHeartbeatAgeMs(lastSeenAt?: string): number | undefined {
   if (!lastSeenAt) return undefined;
@@ -215,11 +220,35 @@ export class ApiClient {
     );
 
     return payload.devices.map((device) => ({
+      ...(() => {
+        const heartbeatAgeMs =
+          typeof device.machine?.heartbeat?.ageMs === "number"
+            ? Math.max(0, device.machine.heartbeat.ageMs)
+            : resolveHeartbeatAgeMs(
+                device.machine?.heartbeat?.lastSeenAt ?? device.lastSeenAt,
+              );
+        const heartbeatOfflineTimeoutMs =
+          typeof device.machine?.heartbeat?.offlineTimeoutMs === "number"
+            ? Math.max(0, device.machine.heartbeat.offlineTimeoutMs)
+            : RELAY_HEARTBEAT_STALE_MS;
+        const heartbeatOffline =
+          device.machine?.heartbeat?.offline === true ||
+          (typeof heartbeatAgeMs === "number"
+            ? heartbeatAgeMs > heartbeatOfflineTimeoutMs
+            : true);
+        const heartbeatFresh =
+          !heartbeatOffline &&
+          typeof heartbeatAgeMs === "number" &&
+          heartbeatAgeMs <= heartbeatOfflineTimeoutMs;
+        return {
+          heartbeatAgeMs,
+          heartbeatOfflineTimeoutMs,
+          heartbeatOffline,
+          heartbeatFresh,
+        };
+      })(),
       heartbeatLastSeenAt:
         device.machine?.heartbeat?.lastSeenAt ?? device.lastSeenAt,
-      heartbeatAgeMs: resolveHeartbeatAgeMs(
-        device.machine?.heartbeat?.lastSeenAt ?? device.lastSeenAt,
-      ),
       id: device.id,
       hostServiceListening: device.machine?.hostService?.listening,
       lanEndpoint:
@@ -232,29 +261,40 @@ export class ApiClient {
             }
           : null,
       name: device.deviceName,
-      status: device.relayState === "offline" ? "offline" : "online",
+      status:
+        device.relayState === "offline" ||
+        device.machine?.heartbeat?.offline === true
+          ? "offline"
+          : "online",
       relayState: device.relayState,
       relayUsername: device.relayUsername,
       deviceType: device.deviceType,
-      heartbeatFresh:
-        (() => {
-          const ageMs = resolveHeartbeatAgeMs(
-            device.machine?.heartbeat?.lastSeenAt ?? device.lastSeenAt,
-          );
-          if (typeof ageMs !== "number") return false;
-          return ageMs <= RELAY_HEARTBEAT_STALE_MS;
-        })(),
     }));
   }
 
   async isRelayHostOnline(relayUsername: string): Promise<boolean> {
     const normalized = relayUsername.trim().toLowerCase();
     if (!normalized) return false;
-    const payload = await this.request<{ online?: boolean }>(
-      `/online/${encodeURIComponent(normalized)}`,
-      { method: "GET" },
-    );
-    return payload.online === true;
+    const payload = await this.request<{
+      online?: boolean;
+      heartbeat?: {
+        lastSeenAt?: string;
+        ageMs?: number;
+        offlineTimeoutMs?: number;
+        offline?: boolean;
+      };
+    }>(`/online/${encodeURIComponent(normalized)}`, { method: "GET" });
+    if (payload.online !== true) return false;
+    const heartbeat = payload.heartbeat;
+    if (!heartbeat) return true;
+    if (heartbeat.offline === true) return false;
+    if (
+      typeof heartbeat.ageMs === "number" &&
+      typeof heartbeat.offlineTimeoutMs === "number"
+    ) {
+      return heartbeat.ageMs <= heartbeat.offlineTimeoutMs;
+    }
+    return true;
   }
 
   async getSessionPlaceholder(host: HostItem): Promise<SessionPlaceholder> {

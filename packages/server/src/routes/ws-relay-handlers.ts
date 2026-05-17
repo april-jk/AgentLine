@@ -51,6 +51,7 @@ import type {
   BrowserProfileService,
   ConnectedBrowsersService,
 } from "../services/index.js";
+import type { DesktopConnectionAdmissionService } from "../services/index.js";
 import {
   createActivitySubscription,
   createSessionSubscription,
@@ -152,6 +153,8 @@ export interface ConnectionState {
   nextOutboundSeq: number;
   /** Last accepted inbound encrypted sequence from the peer */
   lastInboundSeq: number | null;
+  /** True when this websocket arrived via relay pairing instead of direct LAN/browser access */
+  isRelayConnection: boolean;
 }
 
 /** Tracks an active upload over WebSocket relay */
@@ -212,6 +215,8 @@ export interface RelayHandlerDeps {
   focusedSessionWatchManager?: FocusedSessionWatchManager;
   /** Emulator bridge service for Android emulator streaming (optional) */
   deviceBridgeService?: DeviceBridgeService;
+  /** Desktop-side relay admission gate. Required for relay-hosted connections. */
+  desktopConnectionAdmissionService?: DesktopConnectionAdmissionService;
 }
 
 /**
@@ -237,6 +242,7 @@ export function createConnectionState(): ConnectionState {
     srpLimiter: createInitialSrpLimiterState(),
     nextOutboundSeq: 0,
     lastInboundSeq: null,
+    isRelayConnection: false,
   };
 }
 
@@ -1051,22 +1057,47 @@ export async function handleMessage(
 
   // Handle SRP messages first (always plaintext)
   if (isSrpSessionResumeInit(parsed)) {
-    await handleSrpResumeInit(ws, connState, parsed, remoteSessionService);
+    await handleSrpResumeInit(
+      ws,
+      connState,
+      parsed,
+      remoteSessionService,
+      deps.desktopConnectionAdmissionService,
+    );
     return;
   }
 
   if (isSrpSessionResume(parsed)) {
-    await handleSrpResume(ws, connState, parsed, remoteSessionService);
+    await handleSrpResume(
+      ws,
+      connState,
+      parsed,
+      remoteSessionService,
+      deps.desktopConnectionAdmissionService,
+    );
     return;
   }
 
   if (isSrpClientHello(parsed)) {
-    await handleSrpHello(ws, connState, parsed, remoteAccessService);
+    await handleSrpHello(
+      ws,
+      connState,
+      parsed,
+      remoteAccessService,
+      deps.desktopConnectionAdmissionService,
+    );
     return;
   }
 
   if (isSrpClientProof(parsed)) {
-    await handleSrpProof(ws, connState, parsed, parsed.A, remoteSessionService);
+    await handleSrpProof(
+      ws,
+      connState,
+      parsed,
+      parsed.A,
+      remoteSessionService,
+      deps.desktopConnectionAdmissionService,
+    );
     return;
   }
 

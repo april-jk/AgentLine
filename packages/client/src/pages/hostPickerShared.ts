@@ -1,3 +1,11 @@
+import { fetchJSON } from "../api/client";
+import {
+  DEFAULT_CONTROL_PLANE_URL,
+  mapControlPlaneNetworkError,
+  normalizeControlPlaneBaseUrl,
+} from "../lib/controlPlane";
+export { DEFAULT_CONTROL_PLANE_URL };
+
 export type AccountMode = "login" | "register";
 
 export interface AccountUser {
@@ -17,9 +25,16 @@ export interface AccountDevice {
   deviceName: string;
   deviceType: string;
   relayState: "offline" | "waiting" | "paired";
+  machine?: {
+    heartbeat?: {
+      lastSeenAt?: string;
+      ageMs?: number;
+      offlineTimeoutMs?: number;
+      offline?: boolean;
+    };
+  };
 }
 
-export const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
 export const ACCOUNT_STORAGE_KEY = "agentline.remote.account";
 
 export interface SavedAccountAuth {
@@ -70,10 +85,15 @@ export async function requestJson<T>(
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}${path}`, {
-    ...init,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl.replace(/\/+$/, "")}${path}`, {
+      ...init,
+      headers,
+    });
+  } catch (error) {
+    throw mapControlPlaneNetworkError(error);
+  }
   if (!response.ok) {
     let message = `request_failed_${response.status}`;
     try {
@@ -88,23 +108,89 @@ export async function requestJson<T>(
   return (await response.json()) as T;
 }
 
+function shouldFallbackToDirectAuth(error: unknown): boolean {
+  const status =
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof (error as { status?: unknown }).status === "number"
+      ? (error as { status: number }).status
+      : null;
+
+  if (status === 404 || status === 405 || status === 503) {
+    return true;
+  }
+
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("api error: 404") ||
+    message.includes("route not found") ||
+    message.includes("remote client requires secureconnection")
+  );
+}
+
 export async function authenticateAccount(
   baseUrl: string,
   mode: AccountMode,
   email: string,
   password: string,
 ): Promise<AccountAuthResponse> {
-  if (mode === "register") {
-    await requestJson<{ user: AccountUser }>(baseUrl, "/api/v1/auth/register", {
+  const normalizedBaseUrl = normalizeControlPlaneBaseUrl(baseUrl);
+  const credentials = {
+    email,
+    password,
+  };
+
+  try {
+    const payload = await fetchJSON<{
+      baseUrl?: string;
+      accessToken: string;
+      expiresAt: string;
+      user?: AccountUser;
+    }>("/remote-access/control-plane/auth", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        mode,
+        baseUrl: normalizedBaseUrl,
+        email,
+        password,
+      }),
     });
+
+    return {
+      accessToken: payload.accessToken,
+      expiresAt: payload.expiresAt,
+      user: payload.user ?? { id: "", email },
+    };
+  } catch (error) {
+    if (!shouldFallbackToDirectAuth(error)) {
+      throw mapControlPlaneNetworkError(error);
+    }
   }
 
-  return requestJson<AccountAuthResponse>(baseUrl, "/api/v1/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
+  if (mode === "register") {
+    await requestJson<{ user: AccountUser }>(
+      normalizedBaseUrl,
+      "/api/v1/auth/register",
+      {
+        method: "POST",
+        body: JSON.stringify(credentials),
+      },
+    );
+  }
+
+  return requestJson<AccountAuthResponse>(
+    normalizedBaseUrl,
+    "/api/v1/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    },
+  );
 }
 
 export async function fetchDevices(

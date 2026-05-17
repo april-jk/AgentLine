@@ -93,12 +93,28 @@ function resolveLoginRecoveryCopy(
 
   if (
     reason === "device_not_found" ||
+    reason === "device_offline" ||
     reason === "server_offline" ||
     reason === "unknown_username"
   ) {
     return {
       title: "桌面端已退出",
       message: "桌面端当前不可用，请在电脑端重新登录并保持在线。",
+    };
+  }
+
+  if (reason === "relay_timeout" || reason === "relay_unreachable") {
+    return {
+      title: "中继连接失败",
+      message: "当前无法通过中继连接桌面端，请确认电脑端在线后返回应用重试。",
+    };
+  }
+
+  if (reason === "direct_unreachable") {
+    return {
+      title: "局域网连接失败",
+      message:
+        "当前无法连接电脑端，请确认电脑端在线、地址可访问，并与手机处于同一网络。",
     };
   }
 
@@ -111,6 +127,13 @@ function resolveLoginRecoveryCopy(
     return {
       title: "连接已失效",
       message: "本次中继连接已失效，请重新选择设备并再次连接。",
+    };
+  }
+
+  if (reason === "auth_failed") {
+    return {
+      title: "连接认证失败",
+      message: "这次远程连接认证没有通过，请返回应用重新输入访问密码后再试。",
     };
   }
 
@@ -229,28 +252,16 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
             });
             const modeGuess = inferModeFromLoginPath(pathname, fallbackMode);
             const authLoginPath = isAuthLoginPath(pathname);
+            webViewRef.current?.stopLoading();
 
-            // /login/relay and /login/direct are now part of the expected
-            // mobile bootstrap path. Do not treat them as immediate failures.
-            if (
-              authLoginPath &&
-              (reason === "relay_auth_required" ||
-                reason === "direct_auth_required")
-            ) {
+            if (authLoginPath) {
               console.log(
-                "[SessionPlaceholder] Auth login route reached during bootstrap; waiting for auto-connect.",
+                "[SessionPlaceholder] Auth login route is not allowed in native shell; recovering to RN flow.",
                 { pathname, reason, modeGuess },
               );
-              return;
             }
 
-            // Do not preemptively block login route navigation. Let remote page
-            // emit explicit bridge reason first, to avoid false-positive
-            // "connection changed" regressions on mobile WebView.
-            if (reason !== "web_login_blocked") {
-              webViewRef.current?.stopLoading();
-              recoverToNativeLogin(reason, modeGuess);
-            }
+            recoverToNativeLogin(reason, modeGuess);
           }
         }}
         onLoadStart={() => {
@@ -294,6 +305,19 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
               | undefined;
             if (payload?.type) {
               console.log("[SessionPlaceholder] Bridge message", payload);
+            }
+            if (payload?.type === "agentline-native-shell-recovery") {
+              const reason =
+                typeof payload.reason === "string"
+                  ? payload.reason
+                  : "web_login_blocked";
+              const reportedPathname =
+                typeof payload.pathname === "string" ? payload.pathname : "";
+              recoverToNativeLogin(
+                reason,
+                inferModeFromLoginPath(reportedPathname, fallbackMode),
+              );
+              return;
             }
             if (payload?.type === "agentline-login-route-blocked") {
               const reason =

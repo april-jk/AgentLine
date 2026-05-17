@@ -47,7 +47,9 @@ if (config.controlPlaneDatabaseUrl) {
     config.controlPlaneDatabaseUrl,
   );
 }
-const controlPlane = new RelayControlPlaneService(controlPlaneStore);
+const controlPlane = new RelayControlPlaneService(controlPlaneStore, {
+  deviceHeartbeatOfflineTimeoutMs: config.deviceHeartbeatOfflineTimeoutMs,
+});
 
 // Run reclamation on startup
 const reclaimed = registry.reclaimInactive(config.reclaimDays);
@@ -679,6 +681,9 @@ app.post("/api/v1/relay/grants/client-connect", async (c) => {
     if (message === "device_not_found") {
       return c.json({ error: "device_not_found" }, 404);
     }
+    if (message === "device_offline") {
+      return c.json({ error: "device_offline" }, 409);
+    }
     return c.json({ error: "bad_request" }, 400);
   }
 });
@@ -790,9 +795,15 @@ app.get("/api/v1/devices", async (c) => {
 
 // Check if a specific username has a server online (waiting for client)
 app.get("/online/:username", (c) => {
-  const username = c.req.param("username");
+  const username = c.req.param("username").trim().toLowerCase();
+  if (!username) {
+    return c.json({ online: false, heartbeat: null });
+  }
   const online = connectionManager.isWaiting(username);
-  return c.json({ online });
+  return controlPlane
+    .getDeviceHeartbeatByRelayUsername(username)
+    .then((heartbeat) => c.json({ online, heartbeat }))
+    .catch(() => c.json({ online, heartbeat: null }));
 });
 
 // Create WebSocket handler

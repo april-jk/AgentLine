@@ -20,6 +20,7 @@ import type {
   RemoteAccessService,
   RemoteSessionService,
 } from "../remote-access/index.js";
+import type { DesktopConnectionAdmissionService } from "../services/DesktopConnectionAdmissionService.js";
 import type { ConnectionState, WSAdapter } from "./ws-relay-handlers.js";
 import {
   hasEstablishedSrpTransport,
@@ -278,6 +279,28 @@ export function sendSrpMessage(
   ws.send(JSON.stringify(msg));
 }
 
+function getRelayAdmissionFailure(
+  connState: ConnectionState,
+  desktopConnectionAdmissionService:
+    | DesktopConnectionAdmissionService
+    | undefined,
+): { reason: string; authEpoch?: number } | null {
+  if (!connState.isRelayConnection) {
+    return null;
+  }
+  if (!desktopConnectionAdmissionService) {
+    return { reason: "desktop_account_unavailable" };
+  }
+  const result = desktopConnectionAdmissionService.canAcceptRelayConnection();
+  if (!result || result.allowed) {
+    return null;
+  }
+  return {
+    reason: result.reason ?? "desktop_account_logged_out",
+    authEpoch: result.authEpoch,
+  };
+}
+
 /**
  * Handle session resume init and issue a one-time nonce challenge.
  */
@@ -286,6 +309,7 @@ export async function handleSrpResumeInit(
   connState: ConnectionState,
   msg: SrpSessionResumeInit,
   remoteSessionService: RemoteSessionService | undefined,
+  desktopConnectionAdmissionService?: DesktopConnectionAdmissionService,
 ): Promise<void> {
   if (!remoteSessionService) {
     sendSrpMessage(ws, {
@@ -306,10 +330,28 @@ export async function handleSrpResumeInit(
   }
 
   try {
+    const admissionFailure = getRelayAdmissionFailure(
+      connState,
+      desktopConnectionAdmissionService,
+    );
+    if (admissionFailure) {
+      sendSrpMessage(ws, {
+        type: "srp_invalid",
+        reason: "invalid_proof",
+      });
+      return;
+    }
+
     const session = remoteSessionService.getSession(msg.sessionId);
+    const currentAuthEpoch =
+      desktopConnectionAdmissionService?.getCurrentAuthEpoch() ?? 0;
 
     // Keep failure mode generic (don't leak session validity details).
-    if (!session || session.username !== msg.identity) {
+    if (
+      !session ||
+      session.username !== msg.identity ||
+      (session.authEpoch ?? 0) !== currentAuthEpoch
+    ) {
       sendSrpMessage(ws, {
         type: "srp_invalid",
         reason: "invalid_proof",
@@ -351,6 +393,7 @@ export async function handleSrpResume(
   connState: ConnectionState,
   msg: SrpSessionResume,
   remoteSessionService: RemoteSessionService | undefined,
+  desktopConnectionAdmissionService?: DesktopConnectionAdmissionService,
 ): Promise<void> {
   if (!remoteSessionService) {
     sendSrpMessage(ws, {
@@ -361,6 +404,18 @@ export async function handleSrpResume(
   }
 
   try {
+    const admissionFailure = getRelayAdmissionFailure(
+      connState,
+      desktopConnectionAdmissionService,
+    );
+    if (admissionFailure) {
+      sendSrpMessage(ws, {
+        type: "srp_invalid",
+        reason: "invalid_proof",
+      });
+      return;
+    }
+
     const pendingChallenge = connState.pendingResumeChallenge;
     connState.pendingResumeChallenge = null;
 
@@ -388,6 +443,7 @@ export async function handleSrpResume(
       msg.sessionId,
       msg.proof,
       pendingChallenge.nonce,
+      desktopConnectionAdmissionService?.getCurrentAuthEpoch(),
     );
 
     if (!session) {
@@ -453,6 +509,7 @@ export async function handleSrpHello(
   connState: ConnectionState,
   msg: SrpClientHello,
   remoteAccessService: RemoteAccessService | undefined,
+  desktopConnectionAdmissionService?: DesktopConnectionAdmissionService,
 ): Promise<void> {
   const now = Date.now();
   cleanupUsernameSrpLimiters(now);
@@ -484,6 +541,20 @@ export async function handleSrpHello(
       code: "server_error",
       message: "Remote access not configured",
     });
+    return;
+  }
+
+  const admissionFailure = getRelayAdmissionFailure(
+    connState,
+    desktopConnectionAdmissionService,
+  );
+  if (admissionFailure) {
+    sendSrpMessage(ws, {
+      type: "srp_error",
+      code: "invalid_identity",
+      message: admissionFailure.reason,
+    });
+    ws.close(4001, admissionFailure.reason);
     return;
   }
 
@@ -560,6 +631,7 @@ export async function handleSrpProof(
   msg: SrpClientProof,
   clientA: string,
   remoteSessionService: RemoteSessionService | undefined,
+  desktopConnectionAdmissionService?: DesktopConnectionAdmissionService,
 ): Promise<void> {
   if (!connState.srpSession || !isSrpProofPending(connState)) {
     cleanupSrpHandshakeState(connState);
@@ -574,6 +646,21 @@ export async function handleSrpProof(
   clearSrpHandshakeTimeout(connState);
 
   try {
+    const admissionFailure = getRelayAdmissionFailure(
+      connState,
+      desktopConnectionAdmissionService,
+    );
+    if (admissionFailure) {
+      sendSrpMessage(ws, {
+        type: "srp_error",
+        code: "invalid_identity",
+        message: admissionFailure.reason,
+      });
+      cleanupSrpHandshakeState(connState);
+      ws.close(4001, admissionFailure.reason);
+      return;
+    }
+
     const result = await connState.srpSession.verifyProof(clientA, msg.M1);
 
     if (!result) {
@@ -633,6 +720,8 @@ export async function handleSrpProof(
           browserProfileId: connState.browserProfileId ?? undefined,
           userAgent: connState.originMetadata?.userAgent,
           origin: connState.originMetadata?.origin,
+          authEpoch:
+            desktopConnectionAdmissionService?.getCurrentAuthEpoch() ?? 0,
         },
       );
       connState.sessionId = sessionId;

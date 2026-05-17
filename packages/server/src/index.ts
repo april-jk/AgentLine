@@ -59,6 +59,7 @@ import {
   BrowserProfileService,
   ConnectedBrowsersService,
   ControlPlaneBridgeService,
+  DesktopConnectionAdmissionService,
   InstallService,
   ModelInfoService,
   NetworkBindingService,
@@ -471,6 +472,7 @@ async function startServer() {
   // Callback holder for relay config changes - will be set after app creation
   const relayConfigCallbackHolder: { callback?: () => Promise<void> } = {};
   const controlPlaneRelayRefreshHolder: { callback?: () => Promise<void> } = {};
+  let relayBlockedByControlPlane = false;
 
   const savedControlPlaneBaseUrl = serverSettingsService.getSetting(
     "controlPlaneBaseUrl",
@@ -481,12 +483,15 @@ async function startServer() {
   const savedControlPlaneRelayWsUrl = serverSettingsService.getSetting(
     "controlPlaneRelayWsUrl",
   );
-  const resolvedControlPlaneBaseUrl =
-    config.controlPlaneBaseUrl ?? savedControlPlaneBaseUrl;
-  const resolvedControlPlaneAccessToken =
-    config.controlPlaneAccessToken ?? savedControlPlaneAccessToken;
-  const resolvedControlPlaneRelayWsUrl =
-    config.controlPlaneRelayWsUrl ?? savedControlPlaneRelayWsUrl;
+  const resolvedControlPlaneBaseUrl = config.controlPlaneDesktopManaged
+    ? config.controlPlaneBaseUrl
+    : (config.controlPlaneBaseUrl ?? savedControlPlaneBaseUrl);
+  const resolvedControlPlaneAccessToken = config.controlPlaneDesktopManaged
+    ? config.controlPlaneAccessToken
+    : (config.controlPlaneAccessToken ?? savedControlPlaneAccessToken);
+  const resolvedControlPlaneRelayWsUrl = config.controlPlaneDesktopManaged
+    ? config.controlPlaneRelayWsUrl
+    : (config.controlPlaneRelayWsUrl ?? savedControlPlaneRelayWsUrl);
 
   const controlPlaneBridgeService = new ControlPlaneBridgeService({
     config: {
@@ -519,7 +524,38 @@ async function startServer() {
     remoteAccessService,
     onRelayConfigChanged: () =>
       controlPlaneRelayRefreshHolder.callback?.() ?? Promise.resolve(),
+    onStateChanged: (state) => {
+      const blocked =
+        !state.enabled ||
+        state.pausedReason === "unauthorized" ||
+        state.pausedReason === "control_plane_not_configured";
+
+      if (blocked) {
+        if (!relayBlockedByControlPlane) {
+          console.warn(
+            "[Relay] Control-plane bridge became unavailable; stopping relay client immediately.",
+          );
+        }
+        relayBlockedByControlPlane = true;
+        relayClientService.stop();
+        return;
+      }
+
+      const recovered = relayBlockedByControlPlane;
+      relayBlockedByControlPlane = false;
+      if (recovered && state.running && !state.pausedReason) {
+        console.info(
+          "[Relay] Control-plane bridge recovered; restoring relay connection.",
+        );
+        void controlPlaneRelayRefreshHolder.callback?.();
+      }
+    },
   });
+  const desktopConnectionAdmissionService =
+    new DesktopConnectionAdmissionService({
+      remoteAccessService,
+      controlPlaneBridgeService,
+    });
 
   // Callback holder for network binding changes - will be set after servers are created
   const networkBindingCallbackHolder: {
@@ -668,6 +704,7 @@ async function startServer() {
     browserProfileService,
     focusedSessionWatchManager,
     deviceBridgeService,
+    desktopConnectionAdmissionService,
   });
   app.get("/api/ws", wsRelayHandler);
 
@@ -685,6 +722,7 @@ async function startServer() {
     browserProfileService,
     focusedSessionWatchManager,
     deviceBridgeService,
+    desktopConnectionAdmissionService,
   });
 
   // Function to start/restart relay client with current config
