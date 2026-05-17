@@ -10,6 +10,8 @@ import { useAppTheme } from "../styles/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Console">;
 
+const RECOVERY_CONFIRM_DELAY_MS = 1800;
+
 function stripHash(url: string): string {
   const hashIndex = url.indexOf("#");
   return hashIndex >= 0 ? url.slice(0, hashIndex) : url;
@@ -47,6 +49,10 @@ function isAuthLoginPath(pathname: string): boolean {
   );
 }
 
+function isConnectedAppPathname(pathname: string): boolean {
+  return Boolean(pathname && !isWebLoginPath(pathname));
+}
+
 function inferModeFromLoginPath(
   pathname: string,
   fallbackMode: "relay" | "direct",
@@ -74,6 +80,17 @@ function inferLoginReason(url: string): string {
     if (decoded) return decoded;
   }
   return "web_login_blocked";
+}
+
+function canTreatRecoveryAsStaleAfterConnected(reason: string): boolean {
+  return (
+    reason === "web_login_blocked" ||
+    reason === "relay_auth_required" ||
+    reason === "direct_auth_required" ||
+    reason === "relay_timeout" ||
+    reason === "relay_unreachable" ||
+    reason === "direct_unreachable"
+  );
 }
 
 function resolveLoginRecoveryCopy(
@@ -165,9 +182,13 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
   const webViewRef = useRef<WebView>(null);
   const lastStatusRef = useRef<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const currentPathnameRef = useRef("");
   const loginRecoveryTriggeredRef = useRef(false);
   const transientLoginBlockRetryRef = useRef(0);
+  const webSessionConnectedRef = useRef(false);
   const fallbackMode = route.params.mode === "direct" ? "direct" : "relay";
 
   const showStatusToast = useCallback((nextStatus: string) => {
@@ -182,10 +203,18 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
     }, 3000);
   }, []);
 
+  const clearPendingRecovery = useCallback(() => {
+    if (pendingRecoveryTimerRef.current) {
+      clearTimeout(pendingRecoveryTimerRef.current);
+      pendingRecoveryTimerRef.current = null;
+    }
+  }, []);
+
   const recoverToNativeLogin = useCallback(
     (reason: string, modeGuess?: "relay" | "direct") => {
       if (loginRecoveryTriggeredRef.current) return;
       loginRecoveryTriggeredRef.current = true;
+      clearPendingRecovery();
 
       const mode = modeGuess ?? fallbackMode;
       const copy = resolveLoginRecoveryCopy(reason, mode);
@@ -203,7 +232,48 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
         },
       ]);
     },
-    [fallbackMode, navigation, showStatusToast],
+    [clearPendingRecovery, fallbackMode, navigation, showStatusToast],
+  );
+
+  const requestRecoverToNativeLogin = useCallback(
+    (reason: string, modeGuess?: "relay" | "direct") => {
+      if (loginRecoveryTriggeredRef.current) return;
+      if (
+        webSessionConnectedRef.current &&
+        canTreatRecoveryAsStaleAfterConnected(reason) &&
+        isConnectedAppPathname(currentPathnameRef.current)
+      ) {
+        console.log(
+          "[SessionPlaceholder] Ignoring stale recovery after connected app is active.",
+          {
+            reason,
+            currentPathname: currentPathnameRef.current,
+          },
+        );
+        return;
+      }
+
+      clearPendingRecovery();
+      pendingRecoveryTimerRef.current = setTimeout(() => {
+        pendingRecoveryTimerRef.current = null;
+        if (
+          webSessionConnectedRef.current &&
+          canTreatRecoveryAsStaleAfterConnected(reason) &&
+          isConnectedAppPathname(currentPathnameRef.current)
+        ) {
+          console.log(
+            "[SessionPlaceholder] Cancelled pending recovery because app connected.",
+            {
+              reason,
+              currentPathname: currentPathnameRef.current,
+            },
+          );
+          return;
+        }
+        recoverToNativeLogin(reason, modeGuess);
+      }, RECOVERY_CONFIRM_DELAY_MS);
+    },
+    [clearPendingRecovery, recoverToNativeLogin],
   );
 
   useEffect(() => {
@@ -220,8 +290,9 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
       if (toastTimerRef.current) {
         clearTimeout(toastTimerRef.current);
       }
+      clearPendingRecovery();
     };
-  }, []);
+  }, [clearPendingRecovery]);
 
   return (
     <SafeAreaView
@@ -261,7 +332,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
               );
             }
 
-            recoverToNativeLogin(reason, modeGuess);
+            requestRecoverToNativeLogin(reason, modeGuess);
           }
         }}
         onLoadStart={() => {
@@ -286,7 +357,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
           showStatusToast("连接失败");
           const statusCode = event.nativeEvent.statusCode;
           if (statusCode === 401 || statusCode === 403) {
-            recoverToNativeLogin(
+            requestRecoverToNativeLogin(
               "unauthorized",
               route.params.mode === "direct" ? "direct" : "relay",
             );
@@ -306,6 +377,15 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
             if (payload?.type) {
               console.log("[SessionPlaceholder] Bridge message", payload);
             }
+            if (payload?.type === "agentline-native-shell-connected") {
+              webSessionConnectedRef.current = true;
+              transientLoginBlockRetryRef.current = 0;
+              clearPendingRecovery();
+              showStatusToast(
+                route.params.mode === "relay" ? "中继已连接" : "已连接",
+              );
+              return;
+            }
             if (payload?.type === "agentline-native-shell-recovery") {
               const reason =
                 typeof payload.reason === "string"
@@ -313,7 +393,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
                   : "web_login_blocked";
               const reportedPathname =
                 typeof payload.pathname === "string" ? payload.pathname : "";
-              recoverToNativeLogin(
+              requestRecoverToNativeLogin(
                 reason,
                 inferModeFromLoginPath(reportedPathname, fallbackMode),
               );
@@ -353,7 +433,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
                   return;
                 }
               }
-              recoverToNativeLogin(
+              requestRecoverToNativeLogin(
                 reason,
                 inferModeFromLoginPath(effectivePathname, fallbackMode),
               );

@@ -154,6 +154,19 @@ function emitNativeShellRecovery(reason: string): void {
   }
 }
 
+function emitNativeShellConnected(): void {
+  try {
+    window.ReactNativeWebView?.postMessage(
+      JSON.stringify({
+        type: "agentline-native-shell-connected",
+        pathname: window.location.pathname,
+      }),
+    );
+  } catch {
+    // ignore native bridge errors
+  }
+}
+
 function mapDirectErrorToNativeReason(message: string): string {
   const normalized = message.toLowerCase();
 
@@ -216,6 +229,10 @@ export function ConnectedAppContent({ children }: { children: ReactNode }) {
   const { version: versionInfo } = useVersion();
   const [dismissedRelayResumeWarning, setDismissedRelayResumeWarning] =
     useState(false);
+
+  useEffect(() => {
+    emitNativeShellConnected();
+  }, []);
 
   const {
     isManualReloadMode,
