@@ -58,6 +58,7 @@ interface DirectHashCredentials {
 }
 
 const MOBILE_ENTRY_QUERY_KEY = "mobile_entry";
+const NATIVE_SHELL_RECOVERY_MESSAGE_DELAY_MS = 1200;
 
 function hasMobileEntry(search: string): boolean {
   try {
@@ -187,7 +188,13 @@ function NativeShellDirectRecovery({
   message: string;
 }) {
   useEffect(() => {
-    emitNativeShellRecovery(reason);
+    const timer = window.setTimeout(() => {
+      emitNativeShellRecovery(reason);
+    }, NATIVE_SHELL_RECOVERY_MESSAGE_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [reason]);
 
   return (

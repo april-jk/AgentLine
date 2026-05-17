@@ -48,6 +48,8 @@ type NativeRelayBootstrap = {
   };
 };
 
+const NATIVE_SHELL_RECOVERY_MESSAGE_DELAY_MS = 1200;
+
 function hasMobileEntry(search: string): boolean {
   try {
     return Boolean(new URLSearchParams(search).get("mobile_entry"));
@@ -208,7 +210,13 @@ function NativeShellRelayRecovery({
   message: string;
 }) {
   useEffect(() => {
-    emitNativeShellRecovery(reason);
+    const timer = window.setTimeout(() => {
+      emitNativeShellRecovery(reason);
+    }, NATIVE_SHELL_RECOVERY_MESSAGE_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [reason]);
 
   return (
