@@ -1,0 +1,100 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<BaseLayout
+  title="AgentLine Install | 安装与部署"
+  description="安装、源码运行、远程访问和排障入口。"
+>
+  <Header activePage="install" />
+  <main id="main-content" class="topic-main page-install">
+    <section class="topic-hero">
+      <div class="container">
+        <p class="eyebrow">Install</p>
+        <h1>从安装到远程登录，一次走通</h1>
+        <p class="lead">目标是降低启动门槛：读完就能装，装完就能连。</p>
+      </div>
+    </section>
+
+    <section class="anchor-wrap">
+      <div class="container">
+        <nav class="anchor-strip" aria-label="Install anchors">
+          <a href="#quickstart">最快启动</a>
+          <a href="#source">从源码运行</a>
+          <a href="#remote">远程访问</a>
+          <a href="#troubleshooting">常见问题</a>
+        </nav>
+      </div>
+    </section>
+
+    <div class="container snap-deck">
+      <section id="quickstart" class="story-panel">
+        <figure class="story-media">
+          <img src="/screenshots/overview-projects-real.png" alt="Project overview after launching AgentLine locally" width="1440" height="1000" fetchpriority="high" />
+        </figure>
+        <div class="story-copy">
+          <p class="kicker">01 / Quickstart</p>
+          <h2>最快启动</h2>
+          <pre class="code"><code>npm i -g agentline
+agentline</code></pre>
+          <p>启动后打开本地地址，进入会话监督面板。</p>
+        </div>
+      </section>
+
+      <section id="source" class="story-panel is-reverse">
+        <figure class="story-media">
+          <img src="/screenshots/sessions-list-real.png" alt="Run from source and manage sessions in one view" width="1440" height="1000" loading="lazy" />
+        </figure>
+        <div class="story-copy">
+          <p class="kicker">02 / Source</p>
+          <h2>从源码运行</h2>
+          <pre class="code"><code>git clone https://github.com/kzahel/agentline.git
+cd agentline
+pnpm install
+pnpm start</code></pre>
+        </div>
+      </section>
+
+      <section id="remote" class="story-panel">
+        <figure class="story-media">
+          <img src="/screenshots/session-complete-real.png" alt="Configured desktop session after install" width="1440" height="1000" loading="lazy" />
+        </figure>
+        <div class="story-copy">
+          <p class="kicker">03 / Remote</p>
+          <h2>启用远程访问</h2>
+          <p>按设置向导选择连接模式（直连 / 中继 / 自托管），完成后可在移动端登录。</p>
+          <div class="cta-row">
+            <a href="/remote" class="btn btn-primary">启动后登录</a>
+            <a href="/security-relay" class="btn btn-secondary">查看安全说明</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="troubleshooting" class="story-panel is-reverse is-mobile-shot">
+        <figure class="story-media">
+          <img src="/screenshots/sessions-list-mobile-real.png" alt="Troubleshooting and response workflow on mobile" width="430" height="932" loading="lazy" />
+        </figure>
+        <div class="story-copy">
+          <p class="kicker">04 / Troubleshooting</p>
+          <h2>常见问题</h2>
+          <ul>
+            <li>端口被占用</li>
+            <li>本机会话未识别</li>
+            <li>远程连接失败</li>
+            <li>移动端通知未到达</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <section class="section final-cta">
+      <div class="container">
+        <h2>把等待代理，变成调度代理。</h2>
+        <a href="/remote" class="btn btn-primary">立即登录你的服务器</a>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</BaseLayout>

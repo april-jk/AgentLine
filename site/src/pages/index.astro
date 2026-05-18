@@ -5,610 +5,254 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout
-  title="AgentLine - Mobile supervision for Claude Code and Codex agents"
-  description="A polished web interface for managing Claude Code and Codex agents. Works great on mobile and desktop."
+  title="AgentLine | 离开工位，代理继续交付"
+  description="AgentLine 是 Claude Code / Codex 的移动监督中枢：会话本机运行，手机端完成审批、进度查看与阻塞处理。"
 >
   <Header activePage="home" />
 
-  <div class="announcement">
-    <div class="announcement-content">
-      <span class="announcement-badge">New</span>
-      <p>Stream and control Android devices from your phone. <a href="/remote-device-control">See how it works</a></p>
-    </div>
-  </div>
-
-  <main>
-    <section class="hero">
-      <div class="container">
-        <h1>Walk away. Your agents keep shipping.</h1>
-        <p>Claude Code and Codex run on your machine. Approve, supervise, and unblock them from your phone — sessions never stop, even if you close the browser.</p>
-        <div class="cta-buttons">
-          <a href="#install" class="btn btn-primary">Get Started</a>
-          <a href="/remote" class="btn btn-secondary">Log In to Your Server</a>
-          <a href="https://github.com/kzahel/agentline" class="btn btn-secondary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-            View on GitHub
-          </a>
-        </div>
-        <div class="hero-showcase">
-          <div class="hero-showcase-item">
-            <img src="/screenshots/mobile-approve-edit.png" alt="Approving a file edit from phone">
-            <p>Approve edits from your phone</p>
-          </div>
-          <div class="hero-showcase-item">
-            <img src="/screenshots/mobile-completed-session.png" alt="Completed coding session on phone">
-            <p>Fix issues from anywhere</p>
+  <main id="main-content" class="mkt-main page-home">
+    <section id="hero" class="hero">
+      <div class="container home-hero">
+        <div class="home-hero-copy">
+          <p class="eyebrow">Agent Supervision Layer</p>
+          <h1>
+            <span>离开工位，</span>
+            <span>代理继续交付。</span>
+          </h1>
+          <p class="lead">
+            AgentLine 是 Claude Code / Codex 的移动监督中枢。会话运行在你的机器上，
+            你在手机上审批、查看进度、处理阻塞。
+          </p>
+          <div class="cta-row">
+            <a href="/install" class="btn btn-primary">立即开始</a>
+            <a href="#themes" class="btn btn-secondary">查看专题</a>
+            <a href="https://github.com/kzahel/agentline" class="btn btn-secondary">GitHub</a>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="value-props">
-      <div class="container">
-        <div class="value-prop-grid">
-          <div class="value-prop">
-            <h3>Seamless handoff</h3>
-            <p>Use Claude Code or Codex however you prefer on desktop. AgentLine sees all your existing sessions — pick up from your phone with full context.</p>
-          </div>
-          <div class="value-prop">
-            <h3>Sessions survive disconnects</h3>
-            <p>Agents run on your computer. Leave it on, walk away, and access everything from your phone or another machine. Works on a dev server too.</p>
-          </div>
-          <div class="value-prop">
-            <h3>Approve from your lock screen</h3>
-            <p>Push notifications when agents need you. Tap to approve, type a response — unblock in seconds instead of waiting hours until you're back at your desk.</p>
-          </div>
-          <div class="value-prop">
-            <h3>All sessions, one dashboard</h3>
-            <p>See every project at a glance. Star the important ones, archive the finished ones. Context-switch without losing context.</p>
-          </div>
-          <div class="value-prop">
-            <h3>Access from anywhere, no VPN needed</h3>
-            <p>Connect through our free relay — no Tailscale, no port forwarding, nothing technical. Just log in from the web. End-to-end encrypted so everything stays private.</p>
+        <div class="home-hero-media">
+          <figure class="hero-desktop-shot">
+            <img src="/screenshots/session-running-real.png" alt="AgentLine desktop session showing active task flow and tool steps" width="1440" height="1000" fetchpriority="high" />
+          </figure>
+          <figure class="hero-mobile-shot">
+            <img src="/screenshots/session-mobile-real.png" alt="Active AgentLine session on phone" width="430" height="932" />
+          </figure>
+          <div class="hero-note">
+            <h2>15 秒理解 AgentLine</h2>
+            <ol>
+              <li>不是远程终端镜像，而是会话级监督层。</li>
+              <li>代理执行不断线，审批动作可移动。</li>
+              <li>把等待代理变成调度代理。</li>
+            </ol>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="beyond-rc">
-      <div class="container">
-        <h2>Beyond Claude Code's Remote Control</h2>
-        <p class="beyond-rc-subtitle">Claude Code's Remote Control lets you interact with a running CLI session. AgentLine is a full remote desktop into all your agent sessions &mdash; create, resume, and control everything.</p>
-        <div class="beyond-rc-list">
-          <ul>
-            <li>Create new sessions from your phone</li>
-            <li>Multi-session dashboard across all projects</li>
-            <li>Resume VS Code and Claude Desktop sessions</li>
-            <li>Bypass mode &mdash; no manual approvals needed</li>
-            <li>Works with Claude, Codex, Gemini, and API keys</li>
-          </ul>
+    <section id="value" class="section">
+      <div class="container home-value">
+        <div class="home-intro-block">
+          <p class="eyebrow">Core Value</p>
+          <h2>不是堆更多入口，而是把执行权和监督权拆开。</h2>
+          <p>
+            首页不需要一次解释所有功能。它只需要让人看明白三件事：
+            为什么任务不会中断，为什么手机端是可操作终端，为什么多会话管理会让吞吐提升。
+          </p>
         </div>
-        <p class="beyond-rc-cta">
-          <a href="/claude-code-remote-control">Full comparison with feature table &rarr;</a>
-        </p>
-      </div>
-    </section>
-
-    <section id="screenshots" class="screenshots">
-      <div class="container">
-        <h2>Screenshots</h2>
-        <div class="screenshot-grid">
-          <div class="screenshot-item">
-            <img src="/screenshots/new-session.png" alt="New session screen with provider selection">
-            <p>Start a new session</p>
-          </div>
-          <div class="screenshot-item">
-            <img src="/screenshots/conversation.png" alt="Conversation view with file attachments">
-            <p>Chat with file uploads</p>
-          </div>
-          <div class="screenshot-item">
-            <img src="/screenshots/session-view.png" alt="Session view showing agent response">
-            <p>Watch agents work</p>
-          </div>
-          <div class="screenshot-item">
-            <img src="/screenshots/approval.png" alt="Tool approval request">
-            <p>Approve tool requests</p>
-          </div>
-          <div class="screenshot-item">
-            <img src="/screenshots/navigation.png" alt="Navigation drawer with sessions">
-            <p>Multi-session dashboard</p>
-          </div>
-          <div class="screenshot-item">
-            <img src="/screenshots/mobile-diff.png" alt="Mobile diff view with todo list">
-            <p>Diffs and todo tracking</p>
-          </div>
-          <div class="screenshot-item">
-            <img src="/screenshots/device-stream.png" alt="Live Android device stream with touch controls">
-            <p>Remote device control</p>
-          </div>
-        </div>
-        <h3 class="desktop-heading">Works great on desktop too!</h3>
-        <div class="desktop-screenshots">
-          <img src="/screenshots/desktop.png" alt="Desktop view">
-          <img src="/screenshots/desktop-diff.png" alt="Desktop diff view">
-          <img src="/screenshots/desktop-remote-access.png" alt="Remote access settings with relay configuration">
+        <div class="value-stack">
+          <article class="card value-card value-card-a">
+            <h3>会话不掉线</h3>
+            <p>执行进程归服务器管理，不被浏览器生命周期绑架。</p>
+          </article>
+          <article class="card value-card value-card-b">
+            <h3>多会话总览</h3>
+            <p>多个项目并行可视化，不再在终端标签之间来回切。</p>
+          </article>
+          <article class="card value-card value-card-c">
+            <h3>手机端快速审批</h3>
+            <p>代理被阻塞时，几秒钟给出决策，减少空转时间。</p>
+          </article>
         </div>
       </div>
     </section>
 
-    <section id="features" class="features">
-      <div class="container">
-        <h2>Features</h2>
-        <div class="feature-grid">
-          <div class="feature-card">
-            <h3>Mobile-first with file uploads</h3>
-            <p>Approve tool requests, upload files, and share screenshots directly from your phone's camera roll. Works great on desktop too.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Multi-session dashboard</h3>
-            <p>See all your agents at a glance. Star important sessions, archive old ones, easily multitask.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Server-owned processes</h3>
-            <p>Agents run on your dev machine. Client disconnects don't interrupt work. Pick up where you left off.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Push notifications</h3>
-            <p>Get notified when approval is needed. Uses VAPID with no third-party server required.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Claude Code + Codex</h3>
-            <p>Full support for both Claude Code and Codex CLI. Start sessions, approve tools, and view diffs — same workflow for both providers.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Remote device control</h3>
-            <p>Stream Android emulators and devices to your phone over WebRTC. Touch input, nav buttons, adaptive quality. Spot-check builds without walking to your desk. <a href="/remote-device-control">Learn more</a>.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Voice input</h3>
-            <p>Talk to your agents via browser speech API. Great for Linux where SuperWhisper isn't available.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Free remote relay</h3>
-            <p>Access your server from any browser — no Tailscale, no VPN, no port forwarding. Just set a password and log in. End-to-end encrypted with NaCl so not even the relay can see your data.</p>
-          </div>
-          <div class="feature-card">
-            <h3>Session interop</h3>
-            <p>View sessions started in the CLI or VS Code in real time, or resume them from your phone. Works for both Claude Code and Codex.</p>
-          </div>
-          <div class="feature-card">
-            <h3>TOS compliant</h3>
-            <p>Uses the official <a href="https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk">Agent SDK</a> — no header spoofing, no OAuth interception, no pricing circumvention. You authenticate via your own CLI. <a href="/tos-compliance">Learn more</a>.</p>
+    <section id="proof" class="section section-soft home-proof">
+      <div class="container proof-grid">
+        <figure class="proof-shot">
+          <img src="/screenshots/session-complete-real.png" alt="Completed AgentLine session with tool output and final answer" width="1440" height="1000" loading="lazy" />
+        </figure>
+        <div class="proof-copy">
+          <p class="eyebrow">Proof</p>
+          <h2>不是演示，是可落地监督链路</h2>
+          <p>
+            真正重要的不是“可以远程看”，而是代理被卡住时，你能不能在几秒内完成放行、回消息、看 Diff、继续推进。
+          </p>
+          <div class="pill-list">
+            <span>实时会话流</span>
+            <span>Diff 审阅</span>
+            <span>文件上传</span>
+            <span>推送提醒</span>
+            <span>远程接入</span>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="install" class="install">
+    <section id="themes" class="section">
       <div class="container">
-        <h2>Installation</h2>
-        <div class="install-option">
-          <h3>Install from npm</h3>
-          <div class="code-block">
-            <code>npm i -g agentline</code><br>
-            <code>agentline</code>
-          </div>
+        <div class="section-heading section-heading-wide">
+          <p class="eyebrow">Themes</p>
+          <h2>按主题深入了解 AgentLine</h2>
         </div>
-        <div class="install-option">
-          <h3>Or run from source</h3>
-          <div class="code-block">
-            <code>git clone https://github.com/kzahel/agentline.git</code><br>
-            <code>cd agentline</code><br>
-            <code>pnpm install</code><br>
-            <code>pnpm start</code>
-          </div>
+        <div class="theme-rail">
+          <article class="theme-feature">
+            <div class="theme-feature-visual" aria-hidden="true">
+              <div class="theme-stage theme-stage-runtime">
+                <span class="theme-stage-pill">Server-owned runtime</span>
+                <div class="theme-stage-window">
+                  <span class="theme-stage-sidebar"></span>
+                  <span class="theme-stage-line theme-stage-line-a"></span>
+                  <span class="theme-stage-line theme-stage-line-b"></span>
+                  <span class="theme-stage-line theme-stage-line-c"></span>
+                </div>
+                <div class="theme-stage-float">
+                  <strong>3 sessions</strong>
+                  <span>Stable</span>
+                </div>
+              </div>
+            </div>
+            <div class="theme-feature-copy">
+              <p class="theme-feature-index">01</p>
+              <h3>平台机制</h3>
+              <p>为什么执行稳定性更强，如何管理多会话。</p>
+              <p class="theme-feature-note">进程托管、多会话编排、跨入口互通。</p>
+              <a href="/platform">打开平台页</a>
+            </div>
+          </article>
+          <article class="theme-feature is-reverse">
+            <div class="theme-feature-visual" aria-hidden="true">
+              <div class="theme-stage theme-stage-mobile">
+                <div class="theme-stage-phone">
+                  <span class="theme-stage-phone-top"></span>
+                  <span class="theme-stage-phone-line theme-stage-line-a"></span>
+                  <span class="theme-stage-phone-line theme-stage-line-b"></span>
+                  <span class="theme-stage-phone-line theme-stage-line-c"></span>
+                </div>
+                <div class="theme-stage-approval">
+                  <strong>Approve</strong>
+                  <span>Review diff on phone</span>
+                </div>
+              </div>
+            </div>
+            <div class="theme-feature-copy">
+              <p class="theme-feature-index">02</p>
+              <h3>移动监督</h3>
+              <p>审批、Diff、反馈如何形成移动端闭环。</p>
+              <p class="theme-feature-note">几秒决策、窄屏可读、通知即入口。</p>
+              <a href="/mobile-supervision">打开移动页</a>
+            </div>
+          </article>
+          <article class="theme-feature">
+            <div class="theme-feature-visual" aria-hidden="true">
+              <div class="theme-stage theme-stage-security">
+                <div class="theme-stage-node theme-stage-node-a">
+                  <span>Phone</span>
+                </div>
+                <div class="theme-stage-node theme-stage-node-b">
+                  <span>Relay</span>
+                </div>
+                <div class="theme-stage-node theme-stage-node-c">
+                  <span>Host</span>
+                </div>
+                <div class="theme-stage-link theme-stage-link-a"></div>
+                <div class="theme-stage-link theme-stage-link-b"></div>
+              </div>
+            </div>
+            <div class="theme-feature-copy">
+              <p class="theme-feature-index">03</p>
+              <h3>安全与远程</h3>
+              <p>远程可达与安全边界如何同时成立。</p>
+              <p class="theme-feature-note">直连与中继、认证与加密、网络切换不失联。</p>
+              <a href="/security-relay">打开安全页</a>
+            </div>
+          </article>
+          <article class="theme-feature is-reverse">
+            <div class="theme-feature-visual" aria-hidden="true">
+              <div class="theme-stage theme-stage-compare">
+                <div class="theme-stage-split">
+                  <div>
+                    <small>远程终端</small>
+                    <strong>看见窗口</strong>
+                  </div>
+                  <div>
+                    <small>AgentLine</small>
+                    <strong>调度会话</strong>
+                  </div>
+                </div>
+                <div class="theme-stage-compare-bar">
+                  <span>queue</span>
+                  <span>approve</span>
+                  <span>resume</span>
+                </div>
+              </div>
+            </div>
+            <div class="theme-feature-copy">
+              <p class="theme-feature-index">04</p>
+              <h3>能力对比</h3>
+              <p>和“单会话远程控制”方案的边界与差异。</p>
+              <p class="theme-feature-note">不是多开标签页，而是建立统一监督模型。</p>
+              <a href="/compare">打开对比页</a>
+            </div>
+          </article>
         </div>
-        <p class="install-note">
-          Then open <strong>http://localhost:3400</strong> in your browser. AgentLine auto-detects Claude Code and Codex.
-        </p>
       </div>
     </section>
 
-    <section id="faq" class="faq">
+    <section id="install" class="section section-soft">
+      <div class="container home-install">
+        <div class="install-callout">
+          <p class="eyebrow">Install</p>
+          <h2>30 秒启动</h2>
+          <p>安装后打开本地地址，即可进入监督界面。</p>
+          <a href="/install" class="btn btn-primary">查看完整安装与部署</a>
+        </div>
+        <pre class="code"><code>npm i -g agentline
+agentline</code></pre>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <div class="container home-faq-layout">
+        <div class="home-intro-block home-faq-intro">
+          <p class="eyebrow">FAQ</p>
+          <h2>先把常见疑问讲透</h2>
+          <p>
+            首页不需要把所有细节讲完，但需要先把“是不是托管”“适合什么工作流”“手机能做什么”这三件事说清。
+          </p>
+        </div>
+        <div class="faq-grid home-faq">
+          <article class="card faq-card faq-card-a">
+            <h3>是托管服务吗？</h3>
+            <p>不是，默认运行在你自己的机器。</p>
+          </article>
+          <article class="card faq-card faq-card-b">
+            <h3>支持什么工作流？</h3>
+            <p>面向 Claude Code、Codex 等会话监督场景。</p>
+          </article>
+          <article class="card faq-card faq-card-c">
+            <h3>手机能做什么？</h3>
+            <p>查看、审批、回消息、看变更。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section final-cta">
       <div class="container">
-        <h2>FAQ</h2>
-
-        <div class="faq-item">
-          <h3>What is this?</h3>
-          <p>A web interface for Claude Code and Codex. Like the VS Code extension, but accessible from any device and designed for multi-session workflows.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Which agents do I need?</h3>
-          <p>Install Claude Code, Codex CLI, or both. AgentLine auto-detects installed agents and provides a unified interface for managing them.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>How do I access it from my phone?</h3>
-          <p>Use our free public relay at <strong>relay.agentline.com</strong> — just enable it in Settings. All traffic is end-to-end encrypted (SRP-6a + TweetNaCl) and we can't see your data. No accounts required. You can also <a href="https://github.com/kzahel/agentline/blob/main/docs/project/remote-access.md">run your own relay</a> if you prefer.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Is there a hosted version?</h3>
-          <p>No. This runs entirely on your own machine. No accounts, no cloud, no database. Your sessions stay local.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Can I see sessions started in the terminal?</h3>
-          <p>Yes! AgentLine shows all Claude Code and Codex sessions on your machine, including those started from the CLI or VS Code. You can view them in real-time or resume them.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Can I manage agents on multiple machines?</h3>
-          <p>Yes! Add SSH host aliases in Settings to run agents on VMs, containers, or remote servers. Sessions sync back via rsync so you get unified history across all your dev environments — filter by machine, see everything in one dashboard. This feature is experimental.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>What providers are supported?</h3>
-          <p>Claude Code (full support), Codex CLI (full support), and OpenCode (experimental). See the <a href="https://github.com/kzahel/agentline#supported-providers">README</a> for details.</p>
-        </div>
-
-        <div class="faq-item">
-          <h3>Is it open source?</h3>
-          <p>Yes, 100% open source under the MIT license. <a href="https://github.com/kzahel/agentline">View on GitHub</a>.</p>
-        </div>
+        <h2>把等待代理，变成调度代理。</h2>
+        <a href="/install" class="btn btn-primary">立即安装 AgentLine</a>
       </div>
     </section>
   </main>
 
   <Footer />
 </BaseLayout>
-
-<style>
-  /* Hero */
-  .hero {
-    padding: 80px 0 60px;
-    text-align: center;
-  }
-
-  .hero h1 {
-    font-size: clamp(32px, 5vw, 48px);
-    font-weight: 700;
-    margin-bottom: 20px;
-    line-height: 1.2;
-  }
-
-  .hero p {
-    font-size: 18px;
-    color: var(--text-secondary);
-    max-width: 600px;
-    margin: 0 auto 32px;
-  }
-
-  .cta-buttons {
-    display: flex;
-    gap: 16px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .hero-showcase {
-    padding: 48px 0 0;
-    display: flex;
-    gap: 24px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .hero-showcase-item {
-    text-align: center;
-  }
-
-  .hero-showcase-item img {
-    width: 220px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  }
-
-  .hero-showcase-item p {
-    margin-top: 12px;
-    font-size: 14px;
-    color: var(--text-secondary);
-  }
-
-  /* Value Props */
-  .value-props {
-    padding: 60px 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .value-prop-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 32px;
-  }
-
-  .value-prop {
-    text-align: center;
-  }
-
-  .value-prop h3 {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    color: var(--text-primary);
-  }
-
-  .value-prop p {
-    color: var(--text-secondary);
-    font-size: 15px;
-    line-height: 1.7;
-  }
-
-  /* Beyond Remote Control */
-  .beyond-rc {
-    padding: 60px 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .beyond-rc h2 {
-    font-size: 28px;
-    margin-bottom: 16px;
-    text-align: center;
-  }
-
-  .beyond-rc-subtitle {
-    color: var(--text-secondary);
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto 32px;
-    font-size: 15px;
-  }
-
-  .beyond-rc-list {
-    max-width: 480px;
-    margin: 0 auto;
-  }
-
-  .beyond-rc-list ul {
-    color: var(--text-secondary);
-    font-size: 15px;
-    line-height: 2;
-  }
-
-  .beyond-rc-cta {
-    text-align: center;
-    margin-top: 24px;
-  }
-
-  .beyond-rc-cta a {
-    color: var(--accent);
-    font-weight: 600;
-    font-size: 16px;
-    text-decoration: none;
-  }
-
-  /* Screenshots */
-  .screenshots {
-    padding: 60px 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .screenshots h2 {
-    font-size: 28px;
-    margin-bottom: 40px;
-    text-align: center;
-  }
-
-  .screenshot-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 24px;
-    justify-items: center;
-  }
-
-  .screenshot-item {
-    text-align: center;
-  }
-
-  .screenshot-item img {
-    width: 100%;
-    max-width: 280px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-
-  .screenshot-item img:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
-  }
-
-  .screenshot-item p {
-    margin-top: 12px;
-    color: var(--text-secondary);
-    font-size: 14px;
-  }
-
-  .desktop-heading {
-    text-align: center;
-    margin-top: 48px;
-    margin-bottom: 24px;
-    color: var(--text-primary);
-  }
-
-  .desktop-screenshots {
-    display: flex;
-    gap: 24px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .desktop-screenshots img {
-    max-width: 100%;
-    width: 400px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  }
-
-  /* Features */
-  .features {
-    padding: 60px 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .features h2 {
-    font-size: 28px;
-    margin-bottom: 40px;
-    text-align: center;
-  }
-
-  .feature-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 24px;
-  }
-
-  .feature-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-  }
-
-  .feature-card h3 {
-    font-size: 16px;
-    margin-bottom: 8px;
-    color: var(--accent);
-  }
-
-  .feature-card p {
-    color: var(--text-secondary);
-    font-size: 14px;
-  }
-
-  .feature-card a {
-    color: var(--accent-hover);
-    text-decoration: underline;
-  }
-
-  /* Install */
-  .install {
-    padding: 60px 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .install h2 {
-    font-size: 28px;
-    margin-bottom: 24px;
-    text-align: center;
-  }
-
-  .install-option {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 16px;
-  }
-
-  .install-option h3 {
-    font-size: 16px;
-    margin-bottom: 12px;
-  }
-
-  .install-note {
-    color: var(--text-secondary);
-    margin-top: 16px;
-    text-align: center;
-  }
-
-  /* FAQ */
-  .faq {
-    padding: 60px 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .faq h2 {
-    font-size: 28px;
-    margin-bottom: 32px;
-    text-align: center;
-  }
-
-  .faq-item {
-    border-bottom: 1px solid var(--border);
-    padding: 20px 0;
-  }
-
-  .faq-item:first-of-type {
-    border-top: 1px solid var(--border);
-  }
-
-  .faq-item h3 {
-    font-size: 16px;
-    margin-bottom: 8px;
-    font-weight: 600;
-  }
-
-  .faq-item p {
-    color: var(--text-secondary);
-    font-size: 14px;
-  }
-
-  .faq-item a {
-    color: var(--accent);
-  }
-
-  /* Announcement Banner */
-  .announcement {
-    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-hover) 100%);
-    padding: 12px 24px;
-    text-align: center;
-  }
-
-  .announcement-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .announcement-badge {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .announcement p {
-    color: white;
-    font-size: 15px;
-    font-weight: 500;
-  }
-
-  .announcement a {
-    color: white;
-    text-decoration: underline;
-    font-weight: 600;
-  }
-
-  .announcement a:hover {
-    text-decoration: none;
-  }
-
-  /* Mobile */
-  @media (max-width: 600px) {
-    .hero {
-      padding: 48px 0 40px;
-    }
-
-    .cta-buttons {
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .cta-buttons .btn {
-      width: 100%;
-      max-width: 280px;
-      justify-content: center;
-    }
-  }
-</style>

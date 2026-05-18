@@ -33,7 +33,9 @@ const ogImageURL = ogImage
       var t = localStorage.getItem('theme');
       if (t === 'light' || t === 'dark') {
         document.documentElement.setAttribute('data-theme', t);
-      } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
         document.documentElement.setAttribute('data-theme', 'light');
       }
     })();
@@ -42,13 +44,15 @@ const ogImageURL = ogImage
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5f7fb" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#08111b" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=agentline-image2" />
     <link rel="icon" type="image/png" href="/icon-192.png?v=agentline-image2" />
     <link rel="apple-touch-icon" href="/icon-192.png?v=agentline-image2" />
     <link rel="canonical" href={canonicalURL} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <!-- Open Graph -->
     <meta property="og:type" content={ogType} />
     <meta property="og:title" content={title} />
@@ -64,6 +68,7 @@ const ogImageURL = ogImage
     <meta name="twitter:image" content={ogImageURL} />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to Main Content</a>
     <slot />
     <script is:inline>
     document.querySelectorAll('.article-content h2, .article-content h3, .article-body h2').forEach(function(h) {
@@ -76,6 +81,51 @@ const ogImageURL = ogImage
       a.setAttribute('aria-hidden', 'true');
       a.textContent = '#';
       h.prepend(a);
+    });
+
+    document.querySelectorAll('.anchor-strip').forEach(function(strip) {
+      var links = Array.from(strip.querySelectorAll('a[href^="#"]'));
+      if (!links.length) return;
+
+      var sections = links
+        .map(function(link) {
+          var target = link.getAttribute('href');
+          if (!target) return null;
+          return document.getElementById(target.slice(1));
+        })
+        .filter(Boolean);
+
+      if (!sections.length) return;
+
+      function setActive(id) {
+        links.forEach(function(link) {
+          var active = link.getAttribute('href') === '#' + id;
+          if (active) {
+            link.setAttribute('aria-current', 'true');
+          } else {
+            link.removeAttribute('aria-current');
+          }
+        });
+      }
+
+      var observer = new IntersectionObserver(
+        function(entries) {
+          var visible = entries
+            .filter(function(entry) { return entry.isIntersecting; })
+            .sort(function(a, b) { return b.intersectionRatio - a.intersectionRatio; })[0];
+          if (visible) setActive(visible.target.id);
+        },
+        {
+          rootMargin: '-30% 0px -45% 0px',
+          threshold: [0.2, 0.35, 0.6],
+        }
+      );
+
+      sections.forEach(function(section) {
+        observer.observe(section);
+      });
+
+      setActive(sections[0].id);
     });
     </script>
   </body>

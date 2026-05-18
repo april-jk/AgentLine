@@ -1,0 +1,91 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<BaseLayout
+  title="AgentLine Mobile | 移动监督闭环"
+  description="证明手机端不只是通知入口，而是可执行审批与反馈的监督终端。"
+>
+  <Header activePage="mobile" />
+  <main id="main-content" class="topic-main page-mobile">
+    <section class="topic-hero">
+      <div class="container">
+        <p class="eyebrow">Mobile Supervision</p>
+        <h1>在手机上做决策，而不是只收通知</h1>
+        <p class="lead">AgentLine 把审批、Diff、反馈做成移动优先流程，让代理等待时间最小化。</p>
+      </div>
+    </section>
+
+    <section class="anchor-wrap">
+      <div class="container">
+        <nav class="anchor-strip" aria-label="Mobile anchors">
+          <a href="#approvals">Fast Approvals</a>
+          <a href="#diffs">Readable Mobile Diffs</a>
+          <a href="#alerts">Push Only When Needed</a>
+          <a href="#loop">阻塞处理闭环</a>
+        </nav>
+      </div>
+    </section>
+
+    <div class="container snap-deck">
+      <section id="approvals" class="story-panel is-mobile-shot">
+        <figure class="story-media">
+          <img src="/screenshots/session-mobile-real.png" alt="Review an active coding session from phone" width="430" height="932" fetchpriority="high" />
+        </figure>
+        <div class="story-copy">
+          <p class="kicker">01 / Approvals</p>
+          <h2>Fast Approvals</h2>
+          <p>工具调用请求带上下文展示，快速判断“放行 / 调整 / 拒绝”。</p>
+        </div>
+      </section>
+
+      <section id="diffs" class="story-panel is-reverse is-mobile-shot">
+        <figure class="story-media">
+          <img src="/screenshots/sessions-list-mobile-real.png" alt="Mobile session list for fast switching and triage" width="430" height="932" loading="lazy" />
+        </figure>
+        <div class="story-copy">
+          <p class="kicker">02 / Diffs</p>
+          <h2>Readable Mobile Diffs</h2>
+          <p>针对窄屏优化的变更阅读，关键修改先看、风险位置可快速定位。</p>
+        </div>
+      </section>
+
+      <section id="alerts" class="story-panel is-mobile-shot">
+        <figure class="story-media">
+          <img src="/screenshots/session-mobile-complete-real.png" alt="Completed mobile session with readable result state" width="430" height="932" loading="lazy" />
+        </figure>
+        <div class="story-copy">
+          <p class="kicker">03 / Alerts</p>
+          <h2>Push Only When Needed</h2>
+          <p>只在代理被阻塞时打断你，把通知负担变成决策价值。</p>
+        </div>
+      </section>
+
+      <section id="loop" class="story-panel is-reverse is-mobile-shot">
+        <figure class="story-media">
+          <img src="/screenshots/session-mobile-real.png" alt="Reply to an agent session directly from phone" width="430" height="932" loading="lazy" />
+        </figure>
+        <div class="story-copy">
+          <p class="kicker">04 / Loop</p>
+          <h2>阻塞处理闭环</h2>
+          <ol>
+            <li>收到提醒</li>
+            <li>打开会话上下文</li>
+            <li>给出审批或反馈</li>
+            <li>任务继续执行</li>
+          </ol>
+        </div>
+      </section>
+    </div>
+
+    <section class="section final-cta">
+      <div class="container cta-row">
+        <a href="/security-relay" class="btn btn-secondary">查看安全与远程机制</a>
+        <a href="/install" class="btn btn-primary">立即安装 AgentLine</a>
+      </div>
+    </section>
+  </main>
+  <Footer />
+</BaseLayout>
