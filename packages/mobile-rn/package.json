@@ -11,7 +11,9 @@
     "prebuild": "expo prebuild",
     "build:android:debug-apk": "expo prebuild --platform android --clean && cd android && ./gradlew assembleDebug",
     "build:android:release-apk": "expo prebuild --platform android --clean && cd android && ./gradlew assembleRelease",
-    "build:ios:simulator": "expo prebuild --platform ios --clean && expo run:ios --configuration Release"
+    "build:android:release-aab": "expo prebuild --platform android --clean && cd android && ./gradlew bundleRelease",
+    "build:ios:simulator": "expo prebuild --platform ios --clean && expo run:ios --configuration Release",
+    "build:ios:archive": "node scripts/build-ios-archive.mjs"
   },
   "dependencies": {
     "@agentline/shared": "workspace:*",
@@ -29,7 +31,7 @@
   },
   "devDependencies": {
     "@react-native-community/cli": "^20.1.3",
-    "@types/react": "~19.0.10",
+    "@types/react": "~19.2.14",
     "typescript": "^5.7.2"
   }
 }

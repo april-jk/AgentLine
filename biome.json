@@ -16,7 +16,11 @@
       "docs/tasks",
       "branding",
       "packages/desktop",
+      "packages/desktop-electron/release",
+      "packages/desktop-electron/runtime",
       "packages/mobile",
+      "packages/mobile-rn/android",
+      "packages/mobile-rn/ios",
       "packages/server/generated/codex-app-server",
       "packages/server/src/sdk/providers/codex-protocol/generated"
     ]
