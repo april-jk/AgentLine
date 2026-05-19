@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { DirectServerClient } from "../lib/api/client";
+import { DirectServerClient, isDirectServerInfo } from "../lib/api/client";
 import type { RootStackParamList } from "../navigation/types";
 import { useThemePreference } from "../styles/ThemePreferenceContext";
 import type { AppTheme } from "../styles/theme";
@@ -18,6 +18,11 @@ import { useAppTheme } from "../styles/theme";
 type Props = NativeStackScreenProps<RootStackParamList, "RecentHosts">;
 
 type ProbeStatus = "idle" | "checking" | "online" | "offline";
+type ProbeInfo = {
+  status: ProbeStatus;
+  installId?: string;
+  hostAccessUsername?: string;
+};
 
 function normalizeLabelFromUrl(url: string): string {
   try {
@@ -58,13 +63,20 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   });
 }
 
-async function checkHostOnline(url: string): Promise<boolean> {
+async function probeHost(url: string): Promise<ProbeInfo> {
   try {
     const client = new DirectServerClient(url);
     const health = await withTimeout(client.getHealth(), 1400);
-    return health.status === "ok";
+    if (health.status !== "ok") return { status: "offline" };
+    const info = await withTimeout(client.getServerInfo(), 1600);
+    if (!isDirectServerInfo(info)) return { status: "offline" };
+    return {
+      status: "online",
+      installId: info.installId,
+      hostAccessUsername: info.hostAccess?.username,
+    };
   } catch {
-    return false;
+    return { status: "offline" };
   }
 }
 
@@ -80,9 +92,9 @@ export function RecentHostsScreen({ navigation, route }: Props) {
   );
   const [selectedHostUrl, setSelectedHostUrl] = useState(currentServerUrl);
   const [isChecking, setIsChecking] = useState(false);
-  const [probeStatusMap, setProbeStatusMap] = useState<
-    Record<string, ProbeStatus>
-  >({});
+  const [probeInfoMap, setProbeInfoMap] = useState<Record<string, ProbeInfo>>(
+    {},
+  );
 
   useEffect(() => {
     if (!selectedHostUrl && hosts[0]) {
@@ -94,23 +106,23 @@ export function RecentHostsScreen({ navigation, route }: Props) {
     if (hosts.length <= 0) return;
 
     setIsChecking(true);
-    setProbeStatusMap((prev) => {
+    setProbeInfoMap((prev) => {
       const next = { ...prev };
-      for (const host of hosts) next[host] = "checking";
+      for (const host of hosts) next[host] = { status: "checking" };
       return next;
     });
 
     const updates = await Promise.all(
       hosts.map(async (host) => ({
         host,
-        online: await checkHostOnline(host),
+        info: await probeHost(host),
       })),
     );
 
-    setProbeStatusMap((prev) => {
+    setProbeInfoMap((prev) => {
       const next = { ...prev };
       for (const item of updates) {
-        next[item.host] = item.online ? "online" : "offline";
+        next[item.host] = item.info;
       }
       return next;
     });
@@ -123,9 +135,12 @@ export function RecentHostsScreen({ navigation, route }: Props) {
 
   const applySelection = (connectOnSelect: boolean) => {
     if (!selectedHostUrl.trim()) return;
+    const selectedProbe = probeInfoMap[selectedHostUrl];
     navigation.popTo("Login", {
       mode: "direct",
       selectedHostUrl,
+      selectedHostInstallId: selectedProbe?.installId,
+      selectedHostAccessUsername: selectedProbe?.hostAccessUsername,
       connectOnSelect,
     });
   };
@@ -157,7 +172,7 @@ export function RecentHostsScreen({ navigation, route }: Props) {
             <View style={styles.hostList}>
               {hosts.map((host) => {
                 const selected = host === selectedHostUrl;
-                const status = probeStatusMap[host] ?? "idle";
+                const status = probeInfoMap[host]?.status ?? "idle";
                 return (
                   <Pressable
                     key={host}

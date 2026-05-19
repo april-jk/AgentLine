@@ -23,6 +23,7 @@ export const secureStorageKeys = {
   relayWsUrl: "agentline.relay_ws_url",
   relayUsername: "agentline.relay_username",
   relayPassword: "agentline.relay_password",
+  hostAccessPasswords: "agentline.host_access_passwords",
   directServerUrl: "agentline.direct_server_url",
   directUsername: "agentline.direct_username",
   directPassword: "agentline.direct_password",

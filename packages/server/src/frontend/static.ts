@@ -60,8 +60,14 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
       const stat = await fs.promises.stat(filePath);
 
       if (stat.isFile()) {
-        const content = await fs.promises.readFile(filePath);
         const ext = path.extname(filePath).toLowerCase();
+        const content =
+          ext === ".html"
+            ? rewriteHtmlAssetPathsForBasePath(
+                await fs.promises.readFile(filePath, "utf-8"),
+                basePath,
+              )
+            : await fs.promises.readFile(filePath);
         const contentType = getContentType(ext);
 
         // Cache static assets (they have hashed filenames)
@@ -97,7 +103,10 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
     // SPA fallback: serve index.html for all other routes
     // Read fresh each time to pick up rebuilds without server restart
     try {
-      const indexHtml = await fs.promises.readFile(indexPath, "utf-8");
+      const indexHtml = rewriteHtmlAssetPathsForBasePath(
+        await fs.promises.readFile(indexPath, "utf-8"),
+        basePath,
+      );
       return c.html(indexHtml, 200, {
         // frame-ancestors must be set via HTTP header (not meta tag)
         "Content-Security-Policy":
@@ -114,6 +123,20 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
   });
 
   return app;
+}
+
+function rewriteHtmlAssetPathsForBasePath(
+  html: string,
+  basePath?: string,
+): string {
+  const normalizedBasePath = basePath?.replace(/\/+$/, "");
+  if (!normalizedBasePath || normalizedBasePath === "/") return html;
+
+  return html.replace(
+    /\b(src|href)=("|')\/(assets\/|favicon\.ico|icon-192\.png|icon-512\.png|icon\.svg|badge\.svg|badge-96\.png|manifest\.json)/g,
+    (_match, attribute: string, quote: string, assetPath: string) =>
+      `${attribute}=${quote}${normalizedBasePath}/${assetPath}`,
+  );
 }
 
 /**

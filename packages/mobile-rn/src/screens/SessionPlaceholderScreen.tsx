@@ -157,7 +157,8 @@ function resolveLoginRecoveryCopy(
   if (reason === "direct_auth_required") {
     return {
       title: "直连认证失败",
-      message: "直连会话已失效，请返回应用重新输入直连账号信息。",
+      message:
+        "直连用户名或访问密码不正确。请返回应用，确认用户名来自电脑端，并输入电脑端设置里的访问密码。",
     };
   }
 
@@ -343,7 +344,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
         onLoadEnd={() => {
           transientLoginBlockRetryRef.current = 0;
           showStatusToast(
-            route.params.mode === "relay" ? "中继已连接" : "已连接",
+            route.params.mode === "relay" ? "中继页面已加载" : "页面已加载",
           );
         }}
         onError={(event) => {

@@ -17,6 +17,7 @@ import {
   ApiRequestError,
   DirectServerClient,
   type HostItem,
+  isDirectServerInfo,
   normalizeHttpBaseUrl,
 } from "../lib/api/client";
 import {
@@ -35,11 +36,66 @@ import { useAppTheme } from "../styles/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 type AccountMode = "login" | "register";
+type HostAccessPasswordMap = Record<string, string>;
 const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
+const LEGACY_DIRECT_USERNAME_PLACEHOLDER = "mobiletest";
+
+function normalizeAccessPassword(value: string | null | undefined): string {
+  return value?.trim() ?? "";
+}
+
+function parseHostAccessPasswords(raw: string | null): HostAccessPasswordMap {
+  if (!raw?.trim()) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    const passwords: HostAccessPasswordMap = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string" && key.trim() && value.trim()) {
+        passwords[key] = value;
+      }
+    }
+    return passwords;
+  } catch {
+    return {};
+  }
+}
+
+function resolveHostAccessPasswordKey(options: {
+  installId?: string | null;
+  relayHostId?: string | null;
+  serverUrl?: string | null;
+}): string {
+  const installId = options.installId?.trim();
+  if (installId) return `install:${installId}`;
+
+  const relayHostId = options.relayHostId?.trim();
+  if (relayHostId) return `relay:${relayHostId}`;
+
+  const serverUrl = options.serverUrl?.trim();
+  if (serverUrl) return `direct:${normalizeHttpBaseUrl(serverUrl)}`;
+
+  return "";
+}
+
+function getSavedHostAccessPassword(
+  passwords: HostAccessPasswordMap,
+  hostKey: string,
+): string {
+  return hostKey ? normalizeAccessPassword(passwords[hostKey]) : "";
+}
 
 function getPortFromUrl(url: string): string {
   const match = url.match(/:(\d+)(?:\/|$)/);
   return match?.[1] ?? String(DEFAULT_DESKTOP_DISCOVERY_PORT);
+}
+
+function isLoopbackServerUrl(url: string): boolean {
+  return /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|$)/i.test(
+    url.trim(),
+  );
 }
 
 function isRoutableLanPrefix(prefix: string): boolean {
@@ -63,6 +119,62 @@ function getSubnetPrefixFromUrl(url: string): string | null {
   const prefix = match?.[1] ?? null;
   if (!prefix || !isRoutableLanPrefix(prefix)) return null;
   return prefix;
+}
+
+function buildKnownServerUrls(
+  hosts: HostItem[],
+  preferredHostId: string | null,
+): string[] {
+  const sortedHosts = [...hosts].sort((a, b) => {
+    if (a.id === preferredHostId) return -1;
+    if (b.id === preferredHostId) return 1;
+    return 0;
+  });
+
+  const urls: string[] = [];
+  for (const host of sortedHosts) {
+    const address = host.lanEndpoint?.address?.trim();
+    const port = host.lanEndpoint?.port;
+    if (!address || typeof port !== "number") continue;
+    if (host.hostServiceListening === false) continue;
+    urls.push(normalizeHttpBaseUrl(`http://${address}:${String(port)}`));
+  }
+
+  return Array.from(new Set(urls));
+}
+
+function getHostLanUrl(host: HostItem | null): string {
+  const address = host?.lanEndpoint?.address?.trim();
+  const port = host?.lanEndpoint?.port;
+  if (!address || typeof port !== "number") return "";
+  return normalizeHttpBaseUrl(`http://${address}:${String(port)}`);
+}
+
+function isSameServerUrl(left: string, right: string): boolean {
+  if (!left.trim() || !right.trim()) return false;
+  return normalizeHttpBaseUrl(left) === normalizeHttpBaseUrl(right);
+}
+
+function buildExpectedInstallIds(
+  hosts: HostItem[],
+  preferredHostId: string | null,
+): string[] {
+  const sortedHosts = [...hosts].sort((a, b) => {
+    if (a.id === preferredHostId) return -1;
+    if (b.id === preferredHostId) return 1;
+    return 0;
+  });
+
+  const installIds: string[] = [];
+  for (const host of sortedHosts) {
+    const installId = host.installId?.trim();
+    if (!installId) continue;
+    if (!installIds.includes(installId)) {
+      installIds.push(installId);
+    }
+  }
+
+  return installIds;
 }
 
 function deriveRelayWsUrl(controlPlaneUrl: string): string {
@@ -196,8 +308,7 @@ export function LoginScreen({ navigation, route }: Props) {
   const [directServerUrl, setDirectServerUrl] = useState(
     `http://127.0.0.1:${String(DEFAULT_DESKTOP_DISCOVERY_PORT)}`,
   );
-  const [directUsername, setDirectUsername] = useState("mobiletest");
-  const [directPassword, setDirectPassword] = useState("mobiletest123");
+  const [directUsername, setDirectUsername] = useState("");
 
   const controlPlaneUrl = DEFAULT_CONTROL_PLANE_URL;
   const [accountEmail, setAccountEmail] = useState("");
@@ -207,17 +318,66 @@ export function LoginScreen({ navigation, route }: Props) {
   const [bootstrapDone, setBootstrapDone] = useState(false);
   const [hosts, setHosts] = useState<HostItem[]>([]);
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
-  const [savedAccessPassword, setSavedAccessPassword] = useState("");
+  const [hostAccessPasswords, setHostAccessPasswords] =
+    useState<HostAccessPasswordMap>({});
   const [accessPasswordDraft, setAccessPasswordDraft] = useState("");
   const [rememberAccessPassword, setRememberAccessPassword] = useState(true);
   const [showAccessPasswordModal, setShowAccessPasswordModal] = useState(false);
+  const [accessPasswordHostKey, setAccessPasswordHostKey] = useState("");
+  const [accessPasswordHostLabel, setAccessPasswordHostLabel] = useState("");
+  const [accessPasswordModalMode, setAccessPasswordModalMode] =
+    useState<ForwardMode>("relay");
+  const [pendingDirectConnect, setPendingDirectConnect] = useState<{
+    serverUrl: string;
+    expectedInstallIdOverride?: string;
+    usernameOverride?: string;
+  } | null>(null);
   const [relayBusy, setRelayBusy] = useState(false);
   const [showDirectAdvanced, setShowDirectAdvanced] = useState(false);
   const [recentServers, setRecentServers] = useState<string[]>([]);
+  const [directSelectedInstallId, setDirectSelectedInstallId] = useState("");
 
   const selectedHost = useMemo(
     () => hosts.find((item) => item.id === selectedHostId) ?? null,
     [hosts, selectedHostId],
+  );
+  const selectedHostAccessPasswordKey = useMemo(
+    () =>
+      resolveHostAccessPasswordKey({
+        installId: selectedHost?.installId,
+        relayHostId: selectedHost?.id,
+      }),
+    [selectedHost],
+  );
+  const knownServerUrls = useMemo(
+    () => buildKnownServerUrls(hosts, selectedHostId),
+    [hosts, selectedHostId],
+  );
+  const expectedInstallIds = useMemo(
+    () => buildExpectedInstallIds(hosts, selectedHostId),
+    [hosts, selectedHostId],
+  );
+  const resolveExpectedDirectInstallId = useCallback(
+    (serverUrl: string, installIdOverride?: string) => {
+      const override = installIdOverride?.trim();
+      if (override) return override;
+
+      const scannedInstallId = directSelectedInstallId.trim();
+      if (scannedInstallId) return scannedInstallId;
+
+      const relayLanUrl = getHostLanUrl(selectedHost);
+      const relayInstallId = selectedHost?.installId?.trim();
+      if (
+        relayInstallId &&
+        relayLanUrl &&
+        isSameServerUrl(serverUrl, relayLanUrl)
+      ) {
+        return relayInstallId;
+      }
+
+      return "";
+    },
+    [directSelectedInstallId, selectedHost],
   );
   const hasAccountToken = accountToken.trim().length > 0;
   const loginMode: ForwardMode =
@@ -281,32 +441,34 @@ export function LoginScreen({ navigation, route }: Props) {
       const [
         savedDirect,
         savedDirectUsername,
-        savedDirectPassword,
         savedAccountToken,
         savedAccountEmail,
         savedSelectedHostId,
-        savedRelayPassword,
+        savedHostAccessPasswords,
         savedRecent,
       ] = await Promise.all([
         getSecureItem(secureStorageKeys.directServerUrl),
         getSecureItem(secureStorageKeys.directUsername),
-        getSecureItem(secureStorageKeys.directPassword),
         getSecureItem(secureStorageKeys.controlPlaneAccessToken),
         getSecureItem(secureStorageKeys.controlPlaneAccountEmail),
         getSecureItem(secureStorageKeys.selectedRelayDeviceId),
-        getSecureItem(secureStorageKeys.relayPassword),
+        getSecureItem(secureStorageKeys.hostAccessPasswords),
         getSecureItem(secureStorageKeys.recentDirectServers),
       ]);
 
       if (savedDirect?.trim()) setDirectServerUrl(savedDirect);
-      if (savedDirectUsername?.trim()) setDirectUsername(savedDirectUsername);
-      if (savedDirectPassword?.trim()) setDirectPassword(savedDirectPassword);
+      if (
+        savedDirectUsername?.trim() &&
+        savedDirectUsername.trim() !== LEGACY_DIRECT_USERNAME_PLACEHOLDER
+      ) {
+        setDirectUsername(savedDirectUsername);
+      }
+      setHostAccessPasswords(
+        parseHostAccessPasswords(savedHostAccessPasswords),
+      );
       if (savedAccountToken?.trim()) setAccountToken(savedAccountToken);
       if (savedAccountEmail?.trim()) setAccountEmail(savedAccountEmail);
       if (savedSelectedHostId?.trim()) setSelectedHostId(savedSelectedHostId);
-      if (savedRelayPassword?.trim()) {
-        setSavedAccessPassword(savedRelayPassword);
-      }
       if (savedRecent) {
         try {
           const arr = JSON.parse(savedRecent) as unknown;
@@ -351,15 +513,34 @@ export function LoginScreen({ navigation, route }: Props) {
     [recentServers],
   );
 
+  const persistAccessPassword = useCallback(
+    async (hostKey: string, password: string, remember: boolean) => {
+      if (!hostKey) return;
+      const nextPasswords = { ...hostAccessPasswords };
+      if (remember) {
+        nextPasswords[hostKey] = password;
+      } else {
+        delete nextPasswords[hostKey];
+      }
+      setHostAccessPasswords(nextPasswords);
+      await setSecureItem(
+        secureStorageKeys.hostAccessPasswords,
+        JSON.stringify(nextPasswords),
+      );
+    },
+    [hostAccessPasswords],
+  );
+
   const openDirectConsole = useCallback(
-    async (serverUrl = directServerUrl) => {
+    async (
+      serverUrl = directServerUrl,
+      expectedInstallIdOverride?: string,
+      accessPasswordOverride?: string,
+      usernameOverride?: string,
+    ) => {
       try {
         if (!serverUrl.trim()) {
           Alert.alert("缺少地址", "请填写电脑端 AgentLine 地址");
-          return;
-        }
-        if (!directUsername.trim()) {
-          Alert.alert("缺少用户名", "请填写直连用户名");
           return;
         }
 
@@ -372,21 +553,96 @@ export function LoginScreen({ navigation, route }: Props) {
           );
           return;
         }
+        const serverInfo = await withTimeout(
+          preflightClient.getServerInfo(),
+          2500,
+        );
+        if (!isDirectServerInfo(serverInfo)) {
+          Alert.alert(
+            "连到了其他服务",
+            "这个地址上虽然有 HTTP 服务，但不是 AgentLine 主服务。请检查端口是否填成了维护/调试服务端口，或重新用自动搜索选择主机。",
+          );
+          return;
+        }
+        const expectedDirectInstallId = resolveExpectedDirectInstallId(
+          serverUrl,
+          expectedInstallIdOverride,
+        );
+        if (
+          expectedDirectInstallId &&
+          serverInfo.installId?.trim() &&
+          serverInfo.installId.trim() !== expectedDirectInstallId
+        ) {
+          Alert.alert(
+            "连到了其他 AgentLine 实例",
+            "这个地址上的 AgentLine 与当前选中的局域网主机信息不一致。请重新自动搜索并选择最新结果。",
+          );
+          return;
+        }
+        const selectedRelayUsername = selectedHost?.relayUsername?.trim();
+        const selectedHostMatchesServer =
+          Boolean(selectedRelayUsername) &&
+          ((Boolean(selectedHost?.installId?.trim()) &&
+            selectedHost?.installId?.trim() === serverInfo.installId?.trim()) ||
+            isSameServerUrl(serverUrl, getHostLanUrl(selectedHost)));
+        const serverAccessUsername =
+          serverInfo.hostAccess?.username?.trim() ||
+          (selectedHostMatchesServer ? selectedRelayUsername : undefined);
+        const usernameFromSelection = usernameOverride?.trim();
+        const storedDirectUsername = directUsername.trim();
+        const currentUsername = usernameFromSelection || storedDirectUsername;
+        const resolvedDirectUsername =
+          !currentUsername ||
+          currentUsername === LEGACY_DIRECT_USERNAME_PLACEHOLDER
+            ? (serverAccessUsername ?? currentUsername)
+            : currentUsername;
+        if (!resolvedDirectUsername) {
+          Alert.alert(
+            "缺少用户名",
+            "没有从桌面端读取到直连用户名。请在电脑端设置远程访问/本机访问密码后重新搜索，或手动填写直连用户名。",
+          );
+          return;
+        }
+        const directHostAccessPasswordKey = resolveHostAccessPasswordKey({
+          installId: serverInfo.installId,
+          serverUrl,
+        });
+        const savedDirectAccessPassword = getSavedHostAccessPassword(
+          hostAccessPasswords,
+          directHostAccessPasswordKey,
+        );
+        const accessPassword = normalizeAccessPassword(accessPasswordOverride);
+        if (!accessPassword) {
+          setAccessPasswordModalMode("direct");
+          setAccessPasswordHostKey(directHostAccessPasswordKey);
+          setAccessPasswordHostLabel(serverInfo.host || serverUrl);
+          setPendingDirectConnect({
+            serverUrl,
+            expectedInstallIdOverride,
+            usernameOverride: resolvedDirectUsername,
+          });
+          setAccessPasswordDraft(savedDirectAccessPassword);
+          setRememberAccessPassword(true);
+          setShowAccessPasswordModal(true);
+          return;
+        }
+        if (resolvedDirectUsername !== storedDirectUsername) {
+          setDirectUsername(resolvedDirectUsername);
+        }
 
         const target = resolveForwardingTarget({
           mode: "direct",
           directServerUrl: serverUrl,
-          directUsername,
-          directPassword,
+          directUsername: resolvedDirectUsername,
+          directPassword: accessPassword,
           themeMode,
         });
         await setSecureItem(secureStorageKeys.connectionMode, "direct");
         await setSecureItem(secureStorageKeys.directServerUrl, target.url);
         await setSecureItem(
           secureStorageKeys.directUsername,
-          directUsername.trim(),
+          resolvedDirectUsername,
         );
-        await setSecureItem(secureStorageKeys.directPassword, directPassword);
         await saveRecent(target.url);
         navigation.navigate("Console", target);
       } catch (error) {
@@ -397,11 +653,13 @@ export function LoginScreen({ navigation, route }: Props) {
       }
     },
     [
-      directPassword,
       directServerUrl,
       directUsername,
       navigation,
+      resolveExpectedDirectInstallId,
       saveRecent,
+      selectedHost,
+      hostAccessPasswords,
       themeMode,
     ],
   );
@@ -541,7 +799,6 @@ export function LoginScreen({ navigation, route }: Props) {
         secureStorageKeys.relayUsername,
         resolvedRelayUsername,
       );
-      await setSecureItem(secureStorageKeys.relayPassword, accessPassword);
       await setSecureItem(
         secureStorageKeys.selectedRelayDeviceId,
         latestHost.id,
@@ -559,50 +816,88 @@ export function LoginScreen({ navigation, route }: Props) {
       return;
     }
 
-    setAccessPasswordDraft(savedAccessPassword);
-    setRememberAccessPassword(Boolean(savedAccessPassword));
+    const hostKey = selectedHostAccessPasswordKey;
+    setAccessPasswordDraft(
+      getSavedHostAccessPassword(hostAccessPasswords, hostKey),
+    );
+    setAccessPasswordHostKey(hostKey);
+    setAccessPasswordHostLabel(selectedHost.name);
+    setAccessPasswordModalMode("relay");
+    setPendingDirectConnect(null);
+    setRememberAccessPassword(true);
     setShowAccessPasswordModal(true);
   };
 
-  const handleConfirmRelayPassword = async () => {
+  const handleConfirmAccessPassword = async () => {
     const password = accessPasswordDraft.trim();
     if (!password) {
       Alert.alert("缺少访问密码", "请输入桌面端设置的访问密码");
       return;
     }
 
-    if (rememberAccessPassword) {
-      await setSecureItem(secureStorageKeys.relayPassword, password);
-      setSavedAccessPassword(password);
-    } else {
-      await setSecureItem(secureStorageKeys.relayPassword, "");
-      setSavedAccessPassword("");
-    }
+    await persistAccessPassword(
+      accessPasswordHostKey,
+      password,
+      rememberAccessPassword,
+    );
 
+    const modalMode = accessPasswordModalMode;
+    const pendingDirect = pendingDirectConnect;
     setShowAccessPasswordModal(false);
     setAccessPasswordDraft("");
+    setAccessPasswordHostKey("");
+    setAccessPasswordHostLabel("");
+    setPendingDirectConnect(null);
+
+    if (modalMode === "direct" && pendingDirect) {
+      void openDirectConsole(
+        pendingDirect.serverUrl,
+        pendingDirect.expectedInstallIdOverride,
+        password,
+        pendingDirect.usernameOverride,
+      );
+      return;
+    }
+
     void openRelayConsole(password);
   };
 
   useEffect(() => {
     const selectedHostUrl = route.params?.selectedHostUrl;
     if (!selectedHostUrl?.trim()) return;
+    const selectedHostInstallId =
+      route.params?.selectedHostInstallId?.trim() ?? "";
+    const selectedHostAccessUsername =
+      route.params?.selectedHostAccessUsername?.trim() ?? "";
 
     setDirectServerUrl(selectedHostUrl);
+    setDirectSelectedInstallId(selectedHostInstallId);
+    if (selectedHostAccessUsername) {
+      setDirectUsername(selectedHostAccessUsername);
+    }
     void saveRecent(selectedHostUrl);
 
     if (route.params?.connectOnSelect) {
-      void openDirectConsole(selectedHostUrl);
+      void openDirectConsole(
+        selectedHostUrl,
+        selectedHostInstallId,
+        undefined,
+        selectedHostAccessUsername,
+      );
     }
 
     navigation.setParams({
       selectedHostUrl: undefined,
+      selectedHostInstallId: undefined,
+      selectedHostAccessUsername: undefined,
       connectOnSelect: undefined,
     });
   }, [
     navigation,
     openDirectConsole,
     route.params?.connectOnSelect,
+    route.params?.selectedHostAccessUsername,
+    route.params?.selectedHostInstallId,
     route.params?.selectedHostUrl,
     saveRecent,
   ]);
@@ -803,15 +1098,24 @@ export function LoginScreen({ navigation, route }: Props) {
 
               <Pressable
                 style={styles.utilityButton}
-                onPress={() =>
+                onPress={() => {
+                  const seedServerUrl =
+                    knownServerUrls[0] &&
+                    (!directServerUrl.trim() ||
+                      isLoopbackServerUrl(directServerUrl))
+                      ? knownServerUrls[0]
+                      : directServerUrl;
+
                   navigation.push("SearchHosts", {
-                    currentServerUrl: directServerUrl,
+                    currentServerUrl: seedServerUrl || directServerUrl,
                     recentServers,
                     scanPrefix:
-                      getSubnetPrefixFromUrl(directServerUrl) ?? "192.168.1",
-                    scanPort: getPortFromUrl(directServerUrl),
-                  })
-                }
+                      getSubnetPrefixFromUrl(seedServerUrl) ?? "192.168.1",
+                    scanPort: getPortFromUrl(seedServerUrl),
+                    knownServerUrls,
+                    expectedInstallIds,
+                  });
+                }}
               >
                 <Text style={styles.utilityButtonText}>自动搜索局域网主机</Text>
               </Pressable>
@@ -844,7 +1148,10 @@ export function LoginScreen({ navigation, route }: Props) {
                     <TextInput
                       style={styles.input}
                       value={directServerUrl}
-                      onChangeText={setDirectServerUrl}
+                      onChangeText={(value) => {
+                        setDirectServerUrl(value);
+                        setDirectSelectedInstallId("");
+                      }}
                       autoCapitalize="none"
                       placeholder={`http://127.0.0.1:${String(
                         DEFAULT_DESKTOP_DISCOVERY_PORT,
@@ -862,17 +1169,6 @@ export function LoginScreen({ navigation, route }: Props) {
                       autoCorrect={false}
                       placeholder="直连用户名"
                       placeholderTextColor={theme.textMuted}
-                    />
-                  </View>
-                  <View style={styles.formGroup}>
-                    <Text style={styles.fieldLabel}>密码</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={directPassword}
-                      onChangeText={setDirectPassword}
-                      placeholder="直连密码"
-                      placeholderTextColor={theme.textMuted}
-                      secureTextEntry
                     />
                   </View>
                   <Pressable
@@ -903,13 +1199,24 @@ export function LoginScreen({ navigation, route }: Props) {
         transparent
         animationType="fade"
         visible={showAccessPasswordModal}
-        onRequestClose={() => setShowAccessPasswordModal(false)}
+        onRequestClose={() => {
+          setShowAccessPasswordModal(false);
+          setPendingDirectConnect(null);
+          setAccessPasswordHostKey("");
+          setAccessPasswordHostLabel("");
+        }}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>输入访问密码</Text>
             <Text style={styles.modalHint}>
-              连接 {selectedHost?.name ?? "选中设备"} 前请输入桌面端访问密码。
+              {accessPasswordModalMode === "direct"
+                ? `连接 ${
+                    accessPasswordHostLabel || "局域网主机"
+                  } 前请输入电脑端设备上的访问密码。中转和直连使用同一个访问密码。`
+                : `连接 ${
+                    accessPasswordHostLabel || selectedHost?.name || "选中设备"
+                  } 前请输入电脑端设备上的访问密码。中转和直连使用同一个访问密码。`}
             </Text>
             <TextInput
               style={styles.input}
@@ -938,13 +1245,18 @@ export function LoginScreen({ navigation, route }: Props) {
 
             <View style={styles.modalActions}>
               <Pressable
-                onPress={() => setShowAccessPasswordModal(false)}
+                onPress={() => {
+                  setShowAccessPasswordModal(false);
+                  setPendingDirectConnect(null);
+                  setAccessPasswordHostKey("");
+                  setAccessPasswordHostLabel("");
+                }}
                 style={styles.modalGhostButton}
               >
                 <Text style={styles.modalGhostButtonText}>取消</Text>
               </Pressable>
               <Pressable
-                onPress={() => void handleConfirmRelayPassword()}
+                onPress={() => void handleConfirmAccessPassword()}
                 style={[styles.primaryButton, styles.modalPrimaryButton]}
               >
                 <Text style={styles.primaryButtonText}>连接</Text>

@@ -154,6 +154,14 @@ cd site && npm run build   # Astro check + build (or: pnpm site:build from root)
 
 Fix any errors before considering the task complete.
 
+## App Release Builds
+
+For app release packaging, use the version-specific release guide before running build commands.
+
+- 0.1.0 Android/iOS RN builds and macOS/Windows/Linux Electron builds: `docs/releases/0.1.0.md`
+- The guide records the build commands, required local toolchains, and where to find generated artifacts after compilation.
+- Use this release guide when asked to compile, package, archive, or locate app binaries for mobile or desktop releases.
+
 ## Dependency Security Maintenance
 
 Periodically run `pnpm audit --prod` and pay special attention to the `web-push -> asn1.js -> bn.js` chain. Keep `bn.js` patched (currently via pnpm override) until `web-push` ships an upstream fix.

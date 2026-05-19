@@ -464,6 +464,9 @@ export function createApp(options: AppOptions): AppResult {
         host: options.serverHost,
         port: options.serverPort,
         installId: options.installId,
+        hostAccessConfigured:
+          options.remoteAccessService?.isConfigured() ?? false,
+        hostAccessUsername: options.remoteAccessService?.getUsername(),
         deviceBridgeAvailable: !!options.deviceBridgeService?.hasBinary(),
       }),
     );

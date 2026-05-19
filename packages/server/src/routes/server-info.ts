@@ -4,6 +4,10 @@ export interface ServerInfoOptions {
   host: string;
   port: number;
   installId?: string;
+  /** Whether host-access SRP credentials are configured for direct/relay auth */
+  hostAccessConfigured?: boolean;
+  /** SRP identity clients should use for host-access authentication */
+  hostAccessUsername?: string | null;
   /** Whether device bridge streaming is available (ADB detected + sidecar binary exists) */
   deviceBridgeAvailable?: boolean;
 }
@@ -24,6 +28,11 @@ export interface ServerInfo {
   localhostOnly: boolean;
   /** Unique installation identifier for this server instance */
   installId?: string;
+  /** Host-access authentication metadata for direct mobile connections */
+  hostAccess?: {
+    configured: boolean;
+    username?: string;
+  };
   /** Server capabilities (optional features) */
   capabilities?: ServerCapabilities;
 }
@@ -41,6 +50,10 @@ export function createServerInfoRoutes(options: ServerInfoOptions) {
         options.host === "localhost" ||
         options.host === "::1",
       installId: options.installId,
+      hostAccess: {
+        configured: options.hostAccessConfigured ?? false,
+        username: options.hostAccessUsername ?? undefined,
+      },
       capabilities: {
         deviceBridge: options.deviceBridgeAvailable ?? false,
       },

@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -16,6 +16,10 @@ import {
   scanLanServers,
   smartScanLanServers,
 } from "../lib/connection/lanScanner";
+import {
+  getLocalSubnetPrefix,
+  hasLocalNetworkInfoModule,
+} from "../lib/native/localNetworkInfo";
 import type { RootStackParamList } from "../navigation/types";
 import { useThemePreference } from "../styles/ThemePreferenceContext";
 import type { AppTheme } from "../styles/theme";
@@ -75,11 +79,27 @@ function dedupeKnownHosts(scanResults: LanScanResult[]): KnownHost[] {
     items.push({
       url: item.baseUrl,
       label: item.host,
-      detail: `${item.host}:${String(item.port)}`,
+      detail: item.hostAccessUsername
+        ? `用户名 ${item.hostAccessUsername} · ${item.host}:${String(item.port)}`
+        : `${item.host}:${String(item.port)}`,
     });
   }
 
   return items;
+}
+
+function mergeScanResult(
+  currentResults: LanScanResult[],
+  nextResult: LanScanResult,
+): LanScanResult[] {
+  const byUrl = new Map<string, LanScanResult>();
+  for (const result of currentResults) {
+    byUrl.set(result.baseUrl, result);
+  }
+  byUrl.set(nextResult.baseUrl, nextResult);
+  return Array.from(byUrl.values()).sort((a, b) =>
+    a.baseUrl.localeCompare(b.baseUrl),
+  );
 }
 
 function resolveSelectedHostUrl(
@@ -106,6 +126,8 @@ export function SearchHostsScreen({ navigation, route }: Props) {
     recentServers,
     scanPrefix: initialPrefix,
     scanPort: initialPort,
+    knownServerUrls = [],
+    expectedInstallIds = [],
   } = route.params;
 
   const [scanPrefix, setScanPrefix] = useState(initialPrefix);
@@ -113,8 +135,10 @@ export function SearchHostsScreen({ navigation, route }: Props) {
   const [scanAdvanced, setScanAdvanced] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanProgress, setScanProgress] = useState("");
+  const [networkHint, setNetworkHint] = useState("");
   const [scanResults, setScanResults] = useState<LanScanResult[]>([]);
   const [selectedHostUrl, setSelectedHostUrl] = useState(currentServerUrl);
+  const scanRequestIdRef = useRef(0);
   const effectiveScanPrefix = useMemo(
     () => normalizeSubnetPrefix(scanPrefix),
     [scanPrefix],
@@ -126,15 +150,49 @@ export function SearchHostsScreen({ navigation, route }: Props) {
   );
 
   useEffect(() => {
-    void runSmartScan();
+    let cancelled = false;
+
+    void (async () => {
+      const localSubnetPrefix = await getLocalSubnetPrefix();
+      if (cancelled) return;
+      if (localSubnetPrefix) {
+        setScanPrefix(localSubnetPrefix);
+        setNetworkHint(`已识别手机当前网段：${localSubnetPrefix}.0/24`);
+      } else if (!hasLocalNetworkInfoModule) {
+        setNetworkHint(
+          "当前安装包还没有带上本机网段识别模块，暂时只能使用兜底网段。重装 App 后会自动按手机当前 Wi‑Fi 网段扫描。",
+        );
+      } else {
+        setNetworkHint("暂时无法读取手机当前网段，已回退到可用兜底网段。");
+      }
+      await runSmartScan(localSubnetPrefix ?? undefined);
+    })();
+
+    return () => {
+      cancelled = true;
+      scanRequestIdRef.current += 1;
+    };
   }, []);
 
-  const runSmartScan = async () => {
+  const beginScanRequest = () => {
+    scanRequestIdRef.current += 1;
+    return scanRequestIdRef.current;
+  };
+
+  const isActiveScanRequest = (requestId: number) =>
+    scanRequestIdRef.current === requestId;
+
+  const runSmartScan = async (prefixOverride?: string) => {
+    const requestId = beginScanRequest();
+    const subnetPrefix = normalizeSubnetPrefix(prefixOverride ?? scanPrefix);
     const port = Number(
       scanPort.trim() || String(DEFAULT_DESKTOP_DISCOVERY_PORT),
     );
     if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-      setScanProgress("端口必须是 1-65535");
+      if (isActiveScanRequest(requestId)) {
+        setScanLoading(false);
+        setScanProgress("端口必须是 1-65535");
+      }
       return;
     }
 
@@ -145,13 +203,25 @@ export function SearchHostsScreen({ navigation, route }: Props) {
       const found = await smartScanLanServers({
         port,
         recentServers,
-        preferredSubnetPrefix: effectiveScanPrefix,
+        preferredSubnetPrefix: subnetPrefix,
+        currentServerUrl,
+        knownBaseUrls: knownServerUrls,
+        expectedInstallIds,
+        onResult: (result) => {
+          if (!isActiveScanRequest(requestId)) return;
+          setScanResults((current) => mergeScanResult(current, result));
+          setSelectedHostUrl((current) =>
+            !current || current === currentServerUrl ? result.baseUrl : current,
+          );
+        },
         onProgress: (progress) => {
+          if (!isActiveScanRequest(requestId)) return;
           setScanProgress(
             `扫描 ${progress.subnetPrefix}.0/24 (${progress.scanned}/${progress.total})`,
           );
         },
       });
+      if (!isActiveScanRequest(requestId)) return;
       setScanResults(found);
       setSelectedHostUrl((current) =>
         resolveSelectedHostUrl(current, currentServerUrl, found),
@@ -162,22 +232,33 @@ export function SearchHostsScreen({ navigation, route }: Props) {
           : "没有找到可连接的电脑",
       );
     } catch {
-      setScanProgress("搜索失败，请重试");
+      if (isActiveScanRequest(requestId)) {
+        setScanProgress("搜索失败，请重试");
+      }
     } finally {
-      setScanLoading(false);
+      if (isActiveScanRequest(requestId)) {
+        setScanLoading(false);
+      }
     }
   };
 
   const runManualScan = async () => {
+    const requestId = beginScanRequest();
     const prefix = scanPrefix.trim().replace(/\.$/, "");
     if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(prefix)) {
-      setScanProgress("网段格式应为 192.168.1");
+      if (isActiveScanRequest(requestId)) {
+        setScanLoading(false);
+        setScanProgress("网段格式应为 192.168.1");
+      }
       return;
     }
     if (!isRoutableLanPrefix(prefix)) {
-      setScanProgress(
-        "禁止扫描该网段，请输入可路由局域网网段（例如 192.168.1）",
-      );
+      if (isActiveScanRequest(requestId)) {
+        setScanLoading(false);
+        setScanProgress(
+          "禁止扫描该网段，请输入可路由局域网网段（例如 192.168.1）",
+        );
+      }
       return;
     }
 
@@ -185,7 +266,10 @@ export function SearchHostsScreen({ navigation, route }: Props) {
       scanPort.trim() || String(DEFAULT_DESKTOP_DISCOVERY_PORT),
     );
     if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-      setScanProgress("端口必须是 1-65535");
+      if (isActiveScanRequest(requestId)) {
+        setScanLoading(false);
+        setScanProgress("端口必须是 1-65535");
+      }
       return;
     }
 
@@ -193,7 +277,16 @@ export function SearchHostsScreen({ navigation, route }: Props) {
     setScanResults([]);
     setScanProgress("正在扫描指定网段...");
     try {
-      const found = await scanLanServers(prefix, port);
+      const found = await scanLanServers(prefix, port, {
+        onResult: (result) => {
+          if (!isActiveScanRequest(requestId)) return;
+          setScanResults((current) => mergeScanResult(current, result));
+          setSelectedHostUrl((current) =>
+            !current || current === currentServerUrl ? result.baseUrl : current,
+          );
+        },
+      });
+      if (!isActiveScanRequest(requestId)) return;
       setScanResults(found);
       setSelectedHostUrl((current) =>
         resolveSelectedHostUrl(current, currentServerUrl, found),
@@ -204,24 +297,36 @@ export function SearchHostsScreen({ navigation, route }: Props) {
           : "没有找到可连接的电脑",
       );
     } catch {
-      setScanProgress("扫描失败，请重试");
+      if (isActiveScanRequest(requestId)) {
+        setScanProgress("扫描失败，请重试");
+      }
     } finally {
-      setScanLoading(false);
+      if (isActiveScanRequest(requestId)) {
+        setScanLoading(false);
+      }
     }
   };
 
   const applySelection = (connectOnSelect = false) => {
     if (!selectedHostUrl.trim()) return;
+    const selectedResult = scanResults.find(
+      (result) => result.baseUrl === selectedHostUrl,
+    );
     navigation.popTo("Login", {
       mode: "direct",
       selectedHostUrl,
+      selectedHostInstallId: selectedResult?.installId,
+      selectedHostAccessUsername: selectedResult?.hostAccessUsername,
       connectOnSelect,
     });
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.surface}>
           <View style={styles.headerBlock}>
             <Text style={styles.title}>搜索局域网主机</Text>
@@ -229,6 +334,9 @@ export function SearchHostsScreen({ navigation, route }: Props) {
               默认只扫描当前网段 {effectiveScanPrefix}
               .0/24。跨网段或复杂网络请使用高级扫描。
             </Text>
+            {networkHint ? (
+              <Text style={styles.statusText}>{networkHint}</Text>
+            ) : null}
           </View>
 
           <View style={styles.selectedCard}>
@@ -242,7 +350,6 @@ export function SearchHostsScreen({ navigation, route }: Props) {
             <Pressable
               style={styles.primaryButton}
               onPress={() => void runSmartScan()}
-              disabled={scanLoading}
             >
               {scanLoading ? (
                 <ActivityIndicator color="#f3fbf8" />
@@ -291,7 +398,6 @@ export function SearchHostsScreen({ navigation, route }: Props) {
               <Pressable
                 style={styles.secondaryButton}
                 onPress={() => void runManualScan()}
-                disabled={scanLoading}
               >
                 <Text style={styles.secondaryButtonText}>
                   扫描 {effectiveScanPrefix}.0/24

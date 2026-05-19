@@ -7,6 +7,8 @@ export type RootStackParamList = {
     | {
         mode?: "relay" | "direct";
         selectedHostUrl?: string;
+        selectedHostInstallId?: string;
+        selectedHostAccessUsername?: string;
         connectOnSelect?: boolean;
       }
     | undefined;
@@ -15,6 +17,8 @@ export type RootStackParamList = {
     recentServers: string[];
     scanPrefix: string;
     scanPort: string;
+    knownServerUrls?: string[];
+    expectedInstallIds?: string[];
   };
   RecentHosts: {
     currentServerUrl: string;

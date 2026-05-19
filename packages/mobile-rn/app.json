@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "newArchEnabled": false,
     "scheme": "agentline-mobile",
+    "plugins": ["./plugins/with-local-network-info"],
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {

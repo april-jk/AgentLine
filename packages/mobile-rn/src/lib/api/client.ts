@@ -23,6 +23,7 @@ export type HostItem = {
   status: "online" | "offline";
   relayState: "offline" | "waiting" | "paired";
   relayUsername: string;
+  installId?: string;
   deviceType: string;
   heartbeatLastSeenAt?: string;
   heartbeatAgeMs?: number;
@@ -55,6 +56,7 @@ type ControlPlaneDevice = {
   id: string;
   deviceName: string;
   deviceType: string;
+  installId?: string;
   relayUsername: string;
   relayState: "offline" | "waiting" | "paired";
   lastSeenAt?: string;
@@ -250,6 +252,7 @@ export class ApiClient {
       heartbeatLastSeenAt:
         device.machine?.heartbeat?.lastSeenAt ?? device.lastSeenAt,
       id: device.id,
+      installId: device.installId,
       hostServiceListening: device.machine?.hostService?.listening,
       lanEndpoint:
         device.machine?.endpoints?.lan &&
@@ -347,10 +350,29 @@ export type DirectServerInfo = {
   boundToAllInterfaces: boolean;
   localhostOnly: boolean;
   installId?: string;
+  hostAccess?: {
+    configured: boolean;
+    username?: string;
+  };
   capabilities?: {
     deviceBridge: boolean;
   };
 };
+
+export function isDirectServerInfo(
+  value: DirectServerInfo | null | undefined,
+): value is DirectServerInfo {
+  return Boolean(
+    value &&
+      typeof value.host === "string" &&
+      value.host.trim().length > 0 &&
+      Number.isInteger(value.port) &&
+      value.port > 0 &&
+      value.port <= 65535 &&
+      typeof value.boundToAllInterfaces === "boolean" &&
+      typeof value.localhostOnly === "boolean",
+  );
+}
 
 export type DirectProject = {
   id: string;

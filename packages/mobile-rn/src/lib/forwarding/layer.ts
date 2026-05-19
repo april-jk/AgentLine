@@ -142,34 +142,8 @@ function normalizeDirectWebBaseUrl(directServerUrl: string): string {
   return base;
 }
 
-function parseBaseUrlParts(base: string): {
-  protocol: string;
-  host: string;
-  port: number;
-} | null {
-  const match = base.match(/^(https?:)\/\/([^/:]+)(?::(\d+))?$/);
-  if (!match?.[1] || !match[2]) return null;
-
-  return {
-    protocol: match[1],
-    host: match[2],
-    port: Number(match[3] || (match[1] === "https:" ? 443 : 80)),
-  };
-}
-
-function isLoopbackOrEmulatorHost(host: string): boolean {
-  return host === "127.0.0.1" || host === "localhost" || host === "10.0.2.2";
-}
-
 function normalizeDirectEntryUrl(directServerUrl: string): string {
   const base = normalizeDirectWebBaseUrl(directServerUrl);
-  const parsed = parseBaseUrlParts(base);
-  if (parsed && isLoopbackOrEmulatorHost(parsed.host)) {
-    return `${parsed.protocol}//${parsed.host}:${String(parsed.port + 2)}/projects`;
-  }
-  if (isLocalRemoteDevBase(base)) {
-    return `${base}/projects`;
-  }
   return `${base}/remote/projects`;
 }
 

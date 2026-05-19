@@ -31,12 +31,9 @@ const remoteDevPort = process.env.REMOTE_PORT
 const remoteHostEnv =
   process.env.REMOTE_HOST?.trim() || process.env.VITE_HOST?.trim();
 const remoteHost =
-  remoteHostEnv === "true"
-    ? true
-    : remoteHostEnv
-      ? remoteHostEnv
-      : true;
-const remoteBase = process.env.REMOTE_BASE?.trim() || "/";
+  remoteHostEnv === "true" ? true : remoteHostEnv ? remoteHostEnv : true;
+const remoteBase = process.env.REMOTE_BASE?.trim() || "/remote/";
+const remoteBasePrefix = remoteBase.replace(/\/+$/, "");
 
 // In watch mode (staging), don't empty the output dir to avoid race conditions
 const isWatchMode = process.argv.includes("--watch");
@@ -71,7 +68,10 @@ function serveRemoteHtml(): Plugin {
 
         // For SPA routes, serve remote.html
         // This handles /projects, /settings, etc.
-        req.url = hasRemotePrefix ? "/remote/remote.html" : "/remote.html";
+        req.url =
+          hasRemotePrefix && remoteBasePrefix === "/remote"
+            ? "/remote/remote.html"
+            : "/remote.html";
         next();
       });
     },
