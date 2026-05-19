@@ -73,6 +73,12 @@ export interface ControlPlaneBridgeState {
   consecutiveFailures: number;
 }
 
+export interface ControlPlaneBridgeAuthContext {
+  baseUrl: string;
+  accessToken: string;
+  relayUrl?: string;
+}
+
 export interface ControlPlaneBridgeServiceOptions {
   config: ControlPlaneBridgeConfig;
   remoteAccessService: RemoteAccessService;
@@ -109,6 +115,19 @@ export class ControlPlaneBridgeService {
 
   getState(): ControlPlaneBridgeState {
     return { ...this.state };
+  }
+
+  getAuthContext(): ControlPlaneBridgeAuthContext | null {
+    const baseUrl = this.config.baseUrl?.trim();
+    const accessToken = this.config.accessToken?.trim();
+    if (!baseUrl || !accessToken) {
+      return null;
+    }
+    return {
+      baseUrl,
+      accessToken,
+      relayUrl: this.config.relayUrl?.trim() || undefined,
+    };
   }
 
   private emitStateChanged(): void {

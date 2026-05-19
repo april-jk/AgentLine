@@ -46,6 +46,8 @@ interface ControlPlaneAccountSummary {
   hasAccessToken: boolean;
   authenticated: boolean;
   user?: AccountUser;
+  verificationError?: string;
+  desktopManaged?: boolean;
 }
 
 interface DesktopApiBridge {
@@ -157,9 +159,13 @@ function toAccountErrorMessage(error: unknown, fallback: string): string {
   }
   if (
     message.startsWith("control_plane_") ||
+    message === "desktop_managed_control_plane_requires_desktop_app" ||
     message.toLowerCase() === "failed to fetch" ||
     message.toLowerCase() === "fetch failed"
   ) {
+    if (message === "desktop_managed_control_plane_requires_desktop_app") {
+      return "此平台账号由桌面端托管，请在 AgentLine 桌面窗口中退出登录或编辑资料。";
+    }
     return toControlPlaneDisplayError(error);
   }
   return message;
@@ -255,6 +261,7 @@ export function Sidebar({
   const desktopApi = (window as Window & { desktopApi?: DesktopApiBridge })
     .desktopApi;
   const [accountPanelOpen, setAccountPanelOpen] = useState(false);
+  const accountPanelOpenRef = useRef(false);
   const [accountMode, setAccountMode] = useState<AccountMode>("login");
   const [accountBaseUrl, setAccountBaseUrl] = useState(
     DEFAULT_CONTROL_PLANE_URL,
@@ -283,6 +290,36 @@ export function Sidebar({
   const [requireAccessPasswordSetup, setRequireAccessPasswordSetup] =
     useState(false);
 
+  const applyAccountSummary = useCallback(
+    (account: ControlPlaneAccountSummary) => {
+      const email = account.user?.email ?? account.lastEmail ?? "";
+      setAccountInfo(account);
+      setAccountBaseUrl(account.baseUrl ?? DEFAULT_CONTROL_PLANE_URL);
+      setAccountEmail(email);
+      setAccountProfileEmail(email);
+    },
+    [],
+  );
+
+  const resetAccountSummary = useCallback(
+    (baseUrl = DEFAULT_CONTROL_PLANE_URL, lastEmail = "") => {
+      setAccountInfo({
+        baseUrl,
+        lastEmail: lastEmail || undefined,
+        hasAccessToken: false,
+        authenticated: false,
+      });
+      setHostAccessConfig(null);
+      setRequireAccessPasswordSetup(false);
+      setHostAccessPassword("");
+      setHostAccessPasswordConfirm("");
+      setAccountBaseUrl(baseUrl);
+      setAccountEmail(lastEmail);
+      setAccountProfileEmail(lastEmail);
+    },
+    [],
+  );
+
   const refreshHostAccessConfig =
     useCallback(async (): Promise<HostAccessConfig | null> => {
       try {
@@ -296,6 +333,26 @@ export function Sidebar({
         return null;
       }
     }, [desktopApi]);
+
+  const refreshHostManagedAccountState =
+    useCallback(async (): Promise<ControlPlaneAccountSummary | null> => {
+      try {
+        const account = await fetchJSON<ControlPlaneAccountSummary>(
+          "/remote-access/control-plane/account",
+        );
+        if (!account.hasAccessToken && !account.lastEmail) {
+          return null;
+        }
+        applyAccountSummary(account);
+        const currentHostAccess = await refreshHostAccessConfig();
+        setRequireAccessPasswordSetup(
+          account.authenticated && !currentHostAccess?.hostAccessConfigured,
+        );
+        return account;
+      } catch {
+        return null;
+      }
+    }, [applyAccountSummary, refreshHostAccessConfig]);
 
   const configureLocalControlPlaneBridge = useCallback(
     async (params: {
@@ -331,32 +388,26 @@ export function Sidebar({
 
   const refreshAccountState = useCallback(async () => {
     if (desktopApi) {
-      const account = await desktopApi.getControlPlaneAccount();
-      setAccountInfo(account);
-      setAccountBaseUrl(account.baseUrl ?? DEFAULT_CONTROL_PLANE_URL);
-      setAccountEmail(account.user?.email ?? account.lastEmail ?? "");
-      setAccountProfileEmail(account.user?.email ?? account.lastEmail ?? "");
-      const currentHostAccess = await refreshHostAccessConfig();
-      setRequireAccessPasswordSetup(
-        account.authenticated && !currentHostAccess?.hostAccessConfigured,
-      );
+      try {
+        const account = await desktopApi.getControlPlaneAccount();
+        applyAccountSummary(account);
+        const currentHostAccess = await refreshHostAccessConfig();
+        setRequireAccessPasswordSetup(
+          account.authenticated && !currentHostAccess?.hostAccessConfigured,
+        );
+      } catch {
+        resetAccountSummary();
+      }
       return;
     }
 
     const stored = loadStoredAccountState();
     if (!stored) {
-      setAccountInfo({
-        baseUrl: DEFAULT_CONTROL_PLANE_URL,
-        hasAccessToken: false,
-        authenticated: false,
-      });
-      setHostAccessConfig(null);
-      setRequireAccessPasswordSetup(false);
-      setHostAccessPassword("");
-      setHostAccessPasswordConfirm("");
-      setAccountBaseUrl(DEFAULT_CONTROL_PLANE_URL);
-      setAccountEmail("");
-      setAccountProfileEmail("");
+      const hostAccount = await refreshHostManagedAccountState();
+      if (hostAccount) {
+        return;
+      }
+      resetAccountSummary();
       return;
     }
     const baseUrl = normalizeControlPlaneBaseUrl(stored.controlPlaneUrl);
@@ -404,21 +455,48 @@ export function Sidebar({
       setRequireAccessPasswordSetup(!currentHostAccess?.hostAccessConfigured);
     } catch {
       clearStoredAccountState();
-      setAccountInfo({
-        baseUrl,
-        lastEmail: stored.email,
-        hasAccessToken: false,
-        authenticated: false,
-      });
-      setHostAccessConfig(null);
-      setRequireAccessPasswordSetup(false);
-      setHostAccessPassword("");
-      setHostAccessPasswordConfirm("");
+      const hostAccount = await refreshHostManagedAccountState();
+      if (!hostAccount) {
+        resetAccountSummary(baseUrl, stored.email);
+      }
     }
-  }, [configureLocalControlPlaneBridge, desktopApi, refreshHostAccessConfig]);
+  }, [
+    applyAccountSummary,
+    configureLocalControlPlaneBridge,
+    desktopApi,
+    refreshHostAccessConfig,
+    refreshHostManagedAccountState,
+    resetAccountSummary,
+  ]);
 
   useEffect(() => {
     void refreshAccountState();
+  }, [refreshAccountState]);
+
+  useEffect(() => {
+    accountPanelOpenRef.current = accountPanelOpen;
+  }, [accountPanelOpen]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (accountPanelOpenRef.current) {
+        return;
+      }
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
+      void refreshAccountState();
+    };
+
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
   }, [refreshAccountState]);
 
   useEffect(() => {
@@ -448,6 +526,15 @@ export function Sidebar({
 
   const isAccountLoggedIn =
     accountInfo.authenticated && Boolean(accountInfo.user);
+  const isDesktopManagedWithoutBridge =
+    Boolean(accountInfo.desktopManaged) && !desktopApi;
+  const accountStatusLabel = isAccountLoggedIn
+    ? "已登录"
+    : accountInfo.hasAccessToken
+      ? accountInfo.verificationError
+        ? "登录待验证"
+        : "已保存登录"
+      : "未登录";
 
   useEffect(() => {
     if (accountInfo.user?.email) {
@@ -464,6 +551,12 @@ export function Sidebar({
       setHostAccessPasswordConfirm("");
     }
   }, [isAccountLoggedIn]);
+
+  useEffect(() => {
+    if (isDesktopManagedWithoutBridge) {
+      setAccountProfileEditing(false);
+    }
+  }, [isDesktopManagedWithoutBridge]);
 
   const configureHostAccessPassword = async () => {
     if (!hostAccessPassword.trim()) {
@@ -642,17 +735,23 @@ export function Sidebar({
         setAccountInfo(summary);
       } else {
         const stored = loadStoredAccountState();
-        if (!stored) {
+        if (!stored && !accountInfo.hasAccessToken) {
           throw new Error("not_logged_in");
         }
-        const baseUrl = normalizeControlPlaneBaseUrl(stored.controlPlaneUrl);
+        if (!stored && accountInfo.desktopManaged) {
+          throw new Error("desktop_managed_control_plane_requires_desktop_app");
+        }
+        const baseUrl = stored
+          ? normalizeControlPlaneBaseUrl(stored.controlPlaneUrl)
+          : normalizeControlPlaneBaseUrl(
+              accountInfo.baseUrl ?? DEFAULT_CONTROL_PLANE_URL,
+            );
         const payload = await fetchJSON<{ user: AccountUser }>(
           "/remote-access/control-plane/me",
           {
             method: "PATCH",
             body: JSON.stringify({
-              baseUrl,
-              accessToken: stored.accessToken,
+              ...(stored ? { baseUrl, accessToken: stored.accessToken } : {}),
               currentPassword: accountCurrentPassword,
               email: emailChanged ? accountProfileEmail.trim() : undefined,
               newPassword: wantsPasswordChange ? accountNewPassword : undefined,
@@ -666,22 +765,24 @@ export function Sidebar({
           authenticated: true,
           user: payload.user,
         });
-        saveStoredAccountState({
-          controlPlaneUrl: baseUrl,
-          accessToken: stored.accessToken,
-          email: payload.user.email,
-        });
-        try {
-          await configureLocalControlPlaneBridge({
-            baseUrl,
+        if (stored) {
+          saveStoredAccountState({
+            controlPlaneUrl: baseUrl,
             accessToken: stored.accessToken,
             email: payload.user.email,
           });
-        } catch (error) {
-          console.warn(
-            "[Sidebar] Failed to refresh local bridge after profile update:",
-            error,
-          );
+          try {
+            await configureLocalControlPlaneBridge({
+              baseUrl,
+              accessToken: stored.accessToken,
+              email: payload.user.email,
+            });
+          } catch (error) {
+            console.warn(
+              "[Sidebar] Failed to refresh local bridge after profile update:",
+              error,
+            );
+          }
         }
       }
 
@@ -707,6 +808,9 @@ export function Sidebar({
         await desktopApi.logoutControlPlane();
       } else {
         const stored = loadStoredAccountState();
+        if (!stored && accountInfo.desktopManaged) {
+          throw new Error("desktop_managed_control_plane_requires_desktop_app");
+        }
         if (stored) {
           const baseUrl = normalizeControlPlaneBaseUrl(stored.controlPlaneUrl);
           await fetchJSON<{ success: boolean }>(
@@ -717,6 +821,14 @@ export function Sidebar({
                 baseUrl,
                 accessToken: stored.accessToken,
               }),
+            },
+          ).catch(() => undefined);
+        } else if (accountInfo.hasAccessToken) {
+          await fetchJSON<{ success: boolean }>(
+            "/remote-access/control-plane/auth/logout",
+            {
+              method: "POST",
+              body: JSON.stringify({}),
             },
           ).catch(() => undefined);
         }
@@ -1254,6 +1366,7 @@ export function Sidebar({
             className="sidebar-account-trigger"
             onClick={() => {
               setAccountError(null);
+              void refreshAccountState();
               setAccountPanelOpen((current) =>
                 requireAccessPasswordSetup ? true : !current,
               );
@@ -1270,7 +1383,7 @@ export function Sidebar({
                     "Platform Account"}
                 </span>
                 <span className="sidebar-account-status">
-                  {isAccountLoggedIn ? "Logged in" : "Not logged in"}
+                  {accountStatusLabel}
                 </span>
               </span>
             )}
@@ -1374,6 +1487,12 @@ export function Sidebar({
                   <span>邮箱</span>
                   <span>{accountInfo.user?.email ?? "-"}</span>
                 </div>
+                {isDesktopManagedWithoutBridge ? (
+                  <div className="sidebar-account-readonly">
+                    <span>账号管理</span>
+                    <span>请在 AgentLine 桌面窗口中退出登录或编辑资料。</span>
+                  </div>
+                ) : null}
                 {accountProfileEditing && (
                   <>
                     <label className="sidebar-account-field">
@@ -1482,12 +1601,20 @@ export function Sidebar({
                       <button
                         type="button"
                         className="sidebar-account-secondary"
-                        disabled={accountBusy}
+                        disabled={accountBusy || isDesktopManagedWithoutBridge}
                         onClick={handleAccountLogout}
                       >
                         退出登录
                       </button>
                     </>
+                  ) : isDesktopManagedWithoutBridge ? (
+                    <button
+                      type="button"
+                      className="sidebar-account-secondary"
+                      disabled
+                    >
+                      请在桌面窗口管理账号
+                    </button>
                   ) : accountProfileEditing ? (
                     <>
                       <button

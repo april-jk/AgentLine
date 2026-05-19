@@ -23,6 +23,31 @@ export interface RemoteAccessRoutesOptions {
   onRelayConfigChanged?: () => Promise<void>;
 }
 
+interface ControlPlaneAccountUser {
+  id: string;
+  email: string;
+  createdAt?: string;
+}
+
+interface ControlPlaneAccountSummary {
+  baseUrl?: string;
+  lastEmail?: string;
+  hasAccessToken: boolean;
+  authenticated: boolean;
+  user?: ControlPlaneAccountUser;
+  verificationError?: string;
+  desktopManaged?: boolean;
+}
+
+class ControlPlaneProfileError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export function createRemoteAccessRoutes(
   options: RemoteAccessRoutesOptions,
 ): Hono {
@@ -166,6 +191,124 @@ export function createRemoteAccessRoutes(
     return fallback;
   };
 
+  const getStoredControlPlaneLastEmail = (): string | undefined => {
+    return serverSettingsService?.getSetting("controlPlaneLastEmail")?.trim();
+  };
+
+  const getControlPlaneDesktopManagedFlag = (): { desktopManaged?: true } => {
+    return process.env.CONTROL_PLANE_DESKTOP_MANAGED === "true"
+      ? { desktopManaged: true }
+      : {};
+  };
+
+  const resolveStoredControlPlaneAuthContext = (): {
+    baseUrl: string;
+    accessToken: string;
+    lastEmail?: string;
+  } | null => {
+    const bridgeAuth = controlPlaneBridgeService?.getAuthContext();
+    if (bridgeAuth?.baseUrl.trim() && bridgeAuth.accessToken.trim()) {
+      try {
+        return {
+          baseUrl: normalizeControlPlaneBaseUrl(bridgeAuth.baseUrl),
+          accessToken: bridgeAuth.accessToken.trim(),
+          lastEmail: getStoredControlPlaneLastEmail(),
+        };
+      } catch {
+        return null;
+      }
+    }
+
+    const rawBaseUrl = serverSettingsService
+      ?.getSetting("controlPlaneBaseUrl")
+      ?.trim();
+    const rawAccessToken = serverSettingsService
+      ?.getSetting("controlPlaneAccessToken")
+      ?.trim();
+    if (!rawBaseUrl || !rawAccessToken) {
+      return null;
+    }
+
+    try {
+      return {
+        baseUrl: normalizeControlPlaneBaseUrl(rawBaseUrl),
+        accessToken: rawAccessToken,
+        lastEmail: getStoredControlPlaneLastEmail(),
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const fetchControlPlaneAccountUser = async (auth: {
+    baseUrl: string;
+    accessToken: string;
+  }): Promise<ControlPlaneAccountUser> => {
+    const response = await fetch(`${auth.baseUrl}/api/v1/me`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${auth.accessToken}`,
+      },
+      signal: AbortSignal.timeout(CONTROL_PLANE_FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      const message = await readControlPlaneError(
+        response,
+        `me_failed_${response.status}`,
+      );
+      throw new ControlPlaneProfileError(response.status, message);
+    }
+
+    const payload = (await response.json()) as {
+      user?: ControlPlaneAccountUser;
+    };
+    if (!payload.user) {
+      throw new ControlPlaneProfileError(502, "me_failed_invalid_payload");
+    }
+    return payload.user;
+  };
+
+  const getControlPlaneAccountSummary =
+    async (): Promise<ControlPlaneAccountSummary> => {
+      const auth = resolveStoredControlPlaneAuthContext();
+      if (!auth) {
+        return {
+          baseUrl: serverSettingsService?.getSetting("controlPlaneBaseUrl"),
+          lastEmail: getStoredControlPlaneLastEmail(),
+          hasAccessToken: false,
+          authenticated: false,
+          ...getControlPlaneDesktopManagedFlag(),
+        };
+      }
+
+      try {
+        const user = await fetchControlPlaneAccountUser(auth);
+        return {
+          baseUrl: auth.baseUrl,
+          lastEmail: user.email,
+          hasAccessToken: true,
+          authenticated: true,
+          user,
+          ...getControlPlaneDesktopManagedFlag(),
+        };
+      } catch (error) {
+        const mapped =
+          error instanceof ControlPlaneProfileError
+            ? error
+            : mapControlPlaneFetchError(error);
+        const tokenRejected =
+          error instanceof ControlPlaneProfileError && error.status === 401;
+        return {
+          baseUrl: auth.baseUrl,
+          lastEmail: auth.lastEmail,
+          hasAccessToken: !tokenRejected,
+          authenticated: false,
+          verificationError: mapped.message,
+          ...getControlPlaneDesktopManagedFlag(),
+        };
+      }
+    };
+
   const resolveControlPlaneAuthContext = (params: {
     baseUrl?: string;
     accessToken?: string;
@@ -174,6 +317,16 @@ export function createRemoteAccessRoutes(
     | { error: string; status: number } => {
     const rawBaseUrl = params.baseUrl ?? "";
     const rawAccessToken = params.accessToken ?? "";
+    if (!rawBaseUrl.trim() && !rawAccessToken.trim()) {
+      const storedAuth = resolveStoredControlPlaneAuthContext();
+      if (storedAuth) {
+        return {
+          baseUrl: storedAuth.baseUrl,
+          accessToken: storedAuth.accessToken,
+        };
+      }
+    }
+
     if (!rawBaseUrl.trim() || !rawAccessToken.trim()) {
       return {
         error: "control_plane_base_url_and_access_token_required",
@@ -421,6 +574,15 @@ export function createRemoteAccessRoutes(
   });
 
   /**
+   * GET /api/remote-access/control-plane/account
+   * Return the desktop host's control-plane account summary without exposing
+   * the saved access token.
+   */
+  app.get("/control-plane/account", async (c) => {
+    return c.json(await getControlPlaneAccountSummary());
+  });
+
+  /**
    * GET /api/remote-access/control-plane/status
    * Get control-plane bridge status (desktop auto register/heartbeat).
    */
@@ -586,6 +748,9 @@ export function createRemoteAccessRoutes(
       if (!payload.user) {
         return c.json({ error: "me_failed_invalid_payload" }, 502);
       }
+      await serverSettingsService?.updateSettings({
+        controlPlaneLastEmail: payload.user.email,
+      });
 
       return c.json({
         baseUrl: auth.baseUrl,
@@ -662,6 +827,9 @@ export function createRemoteAccessRoutes(
       if (!payload.user) {
         return c.json({ error: "update_failed_invalid_payload" }, 502);
       }
+      await serverSettingsService?.updateSettings({
+        controlPlaneLastEmail: payload.user.email,
+      });
       return c.json({
         baseUrl: auth.baseUrl,
         user: payload.user,
