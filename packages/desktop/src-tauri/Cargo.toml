@@ -1,6 +1,6 @@
 [package]
 name = "agentline-desktop"
-version = "0.1.0"
+version = "0.1.1"
 description = "AgentLine Desktop App"
 authors = ["AgentLine Contributors <maintainers@example.com>"]
 edition = "2021"
