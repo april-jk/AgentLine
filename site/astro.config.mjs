@@ -4,6 +4,9 @@ import { defineConfig } from "astro/config";
 export default defineConfig({
   site: "https://agentline.com",
   integrations: [sitemap()],
+  devToolbar: {
+    enabled: false,
+  },
   build: {
     format: "file",
   },

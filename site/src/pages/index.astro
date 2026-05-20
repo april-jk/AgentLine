@@ -2,6 +2,169 @@
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+
+const releaseVersion = "0.1.0";
+const releaseTag = `v${releaseVersion}`;
+const releaseAssetBase = `https://github.com/kzahel/agentline/releases/download/${releaseTag}`;
+const releasePage = "https://github.com/kzahel/agentline/releases/latest";
+const downloadPlatforms = [
+  {
+    key: "macos",
+    label: "macOS",
+    headline: "AgentLine for macOS",
+    description:
+      "把 AgentLine 固定在 Apple Silicon 开发机上，是桌面端里最顺手的一种开始方式。任务留在本机持续运行，手机只接手关键决策。",
+    note: "GitHub Release v0.1.0，可直接取 DMG 或 ZIP。",
+    visualTone: "desktop",
+    primaryImage: "/screenshots/session-complete-real.png",
+    secondaryImage: "/screenshots/overview-projects-real.png",
+    imageAlt: "AgentLine desktop install preview for macOS",
+    actions: [
+      {
+        label: "下载 DMG",
+        kind: "link",
+        href: `${releaseAssetBase}/AgentLine-Desktop-${releaseVersion}-macos-arm64.dmg`,
+        style: "primary",
+        detail: `${releaseTag} · Apple Silicon`,
+      },
+      {
+        label: "下载 ZIP",
+        kind: "link",
+        href: `${releaseAssetBase}/AgentLine-Desktop-${releaseVersion}-macos-arm64.zip`,
+        style: "secondary",
+        detail: `${releaseTag} · 免安装分发`,
+      },
+    ],
+    iconType: "svg",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 14.25Zm2.25-.75a.75.75 0 0 0-.75.75v7.5c0 .414.336.75.75.75h10.5a.75.75 0 0 0 .75-.75v-7.5a.75.75 0 0 0-.75-.75Zm2.5 13.5h5l.9 1.5h-6.8Z"/></svg>`,
+  },
+  {
+    key: "windows",
+    label: "Windows",
+    headline: "AgentLine for Windows",
+    description:
+      "把会话留在这台 Windows 主机上，让桌面执行和手机审批同时成立。适合办公机、家庭主机和常驻远程桌面环境。",
+    note: "GitHub Release v0.1.0，含 Portable 版本。",
+    visualTone: "desktop",
+    primaryImage: "/screenshots/session-running-real.png",
+    secondaryImage: "/screenshots/overview-projects-real.png",
+    imageAlt: "AgentLine desktop session on a Windows-style download panel",
+    actions: [
+      {
+        label: "下载 x64",
+        kind: "link",
+        href: `${releaseAssetBase}/AgentLine-Desktop-Setup-${releaseVersion}-win-x64.exe`,
+        style: "primary",
+        detail: `${releaseTag} · Windows 11 x64`,
+      },
+      {
+        label: "下载 Arm64",
+        kind: "link",
+        href: `${releaseAssetBase}/AgentLine-Desktop-Setup-${releaseVersion}-win-arm64.exe`,
+        style: "secondary",
+        detail: `${releaseTag} · Windows on ARM`,
+      },
+      {
+        label: "Release",
+        kind: "link",
+        href: releasePage,
+        style: "dark",
+        detail: "含 Portable 与历史版本",
+      },
+    ],
+    iconType: "svg",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5.5 10.5 4v7H3.5zm8 0L20.5 4v7h-9zm-8 8h7v7l-7-1.5zm8 0h9v7l-9-1.5z"/></svg>`,
+  },
+  {
+    key: "linux",
+    label: "Linux",
+    headline: "AgentLine for Linux",
+    description:
+      "给常驻 Linux 工作站和主机的轻量入口。适合把代理留在开发机、家用工作站或实验机上持续执行。",
+    note: "GitHub Release v0.1.0，当前以 AppImage 为主。",
+    visualTone: "desktop",
+    primaryImage: "/screenshots/sessions-list-real.png",
+    secondaryImage: "/screenshots/overview-projects-real.png",
+    imageAlt: "AgentLine Linux workstation overview",
+    actions: [
+      {
+        label: "下载 AppImage",
+        kind: "link",
+        href: `${releaseAssetBase}/AgentLine-Desktop-${releaseVersion}-linux-x64.AppImage`,
+        style: "primary",
+        detail: `${releaseTag} · Linux x64`,
+      },
+      {
+        label: "查看所有包",
+        kind: "link",
+        href: releasePage,
+        style: "dark",
+        detail: "历史版本与完整构建产物",
+      },
+    ],
+    iconType: "svg",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.75c1.5 0 2.625 1.29 2.625 2.94 0 .855-.315 1.65-.84 2.205.855.57 1.38 1.56 1.38 2.7v2.01c0 .585.21 1.155.6 1.59l1.575 1.77c.27.3.42.69.42 1.095 0 .915-.75 1.665-1.665 1.665h-2.16c-.27.93-1.125 1.605-2.1 1.605s-1.83-.675-2.1-1.605H7.575A1.666 1.666 0 0 1 5.91 18.06c0-.405.15-.795.42-1.095l1.575-1.77c.39-.435.6-1.005.6-1.59v-2.01c0-1.14.525-2.13 1.38-2.7a3.215 3.215 0 0 1-.84-2.205c0-1.65 1.125-2.94 2.625-2.94Zm0 1.5c-.57 0-1.125.57-1.125 1.44 0 .825.6 1.44 1.125 1.44s1.125-.615 1.125-1.44c0-.87-.555-1.44-1.125-1.44Zm-1.98 5.34c-.45 0-.915.45-.915 1.005v2.01a3.87 3.87 0 0 1-.99 2.595l-1.17 1.305h2.895v-.75c0-.54.435-.975.975-.975h.21c.54 0 .975.435.975.975v.75h2.895l-1.17-1.305a3.87 3.87 0 0 1-.99-2.595v-2.01c0-.555-.465-1.005-.915-1.005Z"/></svg>`,
+  },
+  {
+    key: "ios",
+    label: "iOS",
+    headline: "AgentLine for iPhone",
+    description:
+      "iOS 分发还在准备上架流程，所以这里先把状态讲清楚。移动监督体验已经就绪，但正式的 App Store 发布还没有开放。",
+    note: "移动监督体验已准备好，当前先从 Android 或桌面端开始。",
+    visualTone: "mobile",
+    primaryImage: "/screenshots/session-mobile-real.png",
+    secondaryImage: "/screenshots/session-mobile-complete-real.png",
+    imageAlt: "AgentLine mobile supervision preview for future App Store release",
+    actions: [
+      {
+        label: "App Store 即将推出",
+        kind: "disabled",
+        style: "primary",
+        detail: "上架流程进行中",
+      },
+      {
+        label: "查看最新 Release",
+        kind: "link",
+        href: releasePage,
+        style: "dark",
+        detail: "先从桌面端或 Android 开始",
+      },
+    ],
+    iconType: "svg",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.75h6A2.25 2.25 0 0 1 17.25 6v12A2.25 2.25 0 0 1 15 20.25H9A2.25 2.25 0 0 1 6.75 18V6A2.25 2.25 0 0 1 9 3.75Zm0 1.5A.75.75 0 0 0 8.25 6v12c0 .414.336.75.75.75h6a.75.75 0 0 0 .75-.75V6a.75.75 0 0 0-.75-.75Zm2.25 11.625h1.5a.75.75 0 0 1 0 1.5h-1.5a.75.75 0 0 1 0-1.5Zm-.375-10.125h2.25a.375.375 0 0 1 0 .75h-2.25a.375.375 0 0 1 0-.75Z"/></svg>`,
+  },
+  {
+    key: "android",
+    label: "Android",
+    headline: "AgentLine for Android",
+    description:
+      "离开工位以后，Android 往往是最先接手代理的一端。直接装 APK 就能开始看进度、做审批、接推送。",
+    note: "GitHub Release v0.1.0，同时提供 APK 与 AAB。",
+    visualTone: "mobile",
+    primaryImage: "/screenshots/session-mobile-real.png",
+    secondaryImage: "/screenshots/session-mobile-complete-real.png",
+    imageAlt: "AgentLine Android mobile supervision view",
+    actions: [
+      {
+        label: "下载 APK",
+        kind: "link",
+        href: `${releaseAssetBase}/AgentLine-${releaseVersion}-android-release.apk`,
+        style: "primary",
+        detail: `${releaseTag} · 直接安装`,
+      },
+      {
+        label: "下载 AAB",
+        kind: "link",
+        href: `${releaseAssetBase}/AgentLine-${releaseVersion}-android-release.aab`,
+        style: "secondary",
+        detail: `${releaseTag} · 商店或企业分发`,
+      },
+    ],
+    iconType: "svg",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7.5 6.4 5.2m9.2 2.3 1.6-2.3M7 9.5h10a2 2 0 0 1 2 2v4.5a2 2 0 0 1-2 2h-.5v2.2a.8.8 0 0 1-1.6 0V18h-1.8v2.2a.8.8 0 0 1-1.6 0V18H10.7v2.2a.8.8 0 0 1-1.6 0V18H8a2 2 0 0 1-2-2v-4.5a2 2 0 0 1 2-2Zm3 3.2a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm4 0a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  },
+];
 ---
 
 <BaseLayout
@@ -11,39 +174,103 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   <Header activePage="home" />
 
   <main id="main-content" class="mkt-main page-home">
-    <section id="hero" class="hero">
-      <div class="container home-hero">
+    <section id="hero" class="hero hero-install-shell">
+      <div
+        class="container hero-install-layout"
+        data-download-center
+        data-release-label={`Latest release ${releaseTag}`}
+      >
         <div class="home-hero-copy">
-          <p class="eyebrow">Agent Supervision Layer</p>
+          <p class="eyebrow">Product</p>
           <h1>
             <span>离开工位，</span>
             <span>代理继续交付。</span>
           </h1>
           <p class="lead">
-            AgentLine 是 Claude Code / Codex 的移动监督中枢。会话运行在你的机器上，
-            你在手机上审批、查看进度、处理阻塞。
+            AgentLine 让任务继续跑在你的电脑上，也让你能在手机上接手处理。
+            看进度、批操作、回消息，不用一直守在工位前。
           </p>
-          <div class="cta-row">
-            <a href="/install" class="btn btn-primary">立即开始</a>
-            <a href="#themes" class="btn btn-secondary">查看专题</a>
-            <a href="https://github.com/kzahel/agentline" class="btn btn-secondary">GitHub</a>
-          </div>
         </div>
-        <div class="home-hero-media">
-          <figure class="hero-desktop-shot">
-            <img src="/screenshots/session-running-real.png" alt="AgentLine desktop session showing active task flow and tool steps" width="1440" height="1000" fetchpriority="high" />
-          </figure>
-          <figure class="hero-mobile-shot">
-            <img src="/screenshots/session-mobile-real.png" alt="Active AgentLine session on phone" width="430" height="932" />
-          </figure>
-          <div class="hero-note">
-            <h2>15 秒理解 AgentLine</h2>
-            <ol>
-              <li>不是远程终端镜像，而是会话级监督层。</li>
-              <li>代理执行不断线，审批动作可移动。</li>
-              <li>把等待代理变成调度代理。</li>
-            </ol>
-          </div>
+        <div id="install" class="download-center-tabs" role="tablist" aria-label="Choose a platform">
+          <span class="download-center-indicator" aria-hidden="true"></span>
+          {downloadPlatforms.map((platform, index) => (
+            <button
+              type="button"
+              role="tab"
+              class="download-center-tab"
+              id={`download-tab-${platform.key}`}
+              aria-controls={`download-panel-${platform.key}`}
+              aria-selected={index === 0 ? "true" : "false"}
+              tabindex={index === 0 ? "0" : "-1"}
+              title={platform.label}
+            >
+              {platform.iconType === "glyph" ? (
+                <span aria-hidden="true" class={`platform-glyph ${platform.label === "Linux" ? "is-mono" : ""}`}>{platform.icon}</span>
+              ) : (
+                <span aria-hidden="true" class="platform-icon" set:html={platform.icon} />
+              )}
+              <span>{platform.label}</span>
+            </button>
+          ))}
+        </div>
+        <div class="download-center-panels hero-install-panels">
+          {downloadPlatforms.map((platform, index) => (
+            <article
+              id={`download-panel-${platform.key}`}
+              class={`download-center-panel hero-install-panel ${platform.visualTone === "mobile" ? "is-mobile" : "is-desktop"}`}
+              role="tabpanel"
+              aria-labelledby={`download-tab-${platform.key}`}
+              hidden={index !== 0}
+            >
+              <div class="download-center-copy">
+                <p class="download-center-description">{platform.description}</p>
+                <div class="download-center-actions">
+                  {platform.actions.map((action) => (
+                    <div class="download-action-group">
+                      {action.kind === "disabled" ? (
+                        <span class={`download-action download-action-${action.style === "secondary" ? "secondary" : action.style === "dark" ? "dark" : "disabled"}`} aria-disabled="true">
+                          {action.label}
+                        </span>
+                      ) : (
+                        <a
+                          href={action.kind === "link" ? action.href : releasePage}
+                          class={`download-action download-action-${action.style === "secondary" ? "secondary" : action.style === "dark" ? "dark" : "primary"}`}
+                          target={action.kind === "link" || action.kind === "asset" ? "_blank" : undefined}
+                          rel={action.kind === "link" || action.kind === "asset" ? "noreferrer" : undefined}
+                        >
+                          {action.label}
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p class="download-center-note">{platform.note}</p>
+              </div>
+              <figure class="download-center-visual">
+                <div class="download-center-stage">
+                  <div class="download-center-backplate">
+                    <img
+                      src={platform.secondaryImage}
+                      alt=""
+                      width="1440"
+                      height="1000"
+                      class="download-center-backshot"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div class="download-center-foreground">
+                    <img
+                      src={platform.primaryImage}
+                      alt={platform.imageAlt}
+                      width={platform.visualTone === "mobile" ? 430 : 1440}
+                      height={platform.visualTone === "mobile" ? 932 : 1000}
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              </figure>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -51,25 +278,26 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     <section id="value" class="section">
       <div class="container home-value">
         <div class="home-intro-block">
-          <p class="eyebrow">Core Value</p>
-          <h2>不是堆更多入口，而是把执行权和监督权拆开。</h2>
+          <p class="eyebrow">Why It Works</p>
+          <h2>任务继续跑，人不用一直守着。</h2>
           <p>
-            首页不需要一次解释所有功能。它只需要让人看明白三件事：
-            为什么任务不会中断，为什么手机端是可操作终端，为什么多会话管理会让吞吐提升。
+            这页只讲最关键的几件事：
+            为什么任务不会因为你离开而停住，为什么手机上真的能处理事情，
+            为什么多个会话放在一起看会更省时间。
           </p>
         </div>
         <div class="value-stack">
           <article class="card value-card value-card-a">
-            <h3>会话不掉线</h3>
-            <p>执行进程归服务器管理，不被浏览器生命周期绑架。</p>
+            <h3>任务不会中断</h3>
+            <p>浏览器关了、网络断了、设备换了，任务还是继续跑。</p>
           </article>
           <article class="card value-card value-card-b">
-            <h3>多会话总览</h3>
-            <p>多个项目并行可视化，不再在终端标签之间来回切。</p>
+            <h3>多个会话一起看</h3>
+            <p>不用在一堆终端和窗口之间来回切，重点一眼就能看到。</p>
           </article>
           <article class="card value-card value-card-c">
-            <h3>手机端快速审批</h3>
-            <p>代理被阻塞时，几秒钟给出决策，减少空转时间。</p>
+            <h3>手机上就能处理阻塞</h3>
+            <p>代理卡住时，拿起手机就能批，不用等你回到电脑前。</p>
           </article>
         </div>
       </div>
@@ -78,20 +306,19 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     <section id="proof" class="section section-soft home-proof">
       <div class="container proof-grid">
         <figure class="proof-shot">
-          <img src="/screenshots/session-complete-real.png" alt="Completed AgentLine session with tool output and final answer" width="1440" height="1000" loading="lazy" />
+          <img src="/screenshots/overview-projects-real.png" alt="Project overview showing multiple tracked workspaces in AgentLine" width="1440" height="1000" loading="lazy" />
         </figure>
         <div class="proof-copy">
-          <p class="eyebrow">Proof</p>
-          <h2>不是演示，是可落地监督链路</h2>
+          <p class="eyebrow">Runtime</p>
+          <h2>任务留在你的机器上，你换个设备也接得上。</h2>
           <p>
-            真正重要的不是“可以远程看”，而是代理被卡住时，你能不能在几秒内完成放行、回消息、看 Diff、继续推进。
+            AgentLine 不是把远程控制包装得更复杂，而是把这件事做得更稳。
+            任务由本机进程托管，多个会话集中展示，不同入口进来的上下文也能接回同一个界面。
           </p>
           <div class="pill-list">
-            <span>实时会话流</span>
-            <span>Diff 审阅</span>
-            <span>文件上传</span>
-            <span>推送提醒</span>
-            <span>远程接入</span>
+            <span>任务持续运行</span>
+            <span>多个会话集中查看</span>
+            <span>上下文不断档</span>
           </div>
         </div>
       </div>
@@ -100,123 +327,122 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     <section id="themes" class="section">
       <div class="container">
         <div class="section-heading section-heading-wide">
-          <p class="eyebrow">Themes</p>
-          <h2>按主题深入了解 AgentLine</h2>
+          <p class="eyebrow">On Mobile</p>
+          <h2>手机不是提醒器，它真的能处理事情。</h2>
         </div>
         <div class="theme-rail">
           <article class="theme-feature">
-            <div class="theme-feature-visual" aria-hidden="true">
-              <div class="theme-stage theme-stage-runtime">
-                <span class="theme-stage-pill">Server-owned runtime</span>
-                <div class="theme-stage-window">
-                  <span class="theme-stage-sidebar"></span>
-                  <span class="theme-stage-line theme-stage-line-a"></span>
-                  <span class="theme-stage-line theme-stage-line-b"></span>
-                  <span class="theme-stage-line theme-stage-line-c"></span>
-                </div>
-                <div class="theme-stage-float">
-                  <strong>3 sessions</strong>
-                  <span>Stable</span>
-                </div>
-              </div>
-            </div>
+            <figure class="theme-feature-visual theme-shot theme-shot-mobile">
+              <img src="/screenshots/session-mobile-real.png" alt="Review an active coding session from phone" width="430" height="932" loading="lazy" />
+            </figure>
             <div class="theme-feature-copy">
               <p class="theme-feature-index">01</p>
-              <h3>平台机制</h3>
-              <p>为什么执行稳定性更强，如何管理多会话。</p>
-              <p class="theme-feature-note">进程托管、多会话编排、跨入口互通。</p>
-              <a href="/platform">打开平台页</a>
+              <h3>看到上下文，再决定要不要放行</h3>
+              <p>不是弹一个按钮让你盲点确认，而是把该看的信息先给你。</p>
+              <p class="theme-feature-note">要批、要改、要拒绝，都能当场处理。</p>
+              <a href="/mobile-supervision">展开看</a>
             </div>
           </article>
           <article class="theme-feature is-reverse">
-            <div class="theme-feature-visual" aria-hidden="true">
-              <div class="theme-stage theme-stage-mobile">
-                <div class="theme-stage-phone">
-                  <span class="theme-stage-phone-top"></span>
-                  <span class="theme-stage-phone-line theme-stage-line-a"></span>
-                  <span class="theme-stage-phone-line theme-stage-line-b"></span>
-                  <span class="theme-stage-phone-line theme-stage-line-c"></span>
-                </div>
-                <div class="theme-stage-approval">
-                  <strong>Approve</strong>
-                  <span>Review diff on phone</span>
-                </div>
-              </div>
-            </div>
+            <figure class="theme-feature-visual theme-shot theme-shot-mobile">
+              <img src="/screenshots/sessions-list-mobile-real.png" alt="Mobile session list for fast switching and triage" width="430" height="932" loading="lazy" />
+            </figure>
             <div class="theme-feature-copy">
               <p class="theme-feature-index">02</p>
-              <h3>移动监督</h3>
-              <p>审批、Diff、反馈如何形成移动端闭环。</p>
-              <p class="theme-feature-note">几秒决策、窄屏可读、通知即入口。</p>
-              <a href="/mobile-supervision">打开移动页</a>
+              <h3>小屏幕上也能把改动看明白</h3>
+              <p>重点改了什么、哪里可能有风险，不需要放大缩小半天才看懂。</p>
+              <p class="theme-feature-note">这不是桌面页面硬塞到手机里。</p>
+              <a href="/mobile-supervision">展开看</a>
             </div>
           </article>
           <article class="theme-feature">
-            <div class="theme-feature-visual" aria-hidden="true">
-              <div class="theme-stage theme-stage-security">
-                <div class="theme-stage-node theme-stage-node-a">
-                  <span>Phone</span>
-                </div>
-                <div class="theme-stage-node theme-stage-node-b">
-                  <span>Relay</span>
-                </div>
-                <div class="theme-stage-node theme-stage-node-c">
-                  <span>Host</span>
-                </div>
-                <div class="theme-stage-link theme-stage-link-a"></div>
-                <div class="theme-stage-link theme-stage-link-b"></div>
-              </div>
-            </div>
+            <figure class="theme-feature-visual theme-shot theme-shot-mobile">
+              <img src="/screenshots/session-mobile-complete-real.png" alt="Completed mobile session with readable result state" width="430" height="932" loading="lazy" />
+            </figure>
             <div class="theme-feature-copy">
               <p class="theme-feature-index">03</p>
-              <h3>安全与远程</h3>
-              <p>远程可达与安全边界如何同时成立。</p>
-              <p class="theme-feature-note">直连与中继、认证与加密、网络切换不失联。</p>
-              <a href="/security-relay">打开安全页</a>
-            </div>
-          </article>
-          <article class="theme-feature is-reverse">
-            <div class="theme-feature-visual" aria-hidden="true">
-              <div class="theme-stage theme-stage-compare">
-                <div class="theme-stage-split">
-                  <div>
-                    <small>远程终端</small>
-                    <strong>看见窗口</strong>
-                  </div>
-                  <div>
-                    <small>AgentLine</small>
-                    <strong>调度会话</strong>
-                  </div>
-                </div>
-                <div class="theme-stage-compare-bar">
-                  <span>queue</span>
-                  <span>approve</span>
-                  <span>resume</span>
-                </div>
-              </div>
-            </div>
-            <div class="theme-feature-copy">
-              <p class="theme-feature-index">04</p>
-              <h3>能力对比</h3>
-              <p>和“单会话远程控制”方案的边界与差异。</p>
-              <p class="theme-feature-note">不是多开标签页，而是建立统一监督模型。</p>
-              <a href="/compare">打开对比页</a>
+              <h3>该提醒你的时候再提醒</h3>
+              <p>不是每一步都打断你，而是在真的需要你出手时再叫你回来。</p>
+              <p class="theme-feature-note">少一点噪音，多一点有效处理。</p>
+              <a href="/mobile-supervision">展开看</a>
             </div>
           </article>
         </div>
       </div>
     </section>
 
-    <section id="install" class="section section-soft">
-      <div class="container home-install">
-        <div class="install-callout">
-          <p class="eyebrow">Install</p>
-          <h2>30 秒启动</h2>
-          <p>安装后打开本地地址，即可进入监督界面。</p>
-          <a href="/install" class="btn btn-primary">查看完整安装与部署</a>
+    <section id="security" class="section section-soft home-proof">
+      <div class="container proof-grid">
+        <figure class="proof-shot">
+          <img src="/screenshots/overview-projects-real.png" alt="Host overview for selecting where sessions live and how they are reached" width="1440" height="1000" loading="lazy" />
+        </figure>
+        <div class="proof-copy">
+          <p class="eyebrow">Remote Access</p>
+          <h2>能远程接入，不代表要把控制权交出去。</h2>
+          <p>
+            你可以按自己的环境选择接入方式。局域网、Tailscale、中继、自托管，
+            各有边界，也各有取舍，不需要为了方便把整套环境直接暴露出去。
+          </p>
+          <div class="pill-list">
+            <span>接入控制</span>
+            <span>加密链路</span>
+            <span>多种部署方式</span>
+          </div>
         </div>
-        <pre class="code"><code>npm i -g agentline
+      </div>
+    </section>
+
+    <section id="compare" class="section">
+      <div class="container">
+        <div class="section-heading section-heading-wide">
+          <p class="eyebrow">Why Not Just Remote In</p>
+          <h2>你需要的可能不是连上去，而是把事情继续推进。</h2>
+        </div>
+        <div class="theme-rail">
+          <article class="theme-feature is-reverse">
+            <figure class="theme-feature-visual theme-shot">
+              <img src="/screenshots/session-running-real.png" alt="Conversation panel for supervising an active agent session" width="1440" height="1000" loading="lazy" />
+            </figure>
+            <div class="theme-feature-copy">
+              <p class="theme-feature-index">01</p>
+              <h3>远程连终端，解决的是“看得到”</h3>
+              <p>AgentLine 解决的是“事情能不能继续往前走”。</p>
+              <p class="theme-feature-note">重点不是把窗口带到手机上，而是把处理流程带过去。</p>
+              <a href="/compare">展开看</a>
+            </div>
+          </article>
+          <article class="theme-feature">
+            <figure class="theme-feature-visual theme-shot">
+              <img src="/screenshots/overview-projects-real.png" alt="Multi-project overview for power users and teams" width="1440" height="1000" loading="lazy" />
+            </figure>
+            <div class="theme-feature-copy">
+              <p class="theme-feature-index">02</p>
+              <h3>更适合谁</h3>
+              <p>如果你经常同时跑几条任务，或者人一离开工位代理就容易卡住，这就是为你准备的。</p>
+              <p class="theme-feature-note">一个人能用，小团队也一样顺手。</p>
+              <a href="/compare">展开看</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="quickstart" class="section section-soft">
+      <div class="container proof-grid">
+        <div class="proof-copy">
+          <p class="eyebrow">Get Started</p>
+          <h2>先装起来，三十秒就能看到效果。</h2>
+          <p>如果你只是想先试一下，走最短路径就够了。装完，打开本地地址，马上就能开始看会话。</p>
+          <pre class="code"><code>npm i -g agentline
 agentline</code></pre>
+          <div class="cta-row">
+            <a href="/install" class="btn btn-primary">查看安装方式</a>
+            <a href="/remote" class="btn btn-secondary">打开登录页</a>
+          </div>
+        </div>
+        <figure class="proof-shot">
+          <img src="/screenshots/session-complete-real.png" alt="Configured desktop session after install" width="1440" height="1000" loading="lazy" />
+        </figure>
       </div>
     </section>
 
@@ -224,23 +450,25 @@ agentline</code></pre>
       <div class="container home-faq-layout">
         <div class="home-intro-block home-faq-intro">
           <p class="eyebrow">FAQ</p>
-          <h2>先把常见疑问讲透</h2>
-          <p>
-            首页不需要把所有细节讲完，但需要先把“是不是托管”“适合什么工作流”“手机能做什么”这三件事说清。
-          </p>
+          <h2>几个最常见的问题</h2>
+          <p>先把大家最容易问的几件事说清楚，免得你来回猜。</p>
         </div>
         <div class="faq-grid home-faq">
           <article class="card faq-card faq-card-a">
             <h3>是托管服务吗？</h3>
-            <p>不是，默认运行在你自己的机器。</p>
+            <p>不是。默认就是跑在你自己的机器上。</p>
           </article>
           <article class="card faq-card faq-card-b">
             <h3>支持什么工作流？</h3>
-            <p>面向 Claude Code、Codex 等会话监督场景。</p>
+            <p>主要面向 Claude Code、Codex 这类需要持续盯会话的工作流。</p>
           </article>
           <article class="card faq-card faq-card-c">
             <h3>手机能做什么？</h3>
-            <p>查看、审批、回消息、看变更。</p>
+            <p>看进度、批操作、回消息、看改动，都可以。</p>
+          </article>
+          <article class="card faq-card faq-card-b">
+            <h3>适合什么时候用？</h3>
+            <p>当你开始同时跑多条任务，或者离开工位后还想让事情继续推进的时候。</p>
           </article>
         </div>
       </div>
@@ -249,10 +477,93 @@ agentline</code></pre>
     <section class="section final-cta">
       <div class="container">
         <h2>把等待代理，变成调度代理。</h2>
-        <a href="/install" class="btn btn-primary">立即安装 AgentLine</a>
+        <p>少一点空等，多一点推进。代理继续跑，你只在需要的时候出手。</p>
+        <div class="cta-row">
+          <a href="/install" class="btn btn-primary">立即安装 AgentLine</a>
+          <a href="/security-relay" class="btn btn-secondary">查看接入方式</a>
+        </div>
       </div>
     </section>
   </main>
 
   <Footer />
 </BaseLayout>
+
+<script is:inline>
+document.querySelectorAll("[data-download-center]").forEach(function (root) {
+  var tablist = root.querySelector("[role='tablist']");
+  var tabs = Array.from(root.querySelectorAll("[role='tab']"));
+  var panels = Array.from(root.querySelectorAll("[role='tabpanel']"));
+
+  if (!tablist || !tabs.length || !panels.length) return;
+
+  function moveIndicator(tab) {
+    var tabRect = tab.getBoundingClientRect();
+    var listRect = tablist.getBoundingClientRect();
+    tablist.style.setProperty("--download-indicator-x", tab.offsetLeft + "px");
+    tablist.style.setProperty("--download-indicator-w", tabRect.width + "px");
+    tablist.style.setProperty("--download-indicator-y", (tab.offsetTop - listRect.top + tablist.scrollTop) + "px");
+  }
+
+  function activate(tab, shouldFocus) {
+    var panelId = tab.getAttribute("aria-controls");
+
+    tabs.forEach(function (item) {
+      var selected = item === tab;
+      item.setAttribute("aria-selected", String(selected));
+      item.setAttribute("tabindex", selected ? "0" : "-1");
+    });
+
+    panels.forEach(function (panel) {
+      panel.hidden = panel.id !== panelId;
+    });
+
+    moveIndicator(tab);
+
+    if (shouldFocus) {
+      tab.focus();
+    }
+  }
+
+  function step(current, direction) {
+    var index = tabs.indexOf(current);
+    var next = tabs[(index + direction + tabs.length) % tabs.length];
+    activate(next, true);
+  }
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      activate(tab, false);
+    });
+
+    tab.addEventListener("keydown", function (event) {
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        step(tab, 1);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        step(tab, -1);
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        activate(tabs[0], true);
+      } else if (event.key === "End") {
+        event.preventDefault();
+        activate(tabs[tabs.length - 1], true);
+      }
+    });
+  });
+
+  var initial = tabs.find(function (tab) {
+    return tab.getAttribute("aria-selected") === "true";
+  }) || tabs[0];
+
+  requestAnimationFrame(function () {
+    activate(initial, false);
+  });
+
+  window.addEventListener("resize", function () {
+    var current = root.querySelector("[role='tab'][aria-selected='true']");
+    if (current) moveIndicator(current);
+  });
+});
+</script>
