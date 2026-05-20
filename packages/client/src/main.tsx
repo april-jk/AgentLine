@@ -13,6 +13,7 @@ import { initializeTheme } from "./hooks/useTheme";
 import { NavigationLayout } from "./layouts";
 import { ActivityPage } from "./pages/ActivityPage";
 import { AgentsPage } from "./pages/AgentsPage";
+import { ContextFilesPage } from "./pages/ContextFilesPage";
 import { EmulatorPage } from "./pages/EmulatorPage";
 import { FilePage } from "./pages/FilePage";
 import { FilesPage } from "./pages/FilesPage";
@@ -67,7 +68,14 @@ createRoot(rootElement).render(
                 path="/projects/:projectId"
                 element={<Navigate to="files" replace />}
               />
-              <Route path="/projects/:projectId/files" element={<FilesPage />} />
+              <Route
+                path="/projects/:projectId/files"
+                element={<FilesPage />}
+              />
+              <Route
+                path="/projects/:projectId/project-files"
+                element={<ContextFilesPage />}
+              />
               <Route path="/git-status" element={<GitStatusPage />} />
               <Route path="/devices" element={<EmulatorPage />} />
               <Route path="/devices/:deviceId" element={<EmulatorPage />} />
@@ -75,6 +83,10 @@ createRoot(rootElement).render(
               <Route
                 path="/projects/:projectId/sessions/:sessionId"
                 element={<SessionPage />}
+              />
+              <Route
+                path="/projects/:projectId/sessions/:sessionId/files"
+                element={<ContextFilesPage />}
               />
             </Route>
             {/* File page has its own layout (no sidebar) */}

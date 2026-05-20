@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useI18n } from "../i18n";
 import { shortenPath } from "../lib/text";
 import type { Project } from "../types";
 import { ThinkingIndicator } from "./ThinkingIndicator";
@@ -41,6 +42,7 @@ export function ProjectCard({
   thinkingCount,
   basePath = "",
 }: ProjectCardProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   const handleNewSession = (e: React.MouseEvent) => {
@@ -52,7 +54,11 @@ export function ProjectCard({
   const handleOpenFiles = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`${basePath}/projects/${project.id}/files`);
+    navigate(`${basePath}/projects/${project.id}/project-files`, {
+      state: {
+        backTo: `${basePath}/projects`,
+      },
+    });
   };
 
   return (
@@ -75,7 +81,7 @@ export function ProjectCard({
               type="button"
               className="project-card__new-session"
               onClick={handleOpenFiles}
-              title="Open files"
+              title={t("sessionMenuFiles")}
             >
               <svg
                 width="16"

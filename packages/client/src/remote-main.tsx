@@ -39,6 +39,7 @@ import { I18nProvider } from "./i18n";
 import { NavigationLayout } from "./layouts";
 import { ActivityPage } from "./pages/ActivityPage";
 import { AgentsPage } from "./pages/AgentsPage";
+import { ContextFilesPage } from "./pages/ContextFilesPage";
 import { DirectLoginPage } from "./pages/DirectLoginPage";
 import { EmulatorPage } from "./pages/EmulatorPage";
 import { FilePage } from "./pages/FilePage";
@@ -324,8 +325,16 @@ const APP_ROUTES = (
       />
       <Route path="projects/:projectId/files" element={<FilesPage />} />
       <Route
+        path="projects/:projectId/project-files"
+        element={<ContextFilesPage />}
+      />
+      <Route
         path="projects/:projectId/sessions/:sessionId"
         element={<SessionPage />}
+      />
+      <Route
+        path="projects/:projectId/sessions/:sessionId/files"
+        element={<ContextFilesPage />}
       />
     </Route>
 
