@@ -464,6 +464,21 @@ export interface ServerInfo {
   localhostOnly: boolean;
 }
 
+export interface FileListEntry {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  size?: number;
+  mtimeMs?: number;
+}
+
+export interface FileListResponse {
+  path: string;
+  entries: FileListEntry[];
+  nextCursor: string | null;
+  truncated: boolean;
+}
+
 export interface NetworkInterface {
   /** Interface name (e.g., "eth0", "wlan0") */
   name: string;
@@ -1096,6 +1111,26 @@ export const api = {
     const params = new URLSearchParams({ path });
     if (download) params.set("download", "true");
     return `/api/projects/${projectId}/files/raw?${params.toString()}`;
+  },
+
+  getFileList: (
+    projectId: string,
+    options?: {
+      path?: string;
+      cursor?: string;
+      limit?: number;
+    },
+  ) => {
+    const params = new URLSearchParams();
+    if (options?.path) params.set("path", options.path);
+    if (options?.cursor) params.set("cursor", options.cursor);
+    if (options?.limit !== undefined) {
+      params.set("limit", String(options.limit));
+    }
+    const query = params.toString();
+    return fetchJSON<FileListResponse>(
+      `/projects/${projectId}/files/list${query ? `?${query}` : ""}`,
+    );
   },
 
   /**

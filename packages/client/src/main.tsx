@@ -15,6 +15,7 @@ import { ActivityPage } from "./pages/ActivityPage";
 import { AgentsPage } from "./pages/AgentsPage";
 import { EmulatorPage } from "./pages/EmulatorPage";
 import { FilePage } from "./pages/FilePage";
+import { FilesPage } from "./pages/FilesPage";
 import { GitStatusPage } from "./pages/GitStatusPage";
 import { GlobalSessionsPage } from "./pages/GlobalSessionsPage";
 import { InboxPage } from "./pages/InboxPage";
@@ -64,8 +65,9 @@ createRoot(rootElement).render(
               {/* Project-scoped pages */}
               <Route
                 path="/projects/:projectId"
-                element={<Navigate to="/sessions" replace />}
+                element={<Navigate to="files" replace />}
               />
+              <Route path="/projects/:projectId/files" element={<FilesPage />} />
               <Route path="/git-status" element={<GitStatusPage />} />
               <Route path="/devices" element={<EmulatorPage />} />
               <Route path="/devices/:deviceId" element={<EmulatorPage />} />

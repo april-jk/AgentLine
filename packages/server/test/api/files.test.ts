@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FileContentResponse } from "@agentline/shared";
@@ -239,6 +239,141 @@ describe("Files API", () => {
       const json = (await res.json()) as FileContentResponse;
       expect(json.metadata.path).toBe(".env");
       expect(json.content).toBe("SECRET=value");
+    });
+  });
+
+  describe("GET /api/projects/:projectId/files/list", () => {
+    it("lists root directory entries with directories first", async () => {
+      const { app } = createApp({
+        sdk: mockSdk,
+        projectsDir: join(testDir, "sessions"),
+      });
+
+      const res = await app.request(`/api/projects/${projectId}/files/list`);
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as {
+        path: string;
+        entries: Array<{ name: string; type: string }>;
+      };
+      expect(json.path).toBe(".");
+      expect(json.entries[0].name).toBe("src");
+      expect(json.entries[0].type).toBe("directory");
+    });
+
+    it("supports pagination via cursor", async () => {
+      await writeFile(join(projectPath, "a.txt"), "a");
+      await writeFile(join(projectPath, "b.txt"), "b");
+
+      const { app } = createApp({
+        sdk: mockSdk,
+        projectsDir: join(testDir, "sessions"),
+      });
+
+      const first = await app.request(
+        `/api/projects/${projectId}/files/list?limit=1`,
+      );
+      expect(first.status).toBe(200);
+      const firstJson = (await first.json()) as {
+        entries: Array<{ name: string }>;
+        nextCursor: string | null;
+      };
+      expect(firstJson.entries).toHaveLength(1);
+      expect(firstJson.nextCursor).toBeTruthy();
+      const cursor = firstJson.nextCursor;
+      expect(cursor).toBeTruthy();
+
+      const second = await app.request(
+        `/api/projects/${projectId}/files/list?limit=1&cursor=${encodeURIComponent(cursor ?? "")}`,
+      );
+      expect(second.status).toBe(200);
+      const secondJson = (await second.json()) as {
+        entries: Array<{ name: string }>;
+      };
+      expect(secondJson.entries).toHaveLength(1);
+      expect(secondJson.entries[0].name).not.toBe(firstJson.entries[0].name);
+    });
+
+    it("rejects traversal paths", async () => {
+      const { app } = createApp({
+        sdk: mockSdk,
+        projectsDir: join(testDir, "sessions"),
+      });
+      const res = await app.request(
+        `/api/projects/${projectId}/files/list?path=../../etc`,
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("keeps files whose names match excluded directory names", async () => {
+      await writeFile(join(projectPath, "build"), "artifact manifest");
+
+      const { app } = createApp({
+        sdk: mockSdk,
+        projectsDir: join(testDir, "sessions"),
+      });
+
+      const res = await app.request(`/api/projects/${projectId}/files/list`);
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as {
+        entries: Array<{ name: string; type: string }>;
+      };
+      expect(json.entries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: "build", type: "file" }),
+        ]),
+      );
+    });
+
+    it("skips broken symlinks instead of failing the whole directory", async () => {
+      await symlink("missing-target", join(projectPath, "broken-link"));
+
+      const { app } = createApp({
+        sdk: mockSdk,
+        projectsDir: join(testDir, "sessions"),
+      });
+
+      const res = await app.request(`/api/projects/${projectId}/files/list`);
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as {
+        entries: Array<{ name: string }>;
+      };
+      expect(json.entries.map((entry) => entry.name)).not.toContain(
+        "broken-link",
+      );
+    });
+
+    it("rate limits requests with session identity", async () => {
+      const { app } = createApp({
+        sdk: mockSdk,
+        projectsDir: join(testDir, "sessions"),
+      });
+
+      let status = 200;
+      for (let i = 0; i < 81; i += 1) {
+        const res = await app.request(`/api/projects/${projectId}/files/list`, {
+          headers: {
+            Cookie: "agentline-session=test-session-id",
+          },
+        });
+        status = res.status;
+      }
+
+      expect(status).toBe(429);
+    });
+
+    it("does not rate limit requests without identity headers", async () => {
+      const { app } = createApp({
+        sdk: mockSdk,
+        projectsDir: join(testDir, "sessions"),
+      });
+
+      let status = 200;
+      for (let i = 0; i < 81; i += 1) {
+        const res = await app.request(`/api/projects/${projectId}/files/list`);
+        status = res.status;
+      }
+
+      expect(status).toBe(200);
     });
   });
 

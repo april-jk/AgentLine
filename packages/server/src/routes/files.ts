@@ -1,5 +1,5 @@
 import type { Stats } from "node:fs";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { extname, normalize, resolve, sep } from "node:path";
 import {
   type FileContentResponse,
@@ -7,10 +7,13 @@ import {
   type PatchHunk,
   isUrlProjectId,
 } from "@agentline/shared";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { computeEditAugment } from "../augments/edit-augments.js";
 import { renderMarkdownToHtml } from "../augments/markdown-augments.js";
+import { SESSION_COOKIE_NAME } from "../auth/routes.js";
 import { highlightFile } from "../highlighting/index.js";
+import { getLogger } from "../logging/logger.js";
 import type { ProjectScanner } from "../projects/scanner.js";
 
 export interface FilesDeps {
@@ -310,6 +313,196 @@ function resolveFilePath(
 
 export function createFilesRoutes(deps: FilesDeps): Hono {
   const routes = new Hono();
+  const EXCLUDED_DIRS = new Set([".git", "node_modules", "dist", "build"]);
+  const logger = getLogger();
+  const LIST_WINDOW_MS = 10_000;
+  const LIST_WINDOW_LIMIT = 80;
+  const listRateWindow = new Map<string, { count: number; resetAt: number }>();
+  let lastRateWindowSweepAt = 0;
+
+  function resolveThrottleIdentity(c: Context): string | null {
+    const sessionId = getCookie(c, SESSION_COOKIE_NAME);
+    if (sessionId) {
+      return `session:${sessionId}`;
+    }
+
+    const desktopToken = c.req.header("x-desktop-token");
+    if (desktopToken) {
+      return `desktop-token:${desktopToken}`;
+    }
+
+    // In non-auth localhost mode there may be no stable trusted identity.
+    // Skip throttling rather than collapsing all traffic into one shared bucket.
+    return null;
+  }
+
+  function sweepExpiredRateWindows(now: number): void {
+    if (now - lastRateWindowSweepAt < LIST_WINDOW_MS) {
+      return;
+    }
+    lastRateWindowSweepAt = now;
+    for (const [key, value] of listRateWindow.entries()) {
+      if (value.resetAt <= now) {
+        listRateWindow.delete(key);
+      }
+    }
+  }
+
+  routes.get("/:projectId/files/list", async (c) => {
+    const projectId = c.req.param("projectId");
+    const relativePath = c.req.query("path") || ".";
+    const cursor = c.req.query("cursor");
+    const rawLimit = Number.parseInt(c.req.query("limit") || "200", 10);
+    const limit = Number.isFinite(rawLimit)
+      ? Math.max(1, Math.min(rawLimit, 1000))
+      : 200;
+
+    if (!isUrlProjectId(projectId)) {
+      return c.json({ error: "Invalid project ID format" }, 400);
+    }
+
+    const now = Date.now();
+    sweepExpiredRateWindows(now);
+
+    const throttleIdentity = resolveThrottleIdentity(c);
+    if (throttleIdentity) {
+      const rateKey = `${throttleIdentity}:${projectId}`;
+      const current = listRateWindow.get(rateKey);
+      if (!current || current.resetAt <= now) {
+        listRateWindow.set(rateKey, {
+          count: 1,
+          resetAt: now + LIST_WINDOW_MS,
+        });
+      } else if (current.count >= LIST_WINDOW_LIMIT) {
+        logger.warn(
+          {
+            route: "files.list",
+            projectId,
+            path: relativePath,
+            throttleIdentityType: throttleIdentity.startsWith("session:")
+              ? "session"
+              : "desktop-token",
+          },
+          "File list request rate-limited",
+        );
+        return c.json({ error: "Too many requests" }, 429);
+      } else {
+        current.count += 1;
+        listRateWindow.set(rateKey, current);
+      }
+    }
+
+    const project = await deps.scanner.getProject(projectId);
+    if (!project) {
+      logger.warn(
+        { route: "files.list", projectId, path: relativePath },
+        "File list project not found",
+      );
+      return c.json({ error: "Project not found" }, 404);
+    }
+
+    const targetPath = resolveFilePath(project.path, relativePath);
+    if (!targetPath) {
+      logger.warn(
+        { route: "files.list", projectId, path: relativePath },
+        "File list invalid path",
+      );
+      return c.json({ error: "Invalid file path" }, 400);
+    }
+
+    let directoryStats: Stats;
+    try {
+      directoryStats = await stat(targetPath);
+    } catch {
+      logger.warn(
+        { route: "files.list", projectId, path: relativePath },
+        "File list path not found",
+      );
+      return c.json({ error: "Path not found" }, 404);
+    }
+
+    if (!directoryStats.isDirectory()) {
+      logger.warn(
+        { route: "files.list", projectId, path: relativePath },
+        "File list path is not directory",
+      );
+      return c.json({ error: "Path is not a directory" }, 400);
+    }
+
+    const dirEntries = await readdir(targetPath, { withFileTypes: true });
+    const sorted = dirEntries
+      .filter(
+        (entry) => !(entry.isDirectory() && EXCLUDED_DIRS.has(entry.name)),
+      )
+      .sort((a, b) => {
+        if (a.isDirectory() && !b.isDirectory()) return -1;
+        if (!a.isDirectory() && b.isDirectory()) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+    const startIndex = cursor
+      ? Math.max(0, sorted.findIndex((entry) => entry.name === cursor) + 1)
+      : 0;
+    const page = sorted.slice(startIndex, startIndex + limit);
+
+    const entryResults = await Promise.all(
+      page.map(async (entry) => {
+        const childRelativePath =
+          relativePath === "." ? entry.name : `${relativePath}/${entry.name}`;
+        const childAbsolutePath = resolve(targetPath, entry.name);
+        let childStats: Stats;
+        try {
+          childStats = await stat(childAbsolutePath);
+        } catch {
+          logger.warn(
+            {
+              route: "files.list",
+              projectId,
+              path: childRelativePath,
+            },
+            "Skipping unreadable file list entry",
+          );
+          return null;
+        }
+
+        return {
+          name: entry.name,
+          path: childRelativePath,
+          type: childStats.isDirectory() ? "directory" : "file",
+          size: childStats.isFile() ? childStats.size : undefined,
+          mtimeMs: childStats.mtimeMs,
+        };
+      }),
+    );
+    const entries = entryResults.filter((entry) => entry !== null);
+
+    const last = page[page.length - 1];
+    const nextCursor =
+      startIndex + page.length < sorted.length ? last.name : null;
+
+    logger.info(
+      {
+        route: "files.list",
+        projectId,
+        path: relativePath,
+        throttleIdentityType: throttleIdentity
+          ? throttleIdentity.startsWith("session:")
+            ? "session"
+            : "desktop-token"
+          : "none",
+        returnedCount: entries.length,
+        truncated: nextCursor !== null,
+      },
+      "File list served",
+    );
+
+    return c.json({
+      path: relativePath,
+      entries,
+      nextCursor,
+      truncated: nextCursor !== null,
+    });
+  });
 
   /**
    * GET /api/projects/:projectId/files

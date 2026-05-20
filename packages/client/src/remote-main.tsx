@@ -42,6 +42,7 @@ import { AgentsPage } from "./pages/AgentsPage";
 import { DirectLoginPage } from "./pages/DirectLoginPage";
 import { EmulatorPage } from "./pages/EmulatorPage";
 import { FilePage } from "./pages/FilePage";
+import { FilesPage } from "./pages/FilesPage";
 import { GitStatusPage } from "./pages/GitStatusPage";
 import { GlobalSessionsPage } from "./pages/GlobalSessionsPage";
 import { HostAccountLoginPage } from "./pages/HostAccountLoginPage";
@@ -318,6 +319,10 @@ const APP_ROUTES = (
       <Route path="settings/:category" element={<SettingsLayout />} />
       <Route path="new-session" element={<NewSessionPage />} />
       <Route
+        path="projects/:projectId"
+        element={<Navigate to="files" replace />}
+      />
+      <Route
         path="projects/:projectId/sessions/:sessionId"
         element={<SessionPage />}
       />
@@ -325,6 +330,7 @@ const APP_ROUTES = (
 
     {/* Pages with custom layouts */}
     <Route path="projects/:projectId/file" element={<FilePage />} />
+    <Route path="projects/:projectId/files" element={<FilesPage />} />
     <Route path="activity" element={<ActivityPage />} />
 
     {/* Catch-all redirect to projects (must use ../ to escape splat route's relative resolution) */}
