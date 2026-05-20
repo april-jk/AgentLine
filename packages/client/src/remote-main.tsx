@@ -322,6 +322,7 @@ const APP_ROUTES = (
         path="projects/:projectId"
         element={<Navigate to="files" replace />}
       />
+      <Route path="projects/:projectId/files" element={<FilesPage />} />
       <Route
         path="projects/:projectId/sessions/:sessionId"
         element={<SessionPage />}
@@ -330,7 +331,6 @@ const APP_ROUTES = (
 
     {/* Pages with custom layouts */}
     <Route path="projects/:projectId/file" element={<FilePage />} />
-    <Route path="projects/:projectId/files" element={<FilesPage />} />
     <Route path="activity" element={<ActivityPage />} />
 
     {/* Catch-all redirect to projects (must use ../ to escape splat route's relative resolution) */}
