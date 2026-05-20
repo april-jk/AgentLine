@@ -1011,6 +1011,17 @@ export function Sidebar({
               basePath={basePath}
             />
             <SidebarNavItem
+              to={
+                newSessionProjectId
+                  ? `/projects/${encodeURIComponent(newSessionProjectId)}/files`
+                  : "/projects"
+              }
+              icon={SidebarIcons.files}
+              label="Files"
+              onClick={onNavigate}
+              basePath={basePath}
+            />
+            <SidebarNavItem
               to="/voice-secretary"
               icon={SidebarIcons.voiceSecretary}
               label="Voice Secretary"

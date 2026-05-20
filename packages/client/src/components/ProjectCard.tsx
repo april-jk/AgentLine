@@ -49,6 +49,12 @@ export function ProjectCard({
     navigate(`${basePath}/new-session?projectId=${project.id}`);
   };
 
+  const handleOpenFiles = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`${basePath}/projects/${project.id}/files`);
+  };
+
   return (
     <li className="project-card">
       <Link
@@ -64,27 +70,49 @@ export function ProjectCard({
             )}
             {project.name}
           </strong>
-          <button
-            type="button"
-            className="project-card__new-session"
-            onClick={handleNewSession}
-            title="New session"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+          <div className="project-card__header-actions">
+            <button
+              type="button"
+              className="project-card__new-session"
+              onClick={handleOpenFiles}
+              title="Open files"
             >
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </button>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="project-card__new-session"
+              onClick={handleNewSession}
+              title="New session"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="project-card__meta">
           <span className="project-card__path" title={project.path}>
