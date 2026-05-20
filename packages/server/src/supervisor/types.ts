@@ -204,6 +204,10 @@ export interface ProcessInfo {
   executor?: string;
   /** OS PID of the spawned agent child process */
   pid?: number;
+  /** Whether this process can list supported models dynamically */
+  supportsDynamicModels?: boolean;
+  /** Whether this process can switch models without restarting */
+  supportsSetModel?: boolean;
 }
 
 // Process events for subscribers

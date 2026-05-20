@@ -715,6 +715,8 @@ export class Process {
       effort: this._effort,
       executor: this.executor,
       pid: this.pid,
+      supportsDynamicModels: this.supportsDynamicModels,
+      supportsSetModel: this.supportsSetModel,
     };
 
     // Add idleSince if idle

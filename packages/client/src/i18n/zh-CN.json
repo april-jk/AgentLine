@@ -392,6 +392,8 @@
   "modelSwitchLoading": "加载模型中...",
   "modelSwitchEmpty": "没有可用模型",
   "modelSwitchCurrent": "当前",
+  "modelSwitchUnsupported": "当前会话不支持切换模型。",
+  "modelSwitchUnavailable": "当前没有可用于切换模型的活动会话进程。",
   "reconnecting": "正在重新连接...",
   "filterClearAll": "清除全部",
   "filterByLabel": "按 {label} 筛选",

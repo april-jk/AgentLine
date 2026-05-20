@@ -392,6 +392,8 @@
   "modelSwitchLoading": "Modelle werden geladen...",
   "modelSwitchEmpty": "Keine Modelle verfügbar",
   "modelSwitchCurrent": "Aktuelles Modell",
+  "modelSwitchUnsupported": "Diese Sitzung unterstützt keinen Modellwechsel.",
+  "modelSwitchUnavailable": "Für den Modellwechsel ist kein aktiver Sitzungsprozess verfügbar.",
   "reconnecting": "Verbindung wird wiederhergestellt...",
   "filterClearAll": "Alle Filter zurücksetzen",
   "filterByLabel": "Nach {label} filtern",
