@@ -37,6 +37,7 @@ import {
 import { useI18n } from "../i18n";
 import { useNavigationLayout } from "../layouts";
 import { preprocessMessages } from "../lib/preprocessMessages";
+import { deriveSessionFilesPath } from "../lib/sessionFileContext";
 import { generateUUID } from "../lib/uuid";
 import { getSessionDisplayTitle } from "../utils";
 
@@ -716,6 +717,19 @@ function SessionPageContent({
     );
   }, [messages, status.owner]);
 
+  const sessionFilesPath = useMemo(
+    () => deriveSessionFilesPath(messages, project?.path),
+    [messages, project?.path],
+  );
+
+  const handleOpenSessionFiles = useCallback(() => {
+    const query =
+      sessionFilesPath !== "."
+        ? `?path=${encodeURIComponent(sessionFilesPath)}`
+        : "";
+    navigate(`${basePath}/projects/${projectId}/files${query}`);
+  }, [basePath, navigate, projectId, sessionFilesPath]);
+
   // Compute display title - priority:
   // 1. Local custom title (user renamed in this session)
   // 2. Session title from server
@@ -1033,6 +1047,7 @@ function SessionPageContent({
                         `${basePath}/projects/${projectId}/sessions/${newSessionId}`,
                       );
                     }}
+                    onOpenFiles={handleOpenSessionFiles}
                     onTerminate={handleTerminate}
                     sharingConfigured={sharingConfigured}
                     onShare={handleShare}

@@ -104,4 +104,35 @@ describe("FilesPage", () => {
     expect(screen.getByText("src")).toBeDefined();
     expect(screen.queryByText("Couldn't load files")).toBeNull();
   });
+
+  it("loads the requested directory from the URL query", async () => {
+    mocks.api.getFileList.mockResolvedValueOnce({
+      path: "apps/docs",
+      entries: [],
+      nextCursor: null,
+      truncated: false,
+    });
+
+    render(
+      <MemoryRouter
+        initialEntries={["/projects/project-1/files?path=apps%2Fdocs"]}
+      >
+        <Routes>
+          <Route path="/projects/:projectId/files" element={<FilesPage />} />
+          <Route
+            path="/projects/:projectId/file"
+            element={<div>File page</div>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mocks.api.getFileList).toHaveBeenCalledWith("project-1", {
+        path: "apps/docs",
+      });
+    });
+
+    expect(await screen.findByText("Nothing here yet")).toBeDefined();
+  });
 });

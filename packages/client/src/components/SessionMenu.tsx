@@ -22,6 +22,8 @@ export interface SessionMenuProps {
   onClone?: (newSessionId: string) => void | Promise<void>;
   /** Called to terminate the session's process */
   onTerminate?: () => void | Promise<void>;
+  /** Open the file browser for the current session context */
+  onOpenFiles?: () => void | Promise<void>;
   /** Use "..." icon instead of chevron */
   useEllipsisIcon?: boolean;
   /** Whether session sharing is configured */
@@ -48,6 +50,7 @@ export function SessionMenu({
   onRename,
   onClone,
   onTerminate,
+  onOpenFiles,
   sharingConfigured,
   onShare,
   useEllipsisIcon = false,
@@ -67,6 +70,15 @@ export function SessionMenu({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const supportsCloning =
+    Boolean(onClone) && getProvider(provider).capabilities.supportsCloning;
+  const dropdownItemCount =
+    3 +
+    (supportsCloning ? 1 : 0) +
+    (onOpenFiles ? 1 : 0) +
+    (sharingConfigured && onShare ? 1 : 0) +
+    (onToggleRead ? 1 : 0) +
+    (processId && onTerminate ? 1 : 0);
 
   // Close menu when clicking outside or scrolling (mobile)
   useEffect(() => {
@@ -114,7 +126,7 @@ export function SessionMenu({
       if (useFixedPositioning && triggerRef.current) {
         const rect = triggerRef.current.getBoundingClientRect();
         const dropdownWidth = 140; // Approximate width of dropdown
-        const dropdownHeight = 180; // Approximate height of dropdown (varies by options)
+        const dropdownHeight = dropdownItemCount * 36 + 16;
         const rightPosition = window.innerWidth - rect.right;
         const margin = 8;
 
@@ -257,7 +269,7 @@ export function SessionMenu({
         </svg>
         {t("sessionMenuRename")}
       </button>
-      {onClone && getProvider(provider).capabilities.supportsCloning && (
+      {supportsCloning && (
         <button type="button" onClick={handleClone} disabled={isCloning}>
           <svg
             width="14"
@@ -272,6 +284,24 @@ export function SessionMenu({
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>
           {isCloning ? t("sessionMenuCloning") : t("sessionMenuClone")}
+        </button>
+      )}
+      {onOpenFiles && (
+        <button type="button" onClick={() => handleAction(onOpenFiles)}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          </svg>
+          {t("sessionMenuFiles")}
         </button>
       )}
       {sharingConfigured && onShare && (

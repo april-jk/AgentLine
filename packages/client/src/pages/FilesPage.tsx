@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { type FileListEntry, api } from "../api/client";
 import { PageHeader } from "../components/PageHeader";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
@@ -63,6 +63,7 @@ function FileIcon({ entry }: { entry: FileListEntry }) {
 
 export function FilesPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
   const { openSidebar, isWideScreen, toggleSidebar, isSidebarCollapsed } =
     useNavigationLayout();
   const { project } = useProject(projectId);
@@ -74,6 +75,7 @@ export function FilesPage() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const requestedPath = searchParams.get("path")?.trim() || ".";
 
   useDocumentTitle(project?.name, "Files");
 
@@ -84,7 +86,7 @@ export function FilesPage() {
       setLoading(true);
       setError(null);
       try {
-        const json = await api.getFileList(projectId, { path: "." });
+        const json = await api.getFileList(projectId, { path: requestedPath });
         setPath(json.path);
         setEntries(json.entries);
         setNextCursor(json.nextCursor);
@@ -97,7 +99,7 @@ export function FilesPage() {
     };
 
     void loadRoot();
-  }, [projectId]);
+  }, [projectId, requestedPath]);
 
   useEffect(() => {
     if (!loadMoreRef.current || !nextCursor || loading || loadingMore) {
