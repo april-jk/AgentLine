@@ -47,12 +47,15 @@
       }
     ],
     "mac": {
+      "icon": "../desktop/src-tauri/icons/icon.icns",
       "target": ["dmg", "zip"]
     },
     "win": {
+      "icon": "../desktop/src-tauri/icons/icon.ico",
       "target": ["nsis", "portable"]
     },
     "linux": {
+      "icon": "../desktop/src-tauri/icons/icon.png",
       "target": ["AppImage", "deb"]
     }
   }

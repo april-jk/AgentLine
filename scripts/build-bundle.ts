@@ -22,12 +22,19 @@ const CLIENT_REMOTE_DIST = path.join(ROOT_DIR, "packages/client/dist-remote");
 const SERVER_PACKAGE = path.join(ROOT_DIR, "packages/server");
 const SERVER_DIST = path.join(SERVER_PACKAGE, "dist");
 const SHARED_DIST = path.join(ROOT_DIR, "packages/shared/dist");
+const SERVER_PACKAGE_JSON_PATH = path.join(SERVER_PACKAGE, "package.json");
+const SERVER_PACKAGE_JSON = JSON.parse(
+  fs.readFileSync(SERVER_PACKAGE_JSON_PATH, "utf-8"),
+) as {
+  version?: string;
+  dependencies?: Record<string, string>;
+};
 
 // Staging directory for npm publishing (keeps workspace package.json intact)
 const STAGING_DIR = path.join(ROOT_DIR, "dist/npm-package");
 
-// Version for npm package - set via NPM_VERSION env var (from git tag in CI) or fallback
-const NPM_VERSION = process.env.NPM_VERSION || "0.4.8";
+// Version for the bundled runtime package - use the release-marked server version unless CI overrides it.
+const NPM_VERSION = process.env.NPM_VERSION || SERVER_PACKAGE_JSON.version || "0.0.0";
 
 interface StepResult {
   step: string;
@@ -285,11 +292,6 @@ step("Bundle remote client into staging", () => {
 step("Generate package.json for npm", () => {
   log("Generating package.json for npm publishing...");
 
-  const sourcePackageJsonPath = path.join(SERVER_PACKAGE, "package.json");
-  const sourcePackageJson = JSON.parse(
-    fs.readFileSync(sourcePackageJsonPath, "utf-8"),
-  );
-
   // Create a new package.json for publishing
   const npmPackageJson: Record<string, unknown> = {
     name: "agentline",
@@ -312,7 +314,7 @@ step("Generate package.json for npm", () => {
     ],
     // Copy dependencies from source, excluding workspace deps
     dependencies: Object.fromEntries(
-      Object.entries(sourcePackageJson.dependencies || {}).filter(
+      Object.entries(SERVER_PACKAGE_JSON.dependencies || {}).filter(
         ([name]) => !name.startsWith("@agentline/"),
       ),
     ),

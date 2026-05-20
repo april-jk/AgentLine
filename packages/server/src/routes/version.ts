@@ -37,7 +37,8 @@ async function getCurrentVersion(): Promise<string> {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
     const version = packageJson.version || "unknown";
 
-    // 0.0.1 is the workspace version - we're in dev mode, use git instead
+    // Older workspaces used 0.0.1 as a placeholder version; keep git fallback
+    // for those branches, but return the package version for real releases.
     if (version === "0.0.1") {
       return (await getGitVersion()) || "dev";
     }

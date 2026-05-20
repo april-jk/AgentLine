@@ -59,6 +59,10 @@ packages/server/generated/codex-app-server/
 
 # Text files in repo root
 /*.txt
+/release-artifacts/
+/releaseFiles/
+/.agents/
+/skills-lock.json
 
 packages/client/dist-remote
 packages/client/dist-stable
