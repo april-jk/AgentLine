@@ -963,6 +963,8 @@ export const api = {
         thinking?: { type: string };
         effort?: string;
         model?: string;
+        supportsDynamicModels?: boolean;
+        supportsSetModel?: boolean;
       } | null;
     }>(`/sessions/${sessionId}/process`),
 

@@ -392,6 +392,8 @@
   "modelSwitchLoading": "Chargement des modèles...",
   "modelSwitchEmpty": "Aucun modèle disponible",
   "modelSwitchCurrent": "Actuel",
+  "modelSwitchUnsupported": "Cette session ne prend pas en charge le changement de modèle.",
+  "modelSwitchUnavailable": "Aucun processus de session actif n'est disponible pour changer de modèle.",
   "reconnecting": "Reconnexion...",
   "filterClearAll": "Effacer tout",
   "filterByLabel": "Filtrer par {label}",

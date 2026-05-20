@@ -16,6 +16,21 @@ interface ModelOption {
   description?: string;
 }
 
+function getModelSwitchErrorMessage(
+  err: unknown,
+  unsupportedMessage: string,
+  fallbackMessage: string,
+): string {
+  if (err instanceof Error) {
+    const apiError = err as Error & { status?: number };
+    if (apiError.status === 400) {
+      return unsupportedMessage;
+    }
+    return err.message || fallbackMessage;
+  }
+  return fallbackMessage;
+}
+
 export function ModelSwitchModal({
   processId,
   currentModel,
@@ -32,7 +47,15 @@ export function ModelSwitchModal({
     api
       .getProcessModels(processId)
       .then((res) => setModels(res.models))
-      .catch((err) => setError(err.message || t("modelSwitchLoadFailed")))
+      .catch((err) =>
+        setError(
+          getModelSwitchErrorMessage(
+            err,
+            t("modelSwitchUnsupported"),
+            t("modelSwitchLoadFailed"),
+          ),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [processId, t]);
 
@@ -46,7 +69,11 @@ export function ModelSwitchModal({
       onClose();
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : t("modelSwitchChangeFailed"),
+        getModelSwitchErrorMessage(
+          err,
+          t("modelSwitchUnsupported"),
+          t("modelSwitchChangeFailed"),
+        ),
       );
       setSwitching(false);
     }

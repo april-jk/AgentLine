@@ -392,6 +392,8 @@
   "modelSwitchLoading": "Loading models...",
   "modelSwitchEmpty": "No models available",
   "modelSwitchCurrent": "Current",
+  "modelSwitchUnsupported": "This session doesn't support switching models.",
+  "modelSwitchUnavailable": "No active session process is available for model switching.",
   "reconnecting": "Reconnecting...",
   "filterClearAll": "Clear all",
   "filterByLabel": "Filter by {label}",

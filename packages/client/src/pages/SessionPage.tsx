@@ -508,14 +508,47 @@ function SessionPageContent({
     },
     [setSessionModel, showToast, t],
   );
+  const activeProcessId =
+    status.owner === "self" ? status.processId : undefined;
 
-  const handleCustomCommand = useCallback((command: string) => {
-    if (command === "model") {
-      setShowModelSwitchModal(true);
-      return true;
-    }
-    return false;
-  }, []);
+  const handleCustomCommand = useCallback(
+    (command: string) => {
+      if (command === "model") {
+        if (status.owner !== "self" || !activeProcessId) {
+          showToast(t("modelSwitchUnavailable"), "error");
+          return true;
+        }
+
+        void api
+          .getProcessInfo(sessionId)
+          .then((res) => {
+            const process = res.process;
+            if (
+              process?.supportsDynamicModels === false ||
+              process?.supportsSetModel === false
+            ) {
+              showToast(t("modelSwitchUnsupported"), "error");
+              return;
+            }
+            setShowModelSwitchModal(true);
+          })
+          .catch((err: unknown) => {
+            const apiError = err as Error & { status?: number };
+            if (apiError?.status === 400) {
+              showToast(t("modelSwitchUnsupported"), "error");
+              return;
+            }
+            showToast(
+              err instanceof Error ? err.message : t("modelSwitchLoadFailed"),
+              "error",
+            );
+          });
+        return true;
+      }
+      return false;
+    },
+    [activeProcessId, sessionId, showToast, status.owner, t],
+  );
 
   const handleAbort = async () => {
     if (status.owner === "self" && status.processId) {

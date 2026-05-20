@@ -392,6 +392,8 @@
   "modelSwitchLoading": "モデルを読み込み中...",
   "modelSwitchEmpty": "利用可能なモデルがありません",
   "modelSwitchCurrent": "現在のモデル",
+  "modelSwitchUnsupported": "このセッションではモデル切り替えをサポートしていません。",
+  "modelSwitchUnavailable": "モデル切り替えに利用できるアクティブなセッションプロセスがありません。",
   "reconnecting": "再接続中...",
   "filterClearAll": "すべて解除",
   "filterByLabel": "{label} でフィルター",
