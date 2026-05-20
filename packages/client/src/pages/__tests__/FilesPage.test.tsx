@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { I18nProvider } from "../../i18n";
 import { FilesPage } from "../FilesPage";
 
 const mocks = vi.hoisted(() => ({
@@ -80,15 +81,17 @@ describe("FilesPage", () => {
       .mockRejectedValueOnce(new Error("Too many requests"));
 
     render(
-      <MemoryRouter initialEntries={["/projects/project-1/files"]}>
-        <Routes>
-          <Route path="/projects/:projectId/files" element={<FilesPage />} />
-          <Route
-            path="/projects/:projectId/file"
-            element={<div>File page</div>}
-          />
-        </Routes>
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter initialEntries={["/projects/project-1/files"]}>
+          <Routes>
+            <Route path="/projects/:projectId/files" element={<FilesPage />} />
+            <Route
+              path="/projects/:projectId/file"
+              element={<div>File page</div>}
+            />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
     );
 
     expect(await screen.findByText("src")).toBeDefined();
@@ -114,17 +117,19 @@ describe("FilesPage", () => {
     });
 
     render(
-      <MemoryRouter
-        initialEntries={["/projects/project-1/files?path=apps%2Fdocs"]}
-      >
-        <Routes>
-          <Route path="/projects/:projectId/files" element={<FilesPage />} />
-          <Route
-            path="/projects/:projectId/file"
-            element={<div>File page</div>}
-          />
-        </Routes>
-      </MemoryRouter>,
+      <I18nProvider>
+        <MemoryRouter
+          initialEntries={["/projects/project-1/files?path=apps%2Fdocs"]}
+        >
+          <Routes>
+            <Route path="/projects/:projectId/files" element={<FilesPage />} />
+            <Route
+              path="/projects/:projectId/file"
+              element={<div>File page</div>}
+            />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
     );
 
     await waitFor(() => {

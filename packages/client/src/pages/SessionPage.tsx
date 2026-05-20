@@ -727,8 +727,15 @@ function SessionPageContent({
       sessionFilesPath !== "."
         ? `?path=${encodeURIComponent(sessionFilesPath)}`
         : "";
-    navigate(`${basePath}/projects/${projectId}/files${query}`);
-  }, [basePath, navigate, projectId, sessionFilesPath]);
+    navigate(
+      `${basePath}/projects/${projectId}/sessions/${sessionId}/files${query}`,
+      {
+        state: {
+          backTo: `${basePath}/projects/${projectId}/sessions/${sessionId}`,
+        },
+      },
+    );
+  }, [basePath, navigate, projectId, sessionFilesPath, sessionId]);
 
   // Compute display title - priority:
   // 1. Local custom title (user renamed in this session)
