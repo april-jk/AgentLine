@@ -829,10 +829,15 @@ const recoverServer = async (reason: string): Promise<void> => {
 };
 
 const createWindow = async (): Promise<void> => {
+  const windowIconPath = path.resolve(
+    packageRoot,
+    "../desktop/src-tauri/icons/icon.png",
+  );
   mainWindow = new BrowserWindow({
     width: 900,
     height: 620,
     title: "AgentLine Desktop",
+    icon: windowIconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

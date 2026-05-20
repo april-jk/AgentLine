@@ -776,9 +776,12 @@ async function startServer() {
   relayConfigCallbackHolder.callback = updateRelayConnection;
   controlPlaneRelayRefreshHolder.callback = updateRelayConnection;
 
-  // Start relay connection on boot if configured
-  await updateRelayConnection();
+  // Start the control-plane bridge before refreshing relay connectivity.
+  // On auto-login restore, the saved relay config often hasn't changed, so
+  // bridge sync may not emit a relay-config-changed event. Refreshing after
+  // startup guarantees the relay client sees the recovered bridge state.
   await controlPlaneBridgeService.start();
+  await updateRelayConnection();
 
   // Serve stable (emergency) UI from /_stable/ path if available
   // This bypasses HMR and serves pre-built assets directly

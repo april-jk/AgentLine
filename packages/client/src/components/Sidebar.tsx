@@ -16,6 +16,11 @@ import {
   normalizeControlPlaneBaseUrl,
   toControlPlaneDisplayError,
 } from "../lib/controlPlane";
+import {
+  isRemoteSecureConnectionPending,
+  shouldClearStoredControlPlaneAccount,
+} from "../lib/controlPlaneAccountState";
+import { isElectronDesktopShell } from "../lib/runtimeEnvironment";
 import { getSessionDisplayTitle } from "../utils";
 import { AgentLineLogo } from "./AgentLineLogo";
 import { AgentsNavItem } from "./AgentsNavItem";
@@ -453,11 +458,44 @@ export function Sidebar({
       }
       const currentHostAccess = await refreshHostAccessConfig();
       setRequireAccessPasswordSetup(!currentHostAccess?.hostAccessConfigured);
-    } catch {
-      clearStoredAccountState();
+    } catch (error) {
+      if (isRemoteSecureConnectionPending(error)) {
+        setAccountInfo({
+          baseUrl,
+          lastEmail: stored.email,
+          hasAccessToken: true,
+          authenticated: false,
+        });
+        return;
+      }
+
+      const shouldClearStoredAccount =
+        shouldClearStoredControlPlaneAccount(error);
+
+      if (shouldClearStoredAccount) {
+        clearStoredAccountState();
+      }
+
       const hostAccount = await refreshHostManagedAccountState();
       if (!hostAccount) {
-        resetAccountSummary(baseUrl, stored.email);
+        if (shouldClearStoredAccount) {
+          resetAccountSummary(baseUrl, stored.email);
+          return;
+        }
+
+        setAccountInfo({
+          baseUrl,
+          lastEmail: stored.email,
+          hasAccessToken: true,
+          authenticated: false,
+          verificationError: toAccountErrorMessage(
+            error,
+            "account_verification_pending",
+          ),
+        });
+        setAccountBaseUrl(baseUrl);
+        setAccountEmail(stored.email);
+        setAccountProfileEmail(stored.email);
       }
     }
   }, [
@@ -472,6 +510,13 @@ export function Sidebar({
   useEffect(() => {
     void refreshAccountState();
   }, [refreshAccountState]);
+
+  useEffect(() => {
+    if (!remoteConnection?.connection) {
+      return;
+    }
+    void refreshAccountState();
+  }, [remoteConnection?.connection, refreshAccountState]);
 
   useEffect(() => {
     accountPanelOpenRef.current = accountPanelOpen;
@@ -526,8 +571,11 @@ export function Sidebar({
 
   const isAccountLoggedIn =
     accountInfo.authenticated && Boolean(accountInfo.user);
+  const isDesktopShell = isElectronDesktopShell({
+    hasDesktopApi: Boolean(desktopApi),
+  });
   const isDesktopManagedWithoutBridge =
-    Boolean(accountInfo.desktopManaged) && !desktopApi;
+    Boolean(accountInfo.desktopManaged) && !isDesktopShell;
   const accountStatusLabel = isAccountLoggedIn
     ? "已登录"
     : accountInfo.hasAccessToken
@@ -738,7 +786,7 @@ export function Sidebar({
         if (!stored && !accountInfo.hasAccessToken) {
           throw new Error("not_logged_in");
         }
-        if (!stored && accountInfo.desktopManaged) {
+        if (!stored && isDesktopManagedWithoutBridge) {
           throw new Error("desktop_managed_control_plane_requires_desktop_app");
         }
         const baseUrl = stored
@@ -808,7 +856,7 @@ export function Sidebar({
         await desktopApi.logoutControlPlane();
       } else {
         const stored = loadStoredAccountState();
-        if (!stored && accountInfo.desktopManaged) {
+        if (!stored && isDesktopManagedWithoutBridge) {
           throw new Error("desktop_managed_control_plane_requires_desktop_app");
         }
         if (stored) {
