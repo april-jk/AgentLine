@@ -478,7 +478,7 @@ export function createFilesRoutes(deps: FilesDeps): Hono {
 
     const last = page[page.length - 1];
     const nextCursor =
-      startIndex + page.length < sorted.length ? last.name : null;
+      startIndex + page.length < sorted.length && last ? last.name : null;
 
     logger.info(
       {
