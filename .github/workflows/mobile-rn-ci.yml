@@ -24,9 +24,14 @@ jobs:
       release_enabled: ${{ steps.resolve.outputs.release_enabled }}
       release_tag: ${{ steps.resolve.outputs.release_tag }}
       release_version: ${{ steps.resolve.outputs.release_version }}
+      ios_enabled: ${{ steps.resolve.outputs.ios_enabled }}
+      ios_development_team: ${{ steps.resolve.outputs.ios_development_team }}
     steps:
       - id: resolve
         shell: bash
+        env:
+          IOS_TEAM_VAR: ${{ vars.AGENTLINE_IOS_DEVELOPMENT_TEAM }}
+          IOS_TEAM_SECRET: ${{ secrets.AGENTLINE_IOS_DEVELOPMENT_TEAM }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_call" ]; then
             echo "release_enabled=true" >> "$GITHUB_OUTPUT"
@@ -40,6 +45,15 @@ jobs:
             echo "release_enabled=false" >> "$GITHUB_OUTPUT"
             echo "release_tag=" >> "$GITHUB_OUTPUT"
             echo "release_version=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+          IOS_TEAM="${IOS_TEAM_VAR:-$IOS_TEAM_SECRET}"
+          if [ -n "$IOS_TEAM" ]; then
+            echo "ios_enabled=true" >> "$GITHUB_OUTPUT"
+            echo "ios_development_team=$IOS_TEAM" >> "$GITHUB_OUTPUT"
+          else
+            echo "ios_enabled=false" >> "$GITHUB_OUTPUT"
+            echo "ios_development_team=" >> "$GITHUB_OUTPUT"
           fi
 
   build-android:
@@ -88,11 +102,11 @@ jobs:
           path: release-assets/*
 
   build-ios:
-    if: ${{ vars.AGENTLINE_IOS_DEVELOPMENT_TEAM != '' || secrets.AGENTLINE_IOS_DEVELOPMENT_TEAM != '' }}
+    if: needs.prepare.outputs.ios_enabled == 'true'
     needs: prepare
     runs-on: macos-latest
     env:
-      AGENTLINE_IOS_DEVELOPMENT_TEAM: ${{ vars.AGENTLINE_IOS_DEVELOPMENT_TEAM || secrets.AGENTLINE_IOS_DEVELOPMENT_TEAM }}
+      AGENTLINE_IOS_DEVELOPMENT_TEAM: ${{ needs.prepare.outputs.ios_development_team }}
     steps:
       - uses: actions/checkout@v4
 
