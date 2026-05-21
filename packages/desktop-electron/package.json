@@ -26,9 +26,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "start": "pnpm run build && pnpm exec electron .",
     "dist:dir": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --dir",
-    "dist:mac": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --mac dmg zip",
-    "dist:win": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --win nsis portable",
-    "dist:linux": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --linux AppImage deb"
+    "dist:mac": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --mac dmg zip --publish never",
+    "dist:win": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --win nsis portable --publish never",
+    "dist:linux": "pnpm run build && pnpm run prepare:runtime && pnpm exec electron-builder --linux AppImage deb --publish never"
   },
   "dependencies": {
     "@agentline/shared": "workspace:*",
