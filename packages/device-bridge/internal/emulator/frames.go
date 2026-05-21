@@ -1,6 +1,6 @@
 package emulator
 
-import "github.com/kzahel/agentline/device-bridge/internal/device"
+import "github.com/april-jk/AgentLine/packages/device-bridge/internal/device"
 
 // Frame aliases the shared device frame type.
 type Frame = device.Frame

@@ -319,7 +319,7 @@ Could render this as a proper diff view in the approval dialog.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Yepanywhere                              │
+│                        AgentLine                              │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐      │
 │  │   Process    │    │ GeminiACP    │    │  ACPClient   │      │
 │  │              │◄───│  Provider    │◄───│              │      │

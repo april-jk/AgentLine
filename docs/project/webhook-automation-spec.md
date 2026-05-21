@@ -4,7 +4,7 @@
 
 Expose a single outbound webhook so external systems can react when a session stops making progress.
 
-Yep remains an event emitter only. It does not store automation state, execute remote logic, parse webhook responses, or provide a session KV API.
+AgentLine remains an event emitter only. It does not store automation state, execute remote logic, parse webhook responses, or provide a session KV API.
 
 ## Scope
 
@@ -130,7 +130,7 @@ curl -sS http://127.0.0.1:8787/ \
   }'
 ```
 
-The external receiver can decide what to do next with Yep's existing APIs. A minimal "keep going" loop looks like:
+The external receiver can decide what to do next with AgentLine's existing APIs. A minimal "keep going" loop looks like:
 
 ```bash
 curl -sS -X POST http://localhost:3400/api/sessions/session-1/messages \
@@ -140,12 +140,12 @@ curl -sS -X POST http://localhost:3400/api/sessions/session-1/messages \
 
 ## External Control Model
 
-The external service uses Yep's existing APIs if it wants to act:
+The external service uses AgentLine's existing APIs if it wants to act:
 - `POST /api/sessions/:id/messages`
 - `POST /api/projects/:pid/sessions/:id/resume`
 - `POST /api/sessions/:id/input`
 
-Yep does not interpret webhook responses.
+AgentLine does not interpret webhook responses.
 
 ## Implementation Shape
 

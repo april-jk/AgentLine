@@ -32,7 +32,7 @@ export function deriveRelayWsUrl(controlPlaneUrl: string): string {
   const normalized = normalizeControlPlaneBaseUrl(controlPlaneUrl);
   return normalized
     ? deriveRelayWsUrlFromControlPlane(normalized)
-    : "wss://relay.oneceo.ai/ws";
+    : "wss://relay.agentline.com/ws";
 }
 
 export function loadStoredAccountAuth(): StoredAccountAuth | null {

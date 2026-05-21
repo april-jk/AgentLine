@@ -6,27 +6,27 @@ Date: 2026-02-18
 
 For AgentLine's goal of a strong **agnostic provider backend** (with good persistence, model/provider switching, and flexible tool execution), **pi-mono is the better primary backend candidate** than OpenCode.
 
-OpenCode is more mature as a standalone multi-client server, but your current Yep integration only uses a small subset of its capabilities and has already stalled. pi-mono is architecturally closer to the abstraction you want to build now: single-session runtime, strong typed event flow, direct embedding options, and explicit cross-provider normalization.
+OpenCode is more mature as a standalone multi-client server, but your current AgentLine integration only uses a small subset of its capabilities and has already stalled. pi-mono is architecturally closer to the abstraction you want to build now: single-session runtime, strong typed event flow, direct embedding options, and explicit cross-provider normalization.
 
 Recommended direction:
 1. Make **pi-mono the primary agnostic backend path**.
 2. Keep OpenCode as a secondary/fallback provider while migrating.
-3. Build a thin normalization layer in Yep that can map both backends into one internal event/session model.
+3. Build a thin normalization layer in AgentLine that can map both backends into one internal event/session model.
 
 ## Context and Current State in AgentLine
 
-Yep currently defines provider-level abstractions around one session runtime (`AgentProvider`/`AgentSession`) and registers providers in-process:
+AgentLine currently defines provider-level abstractions around one session runtime (`AgentProvider`/`AgentSession`) and registers providers in-process:
 - `packages/server/src/sdk/providers/types.ts`
 - `packages/server/src/sdk/providers/index.ts`
 
-OpenCode is currently integrated as a per-session spawned server process (`opencode serve`) with limited feature exposure in Yep:
+OpenCode is currently integrated as a per-session spawned server process (`opencode serve`) with limited feature exposure in AgentLine:
 - `packages/server/src/sdk/providers/opencode.ts`
 
 Important mismatch today:
-- Yep's OpenCode adapter currently reports `supportsPermissionMode = false`, `supportsThinkingToggle = false`, `supportsSlashCommands = false`, despite OpenCode supporting much of this via server APIs and permissions endpoints.
+- AgentLine's OpenCode adapter currently reports `supportsPermissionMode = false`, `supportsThinkingToggle = false`, `supportsSlashCommands = false`, despite OpenCode supporting much of this via server APIs and permissions endpoints.
 - This confirms the integration is functionally narrow relative to OpenCode's actual backend surface.
 
-Yep also already has OpenCode storage reading logic:
+AgentLine also already has OpenCode storage reading logic:
 - `packages/server/src/sessions/opencode-reader.ts`
 
 ## Evaluation Criteria
@@ -36,19 +36,19 @@ This comparison is scoped to suitability as a backend for:
 - Session persistence and session browsing/continuation.
 - Tool execution transparency and event mapping.
 - User-supplied credentials (Anthropic/OpenAI/etc.) through a normalized backend interface.
-- Low-friction integration into Yep's current provider/session architecture.
+- Low-friction integration into AgentLine's current provider/session architecture.
 
 ## High-Level Scorecard
 
-| Dimension | OpenCode | pi-mono | Better Fit for Yep Agnostic Layer |
+| Dimension | OpenCode | pi-mono | Better Fit for AgentLine Agnostic Layer |
 |---|---|---|---|
-| Integration shape vs Yep provider API | Server-over-HTTP/SSE, process-per-session in current adapter | In-process SDK or RPC mode, session-centric | pi-mono |
+| Integration shape vs AgentLine provider API | Server-over-HTTP/SSE, process-per-session in current adapter | In-process SDK or RPC mode, session-centric | pi-mono |
 | Persistence model simplicity for UI | Strong but split (SQLite + storage migration/history) | JSONL append-only tree, easy to inspect/parse | pi-mono |
 | Cross-provider normalization maturity | Strong provider transforms, but mostly server-internal | Explicit transform layer + cross-provider handoff tests | pi-mono |
 | Tool execution flexibility | Strong tools + plugins + permissions | Strong tools + extensions + in-process custom providers | tie (pi has edge for embedding) |
 | Multi-session backend server features | Very strong | More single-session oriented | OpenCode |
 | Fit with your stated target (single-session + normalized layer) | Possible but heavier | Direct fit | pi-mono |
-| Migration effort from current Yep state | Lower incremental (already integrated) | Moderate (new adapter + reader) | OpenCode (short-term), pi (strategic) |
+| Migration effort from current AgentLine state | Lower incremental (already integrated) | Moderate (new adapter + reader) | OpenCode (short-term), pi (strategic) |
 
 ## Detailed Technical Comparison
 
@@ -57,25 +57,25 @@ This comparison is scoped to suitability as a backend for:
 #### OpenCode
 - Native architecture is a headless HTTP server with OpenAPI + SSE event bus (`opencode serve`), designed for multiple clients.
 - API surface is broad (`/session`, `/provider`, `/config`, `/permission`, `/mcp`, `/event`, etc.).
-- In Yep, current implementation spawns one OpenCode server per session and talks over localhost HTTP/SSE.
+- In AgentLine, current implementation spawns one OpenCode server per session and talks over localhost HTTP/SSE.
 
 Strengths:
 - Clear process boundary.
 - Rich remote-control surface.
 
 Costs:
-- Heavier per-session lifecycle in Yep (port mgmt, process mgmt, HTTP error modes).
+- Heavier per-session lifecycle in AgentLine (port mgmt, process mgmt, HTTP error modes).
 - You only consume a narrow fraction of OpenCode's full surface today.
 
 #### pi-mono
-- Offers two integration modes that align well with Yep:
+- Offers two integration modes that align well with AgentLine:
 1. Direct embedding (`createAgentSession()` in SDK path).
 2. JSON RPC subprocess mode over stdin/stdout.
 - Core runtime is session-first (`AgentSession`) and shared across interactive/json/rpc.
 
 Strengths:
 - You can pick IPC boundary later: start with RPC for isolation, move to in-process for lower latency and tighter control.
-- Session runtime abstraction is directly compatible with Yep's `AgentSession` shape (iterator/events + queue-like prompting + abort).
+- Session runtime abstraction is directly compatible with AgentLine's `AgentSession` shape (iterator/events + queue-like prompting + abort).
 
 Costs:
 - You own more adapter logic (event/schema mapping) up front.
@@ -93,9 +93,9 @@ Verdict:
 Upside:
 - Operationally robust backend DB model.
 
-Downside for Yep:
+Downside for AgentLine:
 - Persistence is richer but less trivial to inspect and normalize externally unless you rely fully on OpenCode APIs.
-- Current Yep reader is already tailored to historical file structure assumptions.
+- Current AgentLine reader is already tailored to historical file structure assumptions.
 
 #### pi-mono
 - Sessions are JSONL files under `~/.pi/agent/sessions/...`.
@@ -104,7 +104,7 @@ Downside for Yep:
 
 Upside:
 - Persistence is straightforward for UI indexing and debugging.
-- Easier to build a stable Yep session reader and session browser.
+- Easier to build a stable AgentLine session reader and session browser.
 
 Downside:
 - Not a centralized DB service; concurrency semantics are file-based.
@@ -144,7 +144,7 @@ Verdict:
 - Includes cross-provider handoff tests across many providers/models (important evidence that normalization is first-class).
 - Agent event model is strongly typed and granular (`message_*`, `tool_execution_*`, turn lifecycle).
 
-For Yep normalization layer:
+For AgentLine normalization layer:
 - pi event shapes are already close to a normalized internal envelope you can project into the UI.
 - OpenCode can also map well, but your current adapter does not yet leverage its full granularity.
 
@@ -177,7 +177,7 @@ Verdict:
 #### pi-mono
 - Safety/permissions are more runtime/tool policy driven through tool availability and extension hooks rather than an OpenCode-style standalone permission endpoint.
 
-Implication for Yep:
+Implication for AgentLine:
 - If you want a unified permission UX like Claude/OpenCode, you'll need a thin policy layer on top of pi tool events.
 
 Verdict:
@@ -193,14 +193,14 @@ Your target was:
 
 Assessment:
 - **pi-mono aligns better** with this target, especially if you want the backend to feel like a Claude-like session runtime you can embed and normalize.
-- OpenCode is excellent as a standalone server product, but in Yep it currently behaves as a partially-used subsystem, and that mismatch is why progress likely felt sticky.
+- OpenCode is excellent as a standalone server product, but in AgentLine it currently behaves as a partially-used subsystem, and that mismatch is why progress likely felt sticky.
 
-## Recommended Architecture for Yep
+## Recommended Architecture for AgentLine
 
 ### Recommendation
 Use a two-layer design:
 1. **Backend Adapter Layer** (`PiAdapter`, `OpenCodeAdapter`) for lifecycle and transport.
-2. **Normalized Session/Event Layer** in Yep for UI and persistence indexing.
+2. **Normalized Session/Event Layer** in AgentLine for UI and persistence indexing.
 
 ### Phase 1 (pragmatic)
 - Add new `pi` provider backend alongside `opencode`.
@@ -232,7 +232,7 @@ Use a two-layer design:
 
 ## Bottom Line
 
-If the goal is "a great agnostic backend that Yep can treat as first-class," choose **pi-mono as the primary strategic path** and keep OpenCode as secondary compatibility.
+If the goal is "a great agnostic backend that AgentLine can treat as first-class," choose **pi-mono as the primary strategic path** and keep OpenCode as secondary compatibility.
 
 If the goal is "minimum immediate change," continue OpenCode incrementally, but that likely preserves the same integration friction that caused the current stall.
 

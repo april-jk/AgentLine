@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	bridgeDevice "github.com/kzahel/agentline/device-bridge/internal/device"
-	"github.com/kzahel/agentline/device-bridge/internal/emulator"
-	"github.com/kzahel/agentline/device-bridge/internal/encoder"
-	"github.com/kzahel/agentline/device-bridge/internal/ipc"
-	"github.com/kzahel/agentline/device-bridge/internal/stream"
+	bridgeDevice "github.com/april-jk/AgentLine/packages/device-bridge/internal/device"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/emulator"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/encoder"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/ipc"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/stream"
 )
 
 //go:embed web
@@ -119,7 +119,7 @@ func monitorParent() {
 }
 
 // runIPC runs in IPC mode: picks a random port, prints handshake to stdout,
-// serves REST endpoints and WebSocket for Yep server communication.
+// serves REST endpoints and WebSocket for AgentLine server communication.
 func runIPC(adbPath string) {
 	monitorParent()
 
@@ -200,7 +200,7 @@ func runIPC(adbPath string) {
 	// WebSocket IPC endpoint.
 	mux.HandleFunc("/ws", handler.ServeWS)
 
-	// Print handshake to stdout (Yep server reads this).
+	// Print handshake to stdout (AgentLine server reads this).
 	handshake, _ := json.Marshal(map[string]interface{}{
 		"port":    port,
 		"version": bridgeVersion,

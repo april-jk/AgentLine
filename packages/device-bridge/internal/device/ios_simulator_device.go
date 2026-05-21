@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kzahel/agentline/device-bridge/internal/conn"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/conn"
 )
 
 const (

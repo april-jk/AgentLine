@@ -23,7 +23,7 @@ Compare with existing device types:
 | Device Type | Daemon | Transport | Frame Source | Input Method |
 |---|---|---|---|---|
 | Android emulator | — (gRPC built-in) | gRPC | Emulator gRPC API | Emulator gRPC API |
-| Android physical | `yep-device-server.apk` | TCP via `adb forward` | `SurfaceControl.screenshot()` | `InputManager.injectInputEvent()` |
+| Android physical | `agentline-device-server.apk` | TCP via `adb forward` | `SurfaceControl.screenshot()` | `InputManager.injectInputEvent()` |
 | ChromeOS | `daemon.py` | SSH stdin/stdout | `drm_screenshot_jpeg()` | evdev (`VirtualMouse`, keyboard) |
 | **iOS simulator** | **`ios-sim-server`** | **stdin/stdout** | **IOSurface → VideoToolbox JPEG** | **IndigoHID via SimDeviceLegacyClient** |
 

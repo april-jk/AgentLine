@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kzahel/agentline/device-bridge/internal/device"
-	"github.com/kzahel/agentline/device-bridge/internal/encoder"
-	"github.com/kzahel/agentline/device-bridge/internal/stream"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/device"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/encoder"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/stream"
 )
 
 // SessionStartOptions are the options for starting a device streaming session.
@@ -47,7 +47,7 @@ type SessionManager struct {
 	mu          sync.Mutex
 	sessions    map[string]*streamSession
 	stunServers []string
-	sendMsg     func(msg []byte) // send JSON to the Yep server WebSocket
+	sendMsg     func(msg []byte) // send JSON to the AgentLine server WebSocket
 	pool        *ResourcePool    // shared device connections and FrameSources
 	onIdle      func()           // called when no sessions remain for idleTimeout
 	idleTimer   *time.Timer
@@ -284,7 +284,7 @@ func (sm *SessionManager) StartSession(sessionID, deviceID, deviceType string, o
 		}
 	}()
 
-	// Send the offer to the Yep server.
+	// Send the offer to the AgentLine server.
 	sm.sendOffer(sessionID, sdp)
 
 	return nil
@@ -591,7 +591,7 @@ func (sm *SessionManager) runNALPipeline(sess *streamSession) {
 	profileIndex := 0
 	currentProfile := profiles[profileIndex]
 	currentSource := sess.nalSource
-	debugEnabled := envTruthy("YEP_BRIDGE_STREAM_DEBUG")
+	debugEnabled := envTruthy("AGENTLINE_BRIDGE_STREAM_DEBUG")
 
 	// Progressive adaptation based on queue pressure and RTCP PLI feedback.
 	baseBitrate := currentProfile.BitrateBps
@@ -1081,7 +1081,7 @@ func loadAdaptiveTuning() adaptiveTuning {
 	}
 
 	// Test-only mode for deterministic adaptive profile cycling in E2E.
-	if envTruthy("YEP_BRIDGE_TEST_ADAPTIVE_PROFILE_CYCLE") {
+	if envTruthy("AGENTLINE_BRIDGE_TEST_ADAPTIVE_PROFILE_CYCLE") {
 		cfg.severeQueueDepth = 3
 		cfg.severeWindow = 400 * time.Millisecond
 		cfg.restartDownWindow = 1500 * time.Millisecond
@@ -1096,24 +1096,24 @@ func loadAdaptiveTuning() adaptiveTuning {
 	}
 
 	// Optional overrides for targeted diagnostics.
-	cfg.minBitrate = envInt("YEP_BRIDGE_ADAPTIVE_MIN_BITRATE", cfg.minBitrate)
-	cfg.mildQueueDepth = envInt("YEP_BRIDGE_ADAPTIVE_MILD_QUEUE", cfg.mildQueueDepth)
-	cfg.moderateQueueDepth = envInt("YEP_BRIDGE_ADAPTIVE_MODERATE_QUEUE", cfg.moderateQueueDepth)
-	cfg.severeQueueDepth = envInt("YEP_BRIDGE_ADAPTIVE_SEVERE_QUEUE", cfg.severeQueueDepth)
-	cfg.severeWindow = envDurationMS("YEP_BRIDGE_ADAPTIVE_SEVERE_WINDOW_MS", cfg.severeWindow)
-	cfg.restartDownWindow = envDurationMS("YEP_BRIDGE_ADAPTIVE_RESTART_DOWN_WINDOW_MS", cfg.restartDownWindow)
-	cfg.recoveryWindow = envDurationMS("YEP_BRIDGE_ADAPTIVE_RECOVERY_WINDOW_MS", cfg.recoveryWindow)
-	cfg.restartUpWindow = envDurationMS("YEP_BRIDGE_ADAPTIVE_RESTART_UP_WINDOW_MS", cfg.restartUpWindow)
-	cfg.restartCooldown = envDurationMS("YEP_BRIDGE_ADAPTIVE_RESTART_COOLDOWN_MS", cfg.restartCooldown)
-	cfg.keyframeRequestBackoff = envDurationMS("YEP_BRIDGE_ADAPTIVE_KEYFRAME_BACKOFF_MS", cfg.keyframeRequestBackoff)
-	cfg.bitrateChangeBackoff = envDurationMS("YEP_BRIDGE_ADAPTIVE_BITRATE_BACKOFF_MS", cfg.bitrateChangeBackoff)
-	cfg.dropUntilKeyframe = envTruthy("YEP_BRIDGE_ADAPTIVE_DROP_UNTIL_KEYFRAME")
-	cfg.writeDelay = envDurationMS("YEP_BRIDGE_TEST_NAL_WRITE_DELAY_MS", cfg.writeDelay)
-	cfg.writeDelayDuration = envDurationMS("YEP_BRIDGE_TEST_NAL_WRITE_DELAY_DURATION_MS", cfg.writeDelayDuration)
-	cfg.forceDownAfter = envDurationMS("YEP_BRIDGE_TEST_FORCE_DOWN_AFTER_MS", cfg.forceDownAfter)
-	cfg.forceUpAfter = envDurationMS("YEP_BRIDGE_TEST_FORCE_UP_AFTER_MS", cfg.forceUpAfter)
-	cfg.nalInactivityProbe = envDurationMS("YEP_BRIDGE_NAL_INACTIVITY_PROBE_MS", cfg.nalInactivityProbe)
-	cfg.nalInactivityCloseAfter = envDurationMS("YEP_BRIDGE_NAL_INACTIVITY_CLOSE_AFTER_MS", cfg.nalInactivityCloseAfter)
+	cfg.minBitrate = envInt("AGENTLINE_BRIDGE_ADAPTIVE_MIN_BITRATE", cfg.minBitrate)
+	cfg.mildQueueDepth = envInt("AGENTLINE_BRIDGE_ADAPTIVE_MILD_QUEUE", cfg.mildQueueDepth)
+	cfg.moderateQueueDepth = envInt("AGENTLINE_BRIDGE_ADAPTIVE_MODERATE_QUEUE", cfg.moderateQueueDepth)
+	cfg.severeQueueDepth = envInt("AGENTLINE_BRIDGE_ADAPTIVE_SEVERE_QUEUE", cfg.severeQueueDepth)
+	cfg.severeWindow = envDurationMS("AGENTLINE_BRIDGE_ADAPTIVE_SEVERE_WINDOW_MS", cfg.severeWindow)
+	cfg.restartDownWindow = envDurationMS("AGENTLINE_BRIDGE_ADAPTIVE_RESTART_DOWN_WINDOW_MS", cfg.restartDownWindow)
+	cfg.recoveryWindow = envDurationMS("AGENTLINE_BRIDGE_ADAPTIVE_RECOVERY_WINDOW_MS", cfg.recoveryWindow)
+	cfg.restartUpWindow = envDurationMS("AGENTLINE_BRIDGE_ADAPTIVE_RESTART_UP_WINDOW_MS", cfg.restartUpWindow)
+	cfg.restartCooldown = envDurationMS("AGENTLINE_BRIDGE_ADAPTIVE_RESTART_COOLDOWN_MS", cfg.restartCooldown)
+	cfg.keyframeRequestBackoff = envDurationMS("AGENTLINE_BRIDGE_ADAPTIVE_KEYFRAME_BACKOFF_MS", cfg.keyframeRequestBackoff)
+	cfg.bitrateChangeBackoff = envDurationMS("AGENTLINE_BRIDGE_ADAPTIVE_BITRATE_BACKOFF_MS", cfg.bitrateChangeBackoff)
+	cfg.dropUntilKeyframe = envTruthy("AGENTLINE_BRIDGE_ADAPTIVE_DROP_UNTIL_KEYFRAME")
+	cfg.writeDelay = envDurationMS("AGENTLINE_BRIDGE_TEST_NAL_WRITE_DELAY_MS", cfg.writeDelay)
+	cfg.writeDelayDuration = envDurationMS("AGENTLINE_BRIDGE_TEST_NAL_WRITE_DELAY_DURATION_MS", cfg.writeDelayDuration)
+	cfg.forceDownAfter = envDurationMS("AGENTLINE_BRIDGE_TEST_FORCE_DOWN_AFTER_MS", cfg.forceDownAfter)
+	cfg.forceUpAfter = envDurationMS("AGENTLINE_BRIDGE_TEST_FORCE_UP_AFTER_MS", cfg.forceUpAfter)
+	cfg.nalInactivityProbe = envDurationMS("AGENTLINE_BRIDGE_NAL_INACTIVITY_PROBE_MS", cfg.nalInactivityProbe)
+	cfg.nalInactivityCloseAfter = envDurationMS("AGENTLINE_BRIDGE_NAL_INACTIVITY_CLOSE_AFTER_MS", cfg.nalInactivityCloseAfter)
 
 	if cfg.mildQueueDepth < 0 {
 		cfg.mildQueueDepth = 0
@@ -1137,7 +1137,7 @@ func loadAdaptiveTuning() adaptiveTuning {
 }
 
 func envInt(key string, fallback int) int {
-	raw := strings.TrimSpace(os.Getenv(key))
+	raw := envValue(key)
 	if raw == "" {
 		return fallback
 	}
@@ -1149,7 +1149,7 @@ func envInt(key string, fallback int) int {
 }
 
 func envDurationMS(key string, fallback time.Duration) time.Duration {
-	raw := strings.TrimSpace(os.Getenv(key))
+	raw := envValue(key)
 	if raw == "" {
 		return fallback
 	}
@@ -1164,12 +1164,25 @@ func envDurationMS(key string, fallback time.Duration) time.Duration {
 }
 
 func envTruthy(key string) bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+	switch strings.ToLower(envValue(key)) {
 	case "1", "true", "yes", "on":
 		return true
 	default:
 		return false
 	}
+}
+
+func envValue(keys ...string) string {
+	for _, key := range keys {
+		if key == "" {
+			continue
+		}
+		raw := strings.TrimSpace(os.Getenv(key))
+		if raw != "" {
+			return raw
+		}
+	}
+	return ""
 }
 
 func clampBitrateDown(current, min int) int {
@@ -1239,7 +1252,7 @@ func maybeStartAndroidStream(
 		FPS:        maxFPS,
 		BitrateBps: estimateAndroidBitrate(targetW, targetH, maxFPS),
 	}
-	if envTruthy("YEP_BRIDGE_STREAM_DEBUG") {
+	if envTruthy("AGENTLINE_BRIDGE_STREAM_DEBUG") {
 		log.Printf(
 			"[stream probe] trying stream_start for %s at %dx%d@%dfps bitrate=%d",
 			deviceType,
@@ -1305,7 +1318,7 @@ func (sm *SessionManager) sendProfileEvent(
 	sm.sendMsg(msg)
 }
 
-// sendOffer sends a WebRTC offer to the Yep server.
+// sendOffer sends a WebRTC offer to the AgentLine server.
 func (sm *SessionManager) sendOffer(sessionID, sdp string) {
 	msg, _ := json.Marshal(map[string]string{
 		"type":      "webrtc.offer",
@@ -1315,7 +1328,7 @@ func (sm *SessionManager) sendOffer(sessionID, sdp string) {
 	sm.sendMsg(msg)
 }
 
-// sendICE sends an ICE candidate to the Yep server.
+// sendICE sends an ICE candidate to the AgentLine server.
 func (sm *SessionManager) sendICE(sessionID string, candidate *stream.ICECandidateJSON) {
 	m := map[string]interface{}{
 		"type":      "webrtc.ice",
@@ -1330,7 +1343,7 @@ func (sm *SessionManager) sendICE(sessionID string, candidate *stream.ICECandida
 	sm.sendMsg(msg)
 }
 
-// sendState sends a session state change to the Yep server.
+// sendState sends a session state change to the AgentLine server.
 func (sm *SessionManager) sendState(sessionID, state, errMsg string) {
 	m := map[string]string{
 		"type":      "session.state",

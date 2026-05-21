@@ -14,7 +14,7 @@ export interface RelayConfig {
   port: number;
   /** File to write the actual port to after binding (for test harnesses) */
   portFile: string | null;
-  /** Data directory for SQLite database (default: ~/.yep-relay/) */
+  /** Data directory for SQLite database (default: ~/.agentline-relay/) */
   dataDir: string;
   /** Optional Postgres URL for control-plane account/device storage */
   controlPlaneDatabaseUrl?: string;
@@ -48,7 +48,8 @@ function getEnvBoolean(name: string, defaultValue: boolean): boolean {
 }
 
 export function loadConfig(): RelayConfig {
-  const dataDir = process.env.RELAY_DATA_DIR ?? join(homedir(), ".yep-relay");
+  const defaultDataDir = join(homedir(), ".agentline-relay");
+  const dataDir = process.env.RELAY_DATA_DIR ?? defaultDataDir;
   const logLevel = (process.env.RELAY_LOG_LEVEL ?? "info") as LogLevel;
   const fileLevel = (process.env.RELAY_LOG_FILE_LEVEL ?? logLevel) as LogLevel;
 

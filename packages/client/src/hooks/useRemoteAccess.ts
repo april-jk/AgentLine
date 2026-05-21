@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchJSON } from "../api/client";
 
 export interface RelayConfig {
-  /** Relay server URL (e.g., wss://relay.oneceo.ai/ws) */
+  /** Relay server URL (e.g., wss://relay.agentline.com/ws) */
   url: string;
   /** Username for relay registration */
   username: string;

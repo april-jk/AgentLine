@@ -71,7 +71,7 @@ agentline
 
 Or, from source:
 ```bash
-git clone https://github.com/kzahel/agentline.git
+git clone https://github.com/april-jk/AgentLine.git
 cd agentline
 pnpm install
 pnpm build
@@ -114,11 +114,11 @@ Read more: [How we use the SDK](https://agentline.com/tos-compliance.html) | [Fe
 
 ## Star History
 
-<a href="https://www.star-history.com/#kzahel/agentline&type=date&legend=top-left">
+<a href="https://www.star-history.com/#april-jk/AgentLine&type=date&legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=kzahel/agentline&type=date&legend=top-left&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=kzahel/agentline&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kzahel/agentline&type=date&legend=top-left" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=april-jk/AgentLine&type=date&legend=top-left&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=april-jk/AgentLine&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=april-jk/AgentLine&type=date&legend=top-left" />
   </picture>
 </a>
 

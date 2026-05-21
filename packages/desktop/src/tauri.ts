@@ -21,7 +21,7 @@ export async function getDataDir(): Promise<string> {
   return invoke("get_data_dir");
 }
 
-/** Returns the dev directory path if YEP_DEV_DIR is set, or null otherwise. */
+/** Returns the dev directory path if AGENTLINE_DEV_DIR is set, or null otherwise. */
 export async function isDevMode(): Promise<string | null> {
   return invoke("is_dev_mode");
 }
@@ -46,8 +46,8 @@ export async function getServerPort(): Promise<number | null> {
   return invoke("get_server_port");
 }
 
-export async function installYepServer(): Promise<void> {
-  return invoke("install_yep_server");
+export async function installAgentLineServer(): Promise<void> {
+  return invoke("install_agentline_server");
 }
 
 export async function installClaude(): Promise<void> {

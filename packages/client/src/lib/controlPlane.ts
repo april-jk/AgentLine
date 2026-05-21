@@ -1,4 +1,4 @@
-export const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
+export const DEFAULT_CONTROL_PLANE_URL = "https://relay.agentline.com";
 
 const CONTROL_PLANE_ERROR_LABELS: Record<string, string> = {
   control_plane_base_url_required: "请输入平台地址。",
@@ -64,7 +64,7 @@ export function deriveRelayWsUrl(controlPlaneUrl: string): string {
     url.hash = "";
     return url.toString();
   } catch {
-    return "wss://relay.oneceo.ai/ws";
+    return "wss://relay.agentline.com/ws";
   }
 }
 

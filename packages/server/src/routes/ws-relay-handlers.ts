@@ -322,7 +322,7 @@ export async function handleRequest(
   try {
     const url = new URL(request.path, baseUrl);
     const headers = new Headers(request.headers);
-    headers.set("X-Yep-Anywhere", "true");
+    headers.set("X-AgentLine-Request", "true");
     headers.set("X-Ws-Relay", "true");
     if (request.body !== undefined) {
       headers.set("Content-Type", "application/json");

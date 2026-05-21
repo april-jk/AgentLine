@@ -81,7 +81,7 @@ async function fetchJson<T>(
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "X-Yep-Anywhere": "true",
+      "X-AgentLine-Request": "true",
       "X-Desktop-Token": desktopToken,
       ...(init?.headers ?? {}),
     },

@@ -10,9 +10,9 @@
 
 A command center for orchestrating multiple Claude Code agents. Gives agents a mail system to communicate, persistent identities that survive context compaction, and a hook system that keeps them alive and responsive. Paired with [claude-files](https://github.com/Roasbeef/claude-files) — Roasbeef's full Claude Code config with specialized sub-agents wired through Subtrate.
 
-## How It Relates to Yep
+## How It Relates to AgentLine
 
-**Complementary, not competitive.** Yep is human-to-agent supervision (mobile dashboard, approvals, session management). Subtrate is agent-to-agent coordination infrastructure (messaging bus, persistent identity, code review). Different subsystems that could theoretically compose.
+**Complementary, not competitive.** AgentLine is human-to-agent supervision (mobile dashboard, approvals, session management). Subtrate is agent-to-agent coordination infrastructure (messaging bus, persistent identity, code review). Different subsystems that could theoretically compose.
 
 ## Architecture
 

@@ -91,7 +91,7 @@ Two modes:
 
 ### Comparison: CLI-Wrapper vs Server-Owned
 
-| Aspect | HAPI (CLI-Wrapper) | Yepanywhere (Server-Owned) |
+| Aspect | HAPI (CLI-Wrapper) | AgentLine (Server-Owned) |
 |--------|-------------------|---------------------------|
 | Process ownership | CLI owns agent, must stay running | Server owns agent process |
 | Disconnect handling | CLI disconnect = agent stops | Client disconnect = agent continues |
@@ -115,7 +115,7 @@ hapi/
 
 ### Full Feature Matrix
 
-| Feature | HAPI | Yepanywhere | Notes |
+| Feature | HAPI | AgentLine | Notes |
 |---------|------|-------------|-------|
 | **Code Diff Viewing** | ✅ Full | ✅ Full | Both have modal + inline views |
 | **Subagent/Task Inspection** | ✅ Hierarchical tree | ✅ Lazy-load JSONL | HAPI shows tree; YA loads full nested content |

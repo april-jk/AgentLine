@@ -53,7 +53,7 @@ export function PushNotificationToggle() {
           )}
           <p style={{ marginTop: "0.5rem" }}>
             <a
-              href="https://github.com/kzahel/agentline/blob/main/docs/push-notifications.md"
+              href="https://github.com/april-jk/AgentLine/blob/main/docs/push-notifications.md"
               target="_blank"
               rel="noopener noreferrer"
             >

@@ -36,9 +36,11 @@ pub fn bin_dir() -> PathBuf {
     data_dir().join("bin")
 }
 
-/// If `YEP_DEV_DIR` is set, run from local source instead of installed npm package.
+/// If `AGENTLINE_DEV_DIR` is set, run from local source instead of installed npm package.
 pub fn dev_dir() -> Option<PathBuf> {
-    std::env::var("YEP_DEV_DIR").ok().map(PathBuf::from)
+    std::env::var("AGENTLINE_DEV_DIR")
+        .ok()
+        .map(PathBuf::from)
 }
 
 pub fn load_config() -> AppConfig {

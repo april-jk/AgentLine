@@ -109,7 +109,7 @@ export function AboutSettings() {
             <p>{t("aboutReportBugDescription")}</p>
           </div>
           <a
-            href="https://github.com/kzahel/agentline/issues"
+            href="https://github.com/april-jk/AgentLine/issues"
             target="_blank"
             rel="noopener noreferrer"
             className="settings-button"

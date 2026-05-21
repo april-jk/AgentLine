@@ -7,7 +7,7 @@ import {
 import { resolvePreferredProjectId } from "../useRecentProject";
 
 describe("resolvePreferredProjectId", () => {
-  const projects = [{ id: "jstorrent" }, { id: "webvam" }];
+  const projects = [{ id: "alpha" }, { id: "beta" }];
 
   beforeEach(() => {
     const store = new Map<string, string>();
@@ -36,10 +36,10 @@ describe("resolvePreferredProjectId", () => {
   it("prefers the valid recent project from scoped localStorage", () => {
     localStorage.setItem(
       serverKey("test-install", SERVER_SCOPED_KEYS.recentProject),
-      "webvam",
+      "beta",
     );
 
-    expect(resolvePreferredProjectId(projects, "jstorrent")).toBe("webvam");
+    expect(resolvePreferredProjectId(projects, "alpha")).toBe("beta");
   });
 
   it("falls back to the caller-provided project when the recent project is stale", () => {
@@ -48,16 +48,16 @@ describe("resolvePreferredProjectId", () => {
       "missing-project",
     );
 
-    expect(resolvePreferredProjectId(projects, "jstorrent")).toBe("jstorrent");
+    expect(resolvePreferredProjectId(projects, "alpha")).toBe("alpha");
   });
 
   it("falls back to the first available project when nothing else matches", () => {
     expect(resolvePreferredProjectId(projects, "missing-project")).toBe(
-      "jstorrent",
+      "alpha",
     );
   });
 
   it("returns null when no projects are available", () => {
-    expect(resolvePreferredProjectId([], "jstorrent")).toBeNull();
+    expect(resolvePreferredProjectId([], "alpha")).toBeNull();
   });
 });

@@ -214,7 +214,7 @@ function buildStatsHtml(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Yep Relay Stats</title>
+<title>AgentLine Relay Stats</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 body {
@@ -256,7 +256,7 @@ h1 { font-size: 22px; margin-bottom: 6px; }
 </style>
 </head>
 <body>
-<h1>Yep Relay Stats</h1>
+<h1>AgentLine Relay Stats</h1>
 <div class="subtitle">Daily rolled telemetry from <code>${eventsDir}</code></div>
 <div class="grid">
   <section class="card">

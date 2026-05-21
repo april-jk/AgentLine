@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kzahel/agentline/device-bridge/internal/conn"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/conn"
 )
 
 func TestChromeOSDeviceFramingWithMockTransport(t *testing.T) {

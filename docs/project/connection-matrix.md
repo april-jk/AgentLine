@@ -128,7 +128,7 @@ Session Resume (stored session):
 **Flow:**
 ```
 ┌──────────┐    ┌───────────┐    ┌─────────────┐
-│  Phone   │───▶│   Relay   │◀───│ Yepanywhere │
+│  Phone   │───▶│   Relay   │◀───│ AgentLine │
 │          │    │           │    │   Server    │
 │ SRP+NaCl │    │ opaque    │    │ SRP+NaCl    │
 │          │    │ blobs     │    │             │

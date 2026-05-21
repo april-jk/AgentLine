@@ -276,7 +276,7 @@ test.describe("Remote Access Configuration", () => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-Yep-Anywhere": "true",
+        "X-AgentLine-Request": "true",
       },
       body: JSON.stringify({
         url: "wss://relay.example.com/ws",
@@ -294,7 +294,7 @@ test.describe("Remote Access Configuration", () => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "X-Yep-Anywhere": "true",
+        "X-AgentLine-Request": "true",
       },
       body: JSON.stringify({
         url: "wss://relay.example.com/ws",
@@ -308,7 +308,7 @@ test.describe("Remote Access Configuration", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Yep-Anywhere": "true",
+        "X-AgentLine-Request": "true",
       },
       body: JSON.stringify({ password: "short" }),
     });
@@ -322,7 +322,7 @@ test.describe("Remote Access Configuration", () => {
     await fetch(`${baseURL}/api/remote-access/relay`, {
       method: "DELETE",
       headers: {
-        "X-Yep-Anywhere": "true",
+        "X-AgentLine-Request": "true",
       },
     });
 
@@ -331,7 +331,7 @@ test.describe("Remote Access Configuration", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Yep-Anywhere": "true",
+        "X-AgentLine-Request": "true",
       },
       body: JSON.stringify({ password: "validpassword123" }),
     });

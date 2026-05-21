@@ -49,7 +49,7 @@ export function reloadNotify(options: ReloadNotifyOptions = {}): Plugin {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Yep-Anywhere": "true",
+          "X-AgentLine-Request": "true",
         },
         body: JSON.stringify({ files: [relativePath] }),
       }).catch((err) => {

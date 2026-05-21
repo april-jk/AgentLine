@@ -91,7 +91,7 @@ describe("DeviceBridgeService", () => {
     const sendToSidecar = vi.fn();
     const ensureAndroidServerAPK = vi
       .fn()
-      .mockResolvedValue("/tmp/yep-device-server.apk");
+      .mockResolvedValue("/tmp/agentline-device-server.apk");
     const ensureStarted = vi.fn().mockResolvedValue(undefined);
     shim.ensureAndroidServerAPK = ensureAndroidServerAPK;
     shim.ensureStarted = ensureStarted;
@@ -130,7 +130,7 @@ describe("DeviceBridgeService", () => {
 
     shim.ensureAndroidServerAPK = vi
       .fn()
-      .mockResolvedValue("/tmp/yep-device-server.apk");
+      .mockResolvedValue("/tmp/agentline-device-server.apk");
     shim.ensureStarted = vi.fn().mockResolvedValue(undefined);
     shim.sendToSidecar = vi.fn();
 
@@ -157,7 +157,7 @@ describe("DeviceBridgeService", () => {
 
     shim.ensureAndroidServerAPK = vi
       .fn()
-      .mockResolvedValue("/tmp/yep-device-server.apk");
+      .mockResolvedValue("/tmp/agentline-device-server.apk");
     shim.ensureStarted = vi.fn().mockResolvedValue(undefined);
     shim.sendToSidecar = vi.fn();
 
@@ -260,13 +260,13 @@ describe("DeviceBridgeService", () => {
     shim.downloadBinary = vi.fn().mockResolvedValue(prodBinaryPath);
     shim.downloadAndroidServerAPK = vi
       .fn()
-      .mockResolvedValue("/tmp/agentline-test/bin/yep-device-server.apk");
+      .mockResolvedValue("/tmp/agentline-test/bin/agentline-device-server.apk");
     shim.shutdown = vi.fn().mockResolvedValue(undefined);
     shim.ensureStarted = vi.fn().mockResolvedValue(undefined);
 
     await expect(service.downloadRuntimeDependencies()).resolves.toEqual({
       binaryPath: prodBinaryPath,
-      apkPath: "/tmp/agentline-test/bin/yep-device-server.apk",
+      apkPath: "/tmp/agentline-test/bin/agentline-device-server.apk",
     });
 
     expect(shim.shutdown).toHaveBeenCalledTimes(1);

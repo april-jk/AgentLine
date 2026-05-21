@@ -27,7 +27,7 @@ describe("requestClientConnectGrant fallback behavior", () => {
     localStorage.setItem(
       ACCOUNT_STORAGE_KEY,
       JSON.stringify({
-        controlPlaneUrl: "https://relay.oneceo.ai",
+        controlPlaneUrl: "https://relay.agentline.com",
         accessToken: "token-123",
         email: "user@example.com",
       }),
@@ -62,7 +62,7 @@ describe("requestClientConnectGrant fallback behavior", () => {
       }),
     );
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://relay.oneceo.ai/api/v1/relay/grants/client-connect",
+      "https://relay.agentline.com/api/v1/relay/grants/client-connect",
       expect.objectContaining({
         method: "POST",
       }),
@@ -71,7 +71,7 @@ describe("requestClientConnectGrant fallback behavior", () => {
       grant: "grant-1",
       relayUsername: "desk-a",
       deviceId: "device-1",
-      controlPlaneUrl: "https://relay.oneceo.ai",
+      controlPlaneUrl: "https://relay.agentline.com",
     });
   });
 });

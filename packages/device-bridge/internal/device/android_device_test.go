@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kzahel/agentline/device-bridge/internal/conn"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/conn"
 )
 
 func TestAndroidDeviceWithMockTCPServer(t *testing.T) {
@@ -221,7 +221,7 @@ func TestAndroidDeviceAppliesCaptureSettingsOnMaxWidthChange(t *testing.T) {
 
 func TestResolveAndroidServerAPKPathUsesBridgeDataDirEnv(t *testing.T) {
 	tmpDir := t.TempDir()
-	apkPath := filepath.Join(tmpDir, "bin", "yep-device-server.apk")
+	apkPath := filepath.Join(tmpDir, "bin", "agentline-device-server.apk")
 	if err := os.MkdirAll(filepath.Dir(apkPath), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}

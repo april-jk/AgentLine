@@ -45,20 +45,20 @@ interface UseEmulatorStreamResult {
 }
 
 type ProfileTelemetryWindow = Window & {
-  __YEP_DEVICE_STREAM_PROFILE_EVENTS__?: DeviceStreamProfileEvent[];
+  __AGENTLINE_DEVICE_STREAM_PROFILE_EVENTS__?: DeviceStreamProfileEvent[];
 };
 
 function resetProfileTelemetrySink() {
   if (typeof window === "undefined") return;
-  (window as ProfileTelemetryWindow).__YEP_DEVICE_STREAM_PROFILE_EVENTS__ = [];
+  (window as ProfileTelemetryWindow).__AGENTLINE_DEVICE_STREAM_PROFILE_EVENTS__ = [];
 }
 
 function publishProfileTelemetry(event: DeviceStreamProfileEvent) {
   if (typeof window === "undefined") return;
   const w = window as ProfileTelemetryWindow;
-  const existing = w.__YEP_DEVICE_STREAM_PROFILE_EVENTS__ ?? [];
+  const existing = w.__AGENTLINE_DEVICE_STREAM_PROFILE_EVENTS__ ?? [];
   existing.push(event);
-  w.__YEP_DEVICE_STREAM_PROFILE_EVENTS__ = existing;
+  w.__AGENTLINE_DEVICE_STREAM_PROFILE_EVENTS__ = existing;
   window.dispatchEvent(
     new CustomEvent<DeviceStreamProfileEvent>(
       "agentline:device_stream_profile_event",

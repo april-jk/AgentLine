@@ -1,4 +1,4 @@
-# Sandboxed Yep-Anywhere
+# Sandboxed AgentLine-Anywhere
 
 Run agentline + Claude in a container for filesystem/privilege isolation.
 

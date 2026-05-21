@@ -3,7 +3,7 @@
 ## Environment
 
 - **Emulator:** v36.3.10 (build 14472402)
-- **AVD:** jstorrent-dev (Pixel 6, API 34, arm64)
+- **AVD:** agentline-dev (Pixel 6, API 34, arm64)
 - **Screen:** 1080x2400 @ 420 dpi
 - **GPU:** `-gpu off` (software rendering via SwiftShader)
 - **Host:** macOS Darwin 25.2.0, Apple Silicon

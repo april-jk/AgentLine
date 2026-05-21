@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kzahel/agentline/device-bridge/internal/device"
-	"github.com/kzahel/agentline/device-bridge/internal/encoder"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/device"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/encoder"
 )
 
 // SignalingHandler manages HTTP signaling for WebRTC sessions.

@@ -100,7 +100,7 @@ SETUP OPTIONS (for headless installation):
                         Exits with error if username is taken.
                         --username: Relay username (3-32 chars, lowercase alphanumeric + hyphens)
                         --password: SRP password (min 8 characters)
-                        --relay: Relay URL (default: wss://relay.oneceo.ai/ws)
+                        --relay: Relay URL (default: wss://relay.agentline.com/ws)
 
 ENVIRONMENT VARIABLES:
   PORT                          Server port (default: 3400)
@@ -155,7 +155,7 @@ EXAMPLES:
   agentline --setup-remote-access --username myserver --password "secretpass123" --relay wss://my-relay.example.com/ws
 
 DOCUMENTATION:
-  For full documentation, see: https://github.com/kzahel/agentline
+  For full documentation, see: https://github.com/april-jk/AgentLine
 
 DATA DIRECTORY:
   Default: ~/.agentline/

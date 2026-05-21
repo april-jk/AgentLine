@@ -39,7 +39,7 @@ services:
       # Claude SDK data
       - ~/.claude:/home/sandbox/.claude
 
-      # Yep-anywhere data
+      # AgentLine data
       - ~/.agentline:/home/sandbox/.agentline
 
       # Git config (read-only)

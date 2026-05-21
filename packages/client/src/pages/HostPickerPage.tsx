@@ -50,7 +50,7 @@ function parseRelayHashCredentials(
     const params = new URLSearchParams(hash.slice(1));
     const relayUsername = params.get("u")?.trim().toLowerCase() ?? "";
     const accessPassword = params.get("p") ?? "";
-    const relayUrl = params.get("r")?.trim() || "wss://relay.oneceo.ai/ws";
+    const relayUrl = params.get("r")?.trim() || "wss://relay.agentline.com/ws";
     const clientGrant = params.get("cg")?.trim() || undefined;
     if (!relayUsername || !accessPassword) return null;
 

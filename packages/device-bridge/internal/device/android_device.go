@@ -16,13 +16,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kzahel/agentline/device-bridge/internal/conn"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/conn"
 )
 
 const (
 	defaultAndroidBridgePort      = 27183
 	defaultADBPath                = "adb"
-	defaultAndroidServerRemoteAPK = "/data/local/tmp/yep-device-server.apk"
+	defaultAndroidServerRemoteAPK = "/data/local/tmp/agentline-device-server.apk"
 	defaultAndroidServerMainClass = "com.agentline.DeviceServer"
 	androidServerAPKEnvVar        = "ANDROID_DEVICE_SERVER_APK"
 	bridgeDataDirEnvVar           = "AGENTLINE_DATA_DIR"
@@ -228,27 +228,27 @@ func resolveAndroidServerAPKPath() (string, error) {
 	candidates := make([]string, 0, 6)
 
 	if dataDir := strings.TrimSpace(os.Getenv(bridgeDataDirEnvVar)); dataDir != "" {
-		candidates = append(candidates, filepath.Join(dataDir, "bin", "yep-device-server.apk"))
+		candidates = append(candidates, filepath.Join(dataDir, "bin", "agentline-device-server.apk"))
 	}
 
 	if exe, err := os.Executable(); err == nil {
 		exeDir := filepath.Dir(exe)
 		candidates = append(candidates,
-			filepath.Join(exeDir, "yep-device-server.apk"),
-			filepath.Join(exeDir, "..", "android-device-server", "app", "build", "outputs", "apk", "release", "yep-device-server.apk"),
-			filepath.Join(exeDir, "..", "..", "android-device-server", "app", "build", "outputs", "apk", "release", "yep-device-server.apk"),
+			filepath.Join(exeDir, "agentline-device-server.apk"),
+			filepath.Join(exeDir, "..", "android-device-server", "app", "build", "outputs", "apk", "release", "agentline-device-server.apk"),
+			filepath.Join(exeDir, "..", "..", "android-device-server", "app", "build", "outputs", "apk", "release", "agentline-device-server.apk"),
 		)
 	}
 
 	if cwd, err := os.Getwd(); err == nil {
 		candidates = append(candidates,
-			filepath.Join(cwd, "packages", "android-device-server", "app", "build", "outputs", "apk", "release", "yep-device-server.apk"),
-			filepath.Join(cwd, "app", "build", "outputs", "apk", "release", "yep-device-server.apk"),
+			filepath.Join(cwd, "packages", "android-device-server", "app", "build", "outputs", "apk", "release", "agentline-device-server.apk"),
+			filepath.Join(cwd, "app", "build", "outputs", "apk", "release", "agentline-device-server.apk"),
 		)
 	}
 
 	if home, err := os.UserHomeDir(); err == nil {
-		candidates = append(candidates, filepath.Join(home, ".agentline", "bin", "yep-device-server.apk"))
+		candidates = append(candidates, filepath.Join(home, ".agentline", "bin", "agentline-device-server.apk"))
 	}
 
 	for _, p := range candidates {
@@ -261,7 +261,7 @@ func resolveAndroidServerAPKPath() (string, error) {
 	}
 
 	return "", fmt.Errorf(
-		"android device server apk not found; set %s or build packages/android-device-server/app/build/outputs/apk/release/yep-device-server.apk",
+		"android device server apk not found; set %s or build packages/android-device-server/app/build/outputs/apk/release/agentline-device-server.apk",
 		androidServerAPKEnvVar,
 	)
 }

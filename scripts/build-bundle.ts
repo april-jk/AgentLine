@@ -320,11 +320,11 @@ step("Generate package.json for npm", () => {
     ),
     repository: {
       type: "git",
-      url: "git+https://github.com/kzahel/agentline.git",
+      url: "git+https://github.com/april-jk/AgentLine.git",
     },
-    homepage: "https://github.com/kzahel/agentline#readme",
+    homepage: "https://github.com/april-jk/AgentLine#readme",
     bugs: {
-      url: "https://github.com/kzahel/agentline/issues",
+      url: "https://github.com/april-jk/AgentLine/issues",
     },
     keywords: ["claude", "ai", "agent", "supervisor", "mobile"],
     license: "MIT",

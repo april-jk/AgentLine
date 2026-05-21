@@ -24,7 +24,7 @@ describe("security middleware", () => {
     const app = createTestApp();
     const response = await app.request("/api/test", {
       method: "POST",
-      headers: { "X-Yep-Anywhere": "true" },
+      headers: { "X-AgentLine-Request": "true" },
     });
 
     expect(response.status).toBe(200);

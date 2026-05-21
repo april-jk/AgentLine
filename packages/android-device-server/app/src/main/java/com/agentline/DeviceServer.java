@@ -1172,7 +1172,7 @@ public final class DeviceServer {
                     int[] displaySize = readDisplaySizeOrFallback(fallbackScreenWidth, fallbackScreenHeight);
                     startPipelineWithRetriesLocked(displaySize[0], displaySize[1], bitrate, fps);
                     running = true;
-                    outputThread = new Thread(this::runOutputLoop, "yep-stream-encoder");
+                    outputThread = new Thread(this::runOutputLoop, "agentline-stream-encoder");
                     outputThread.setDaemon(true);
                     outputThread.start();
 
@@ -1536,7 +1536,7 @@ public final class DeviceServer {
             if (createVirtualDisplay == null || !Modifier.isStatic(createVirtualDisplay.getModifiers())) {
                 throw new NoSuchMethodException("DisplayManager.createVirtualDisplay(name,w,h,displayId,surface)");
             }
-            Object vd = createVirtualDisplay.invoke(null, "yep-stream", width, height, 0, inputSurface);
+            Object vd = createVirtualDisplay.invoke(null, "agentline-stream", width, height, 0, inputSurface);
             if (vd == null) {
                 throw new IOException("DisplayManager.createVirtualDisplay returned null");
             }
@@ -1570,7 +1570,7 @@ public final class DeviceServer {
                 throw new NoSuchMethodException("missing SurfaceControl display methods");
             }
 
-            Object token = createDisplay.invoke(null, "yep-stream", false);
+            Object token = createDisplay.invoke(null, "agentline-stream", false);
             if (token == null) {
                 throw new IOException("SurfaceControl.createDisplay returned null");
             }

@@ -6,7 +6,7 @@
  * phone clients to connect to agentline servers behind NAT.
  *
  * Flow:
- * 1. Yepanywhere server connects to relay, sends server_register
+ * 1. AgentLine server connects to relay, sends server_register
  * 2. Relay responds with server_registered or server_rejected
  * 3. Phone client connects to relay, sends client_connect with username
  * 4. Relay pairs phone to server's waiting connection
@@ -14,10 +14,10 @@
  */
 
 // ============================================================================
-// Server Registration (Yepanywhere -> Relay)
+// Server Registration (AgentLine -> Relay)
 // ============================================================================
 
-/** Yepanywhere server registers with relay, claiming a username */
+/** AgentLine server registers with relay, claiming a username */
 export interface RelayServerCompatibilityMetadata {
   /** AgentLine app version running on the server. */
   appVersion?: string;
@@ -29,7 +29,7 @@ export interface RelayServerCompatibilityMetadata {
   capabilities?: string[];
 }
 
-/** Yepanywhere server registers with relay, claiming a username */
+/** AgentLine server registers with relay, claiming a username */
 export interface RelayServerRegister {
   type: "server_register";
   /** Username for clients to connect to */

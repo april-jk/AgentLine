@@ -81,7 +81,7 @@ test.describe("WebSocket Transport E2E", () => {
               id: crypto.randomUUID(),
               method: "GET",
               path: "/health",
-              headers: { "X-Yep-Anywhere": "true" },
+              headers: { "X-AgentLine-Request": "true" },
             };
 
             ws.onmessage = (event) => {
@@ -132,7 +132,7 @@ test.describe("WebSocket Transport E2E", () => {
               id: crypto.randomUUID(),
               method: "GET",
               path: "/api/version",
-              headers: { "X-Yep-Anywhere": "true" },
+              headers: { "X-AgentLine-Request": "true" },
             };
 
             ws.onmessage = (event) => {
@@ -183,7 +183,7 @@ test.describe("WebSocket Transport E2E", () => {
               id: crypto.randomUUID(),
               method: "GET",
               path: "/api/projects",
-              headers: { "X-Yep-Anywhere": "true" },
+              headers: { "X-AgentLine-Request": "true" },
             };
 
             ws.onmessage = (event) => {
@@ -236,7 +236,7 @@ test.describe("WebSocket Transport E2E", () => {
             id: crypto.randomUUID(),
             method: "GET",
             path: "/api/nonexistent",
-            headers: { "X-Yep-Anywhere": "true" },
+            headers: { "X-AgentLine-Request": "true" },
           };
 
           ws.onmessage = (event) => {
@@ -284,7 +284,7 @@ test.describe("WebSocket Transport E2E", () => {
               id: crypto.randomUUID(),
               method: "GET",
               path: "/health",
-              headers: { "X-Yep-Anywhere": "true" },
+              headers: { "X-AgentLine-Request": "true" },
             };
 
             const request2 = {
@@ -292,7 +292,7 @@ test.describe("WebSocket Transport E2E", () => {
               id: crypto.randomUUID(),
               method: "GET",
               path: "/api/version",
-              headers: { "X-Yep-Anywhere": "true" },
+              headers: { "X-AgentLine-Request": "true" },
             };
 
             const responses: Array<{ id: string; status: number }> = [];
@@ -521,7 +521,7 @@ test.describe("WebSocket Transport E2E", () => {
               id: crypto.randomUUID(),
               method: "GET",
               path: "/health",
-              headers: { "X-Yep-Anywhere": "true" },
+              headers: { "X-AgentLine-Request": "true" },
             };
 
             ws.onmessage = (event) => {
@@ -561,7 +561,7 @@ test.describe("WebSocket Transport E2E", () => {
               id: crypto.randomUUID(),
               method: "GET",
               path: "/health",
-              headers: { "X-Yep-Anywhere": "true" },
+              headers: { "X-AgentLine-Request": "true" },
             };
 
             ws.onmessage = (event) => {
@@ -642,7 +642,7 @@ test.describe("WebSocket Transport E2E", () => {
                 id: crypto.randomUUID(),
                 method: "GET",
                 path: "/health",
-                headers: { "X-Yep-Anywhere": "true" },
+                headers: { "X-AgentLine-Request": "true" },
               };
 
               let receivedBinary = false;
@@ -722,7 +722,7 @@ test.describe("WebSocket Transport E2E", () => {
                 id: crypto.randomUUID(),
                 method: "GET",
                 path: "/api/version",
-                headers: { "X-Yep-Anywhere": "true" },
+                headers: { "X-AgentLine-Request": "true" },
               };
 
               ws.onmessage = (event) => {

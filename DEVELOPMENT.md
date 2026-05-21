@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/kzahel/agentline.git
+git clone https://github.com/april-jk/AgentLine.git
 cd agentline
 pnpm install
 pnpm dev

@@ -7,7 +7,7 @@ A relay server that enables phone clients to connect to agentline servers behind
 ## Architecture
 
 ```
-Yepanywhere Server                     Relay                          Phone
+AgentLine Server                     Relay                          Phone
       |                                  |                               |
       |-- WS (waiting) ---------------->| <- stored in waiting map      |
       |                                  |                               |
@@ -191,7 +191,7 @@ class ConnectionManager {
 
 ---
 
-### Phase 3: InstallService (Yepanywhere)
+### Phase 3: InstallService (AgentLine)
 
 **File: `packages/server/src/services/InstallService.ts`** (new)
 
@@ -231,7 +231,7 @@ class InstallService {
 
 ---
 
-### Phase 4: RelayClientService (Yepanywhere)
+### Phase 4: RelayClientService (AgentLine)
 
 **File: `packages/server/src/services/RelayClientService.ts`** (new)
 
@@ -417,7 +417,7 @@ Spin up relay + agentline + simulated phone client:
    - Successfully re-registers
 
 8. **Full relay flow**
-   - Yepanywhere connects to relay
+   - AgentLine connects to relay
    - Phone connects through relay
    - SRP auth completes through relay
    - Encrypted app traffic works
@@ -671,10 +671,10 @@ async connectWithExistingSocket(ws: WebSocket, username: string, password: strin
 
 **Relay server:**
 - `RELAY_PORT` (default: 4400)
-- `RELAY_DATA_DIR` (default: `~/.yep-relay/`)
+- `RELAY_DATA_DIR` (default: `~/.agentline-relay/`)
 - `RELAY_LOG_LEVEL` (default: info)
 
-**Yepanywhere server:**
+**AgentLine server:**
 - Relay config stored in `remote-access.json`
 - Install ID stored in `install.json`
 
@@ -696,7 +696,7 @@ async connectWithExistingSocket(ws: WebSocket, username: string, password: strin
 ## Future: Multi-Relay Scaling
 
 When needed, add a front-door service:
-1. Yepanywhere connects to front-door, gets assigned to relay N
+1. AgentLine connects to front-door, gets assigned to relay N
 2. Phone queries front-door for username location, connects to relay N
 3. Database tracks username -> relay mapping (sticky for efficiency)
 

@@ -21,7 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BRIDGE_BINARY = resolve(__dirname, "../../device-bridge/bridge");
 const DEFAULT_APK_PATH = resolve(
   __dirname,
-  "../../android-device-server/app/build/outputs/apk/release/yep-device-server.apk",
+  "../../android-device-server/app/build/outputs/apk/release/agentline-device-server.apk",
 );
 
 /** Find adb binary — checks PATH then common Android SDK locations. */
@@ -65,7 +65,7 @@ function apkOverrideEnabled(): boolean {
 }
 
 function adaptiveProfileCycleEnabled(): boolean {
-  return isTruthy(process.env.YEP_BRIDGE_TEST_ADAPTIVE_PROFILE_CYCLE);
+  return isTruthy(process.env.AGENTLINE_BRIDGE_TEST_ADAPTIVE_PROFILE_CYCLE);
 }
 
 async function adaptiveProfileTransitionsFromClient(
@@ -74,11 +74,11 @@ async function adaptiveProfileTransitionsFromClient(
   return page.evaluate(() => {
     const events = (
       window as Window & {
-        __YEP_DEVICE_STREAM_PROFILE_EVENTS__?: Array<{
+        __AGENTLINE_DEVICE_STREAM_PROFILE_EVENTS__?: Array<{
           direction?: "downshift" | "upshift";
         }>;
       }
-    ).__YEP_DEVICE_STREAM_PROFILE_EVENTS__;
+    ).__AGENTLINE_DEVICE_STREAM_PROFILE_EVENTS__;
 
     return (events ?? [])
       .map((event) => event.direction)
@@ -193,7 +193,7 @@ test("emits adaptive profile downshift/upshift events via APK transport override
   );
   test.skip(
     !adaptiveProfileCycleEnabled(),
-    "Set YEP_BRIDGE_TEST_ADAPTIVE_PROFILE_CYCLE=true to run adaptive profile cycle assertions",
+    "Set AGENTLINE_BRIDGE_TEST_ADAPTIVE_PROFILE_CYCLE=true to run adaptive profile cycle assertions",
   );
 
   const apkPath = process.env.ANDROID_DEVICE_SERVER_APK ?? DEFAULT_APK_PATH;

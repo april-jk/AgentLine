@@ -157,7 +157,7 @@ function normalizeDirectWsUrl(rawValue: string): string {
 function normalizeRelayWsUrl(rawValue: string): string {
   const trimmed = rawValue.trim();
   if (!trimmed) {
-    return "wss://relay.oneceo.ai/ws";
+    return "wss://relay.agentline.com/ws";
   }
 
   let value = trimmed;

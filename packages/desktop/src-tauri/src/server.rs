@@ -91,7 +91,7 @@ fn server_entry() -> Result<std::path::PathBuf, String> {
     }
 
     Err(
-        "AgentLine server not found. Build packages/server or configure YEP_DEV_DIR."
+        "AgentLine server not found. Build packages/server or configure AGENTLINE_DEV_DIR."
             .to_string(),
     )
 }

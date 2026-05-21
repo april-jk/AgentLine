@@ -48,8 +48,8 @@ test-results/
 docs/tasks/schema-report.json
 docs/investigations/
 
-# Yep Anywhere local data
-.yep-anywhere/
+# AgentLine local data
+
 
 # Codex sample sessions (local dev data)
 codex-sample-sessions/

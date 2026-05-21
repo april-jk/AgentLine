@@ -1,6 +1,6 @@
 # Android Device Server (Prototype)
 
-This package builds `yep-device-server.apk`, a tiny Android process launched via `app_process`.
+This package builds `agentline-device-server.apk`, a tiny Android process launched via `app_process`.
 
 ## Toolchain
 
@@ -18,13 +18,13 @@ cd packages/android-device-server
 
 Output APK:
 
-`app/build/outputs/apk/release/yep-device-server.apk`
+`app/build/outputs/apk/release/agentline-device-server.apk`
 
 ## Manual Device Launch
 
 ```bash
-adb -s <serial> push app/build/outputs/apk/release/yep-device-server.apk /data/local/tmp/yep-device-server.apk
-adb -s <serial> shell CLASSPATH=/data/local/tmp/yep-device-server.apk app_process /system/bin com.agentline.DeviceServer
+adb -s <serial> push app/build/outputs/apk/release/agentline-device-server.apk /data/local/tmp/agentline-device-server.apk
+adb -s <serial> shell CLASSPATH=/data/local/tmp/agentline-device-server.apk app_process /system/bin com.agentline.DeviceServer
 adb -s <serial> forward tcp:27183 tcp:27183
 ```
 

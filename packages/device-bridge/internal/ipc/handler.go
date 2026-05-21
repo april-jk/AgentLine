@@ -13,7 +13,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true }, // localhost only
 }
 
-// Handler manages the WebSocket IPC connection from the Yep server.
+// Handler manages the WebSocket IPC connection from the AgentLine server.
 type Handler struct {
 	discovery *Discovery
 	sessions  *SessionManager
@@ -126,7 +126,7 @@ func (h *Handler) handleMessage(data []byte) {
 	}
 }
 
-// sendRaw sends a raw JSON message to the Yep server WebSocket.
+// sendRaw sends a raw JSON message to the AgentLine server WebSocket.
 // Safe for concurrent use from multiple goroutines.
 func (h *Handler) sendRaw(msg []byte) {
 	h.mu.Lock()

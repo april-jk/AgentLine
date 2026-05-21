@@ -83,7 +83,7 @@ export function HostLoginEntryPage() {
               <span className="host-entry-mode-badge">推荐</span>
               <span className="host-entry-mode-title">平台账号登录</span>
               <span className="host-entry-mode-desc">
-                使用 OneCEO 平台账号登录，进入可控设备列表。
+                使用 平台账号登录，进入可控设备列表。
               </span>
             </button>
             <button

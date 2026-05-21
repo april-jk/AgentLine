@@ -353,7 +353,7 @@ export async function fetchJSON<T>(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "X-Yep-Anywhere": "true",
+    "X-AgentLine-Request": "true",
   };
   if (desktopAuthToken) {
     headers["X-Desktop-Token"] = desktopAuthToken;

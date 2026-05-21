@@ -1418,7 +1418,7 @@ export class Process {
    * Terminate the process with a reason (e.g., staleness detection).
    * Unlike abort(), this records the reason for logging/debugging.
    * Also calls abortFn to kill the underlying CLI process, preventing
-   * orphaned processes that continue running after Yep stops tracking them.
+   * orphaned processes that continue running after AgentLine stops tracking them.
    */
   terminate(reason: string): void {
     // Kill the underlying CLI process first (if available), so it doesn't

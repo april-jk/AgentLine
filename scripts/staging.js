@@ -293,7 +293,7 @@ async function ensureInitialBuild() {
 
 // Main
 async function main() {
-  console.log("[Staging] Yepanywhere staging server");
+  console.log("[Staging] AgentLine staging server");
   console.log("");
 
   // Check site folder exists

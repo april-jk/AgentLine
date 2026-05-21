@@ -317,7 +317,7 @@ describe("Relay Server E2E", () => {
       const html = await response.text();
 
       expect(response.status).toBe(200);
-      expect(html).toContain("Yep Relay Stats");
+      expect(html).toContain("AgentLine Relay Stats");
     });
   });
 

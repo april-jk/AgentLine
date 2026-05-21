@@ -7,7 +7,7 @@ describe("Device Routes", () => {
   it("returns binaryPath and apkPath from POST /bridge/download", async () => {
     const downloadRuntimeDependencies = vi.fn().mockResolvedValue({
       binaryPath: "/tmp/device-bridge-linux-amd64",
-      apkPath: "/tmp/yep-device-server.apk",
+      apkPath: "/tmp/agentline-device-server.apk",
     });
 
     const routes = createDeviceRoutes({
@@ -26,7 +26,7 @@ describe("Device Routes", () => {
       ok: true,
       path: "/tmp/device-bridge-linux-amd64",
       binaryPath: "/tmp/device-bridge-linux-amd64",
-      apkPath: "/tmp/yep-device-server.apk",
+      apkPath: "/tmp/agentline-device-server.apk",
     });
     expect(downloadRuntimeDependencies).toHaveBeenCalledTimes(1);
   });

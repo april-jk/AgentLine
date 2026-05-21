@@ -55,7 +55,7 @@ const stateClass: Record<ServerState, string> = {
   error: "dot error",
 };
 
-const DEFAULT_CONTROL_PLANE_BASE_URL = "https://relay.oneceo.ai";
+const DEFAULT_CONTROL_PLANE_BASE_URL = "https://relay.agentline.com";
 
 const CONTROL_PLANE_ERROR_LABELS: Record<string, string> = {
   control_plane_base_url_required: "请输入平台地址（Control Plane URL）。",

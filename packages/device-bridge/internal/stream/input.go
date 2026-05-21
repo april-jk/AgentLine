@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/kzahel/agentline/device-bridge/internal/device"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/device"
 )
 
 // InputHandler translates browser touch/key events to device control calls.

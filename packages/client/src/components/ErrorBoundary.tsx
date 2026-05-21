@@ -125,7 +125,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 Reload Page
               </button>
               <a
-                href="https://github.com/anthropics/agentline/issues"
+                href="https://github.com/april-jk/AgentLine/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={styles.issueLink}

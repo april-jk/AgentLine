@@ -21,7 +21,7 @@ fn get_data_dir() -> String {
     config::data_dir().to_string_lossy().to_string()
 }
 
-/// Returns the dev directory path if `YEP_DEV_DIR` is set, or null otherwise.
+/// Returns the dev directory path if `AGENTLINE_DEV_DIR` is set, or null otherwise.
 #[tauri::command]
 fn is_dev_mode() -> Option<String> {
     config::dev_dir().map(|p| p.to_string_lossy().to_string())
@@ -66,7 +66,7 @@ pub fn run() {
             server::get_server_status,
             server::get_desktop_token,
             server::get_server_port,
-            installer::install_yep_server,
+            installer::install_agentline_server,
             installer::install_claude,
             installer::install_codex,
             installer::check_agent_installed,

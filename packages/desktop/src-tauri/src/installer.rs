@@ -39,7 +39,7 @@ fn emit_progress(app: &AppHandle, agent: &str, status: &str, message: &str) {
 }
 
 #[tauri::command]
-pub async fn install_yep_server(app: AppHandle) -> Result<(), String> {
+pub async fn install_agentline_server(app: AppHandle) -> Result<(), String> {
     let bun = bun_path(&app)?;
     let data_dir = config::data_dir();
     fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;

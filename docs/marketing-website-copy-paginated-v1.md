@@ -363,7 +363,7 @@ agentline
 #### Source
 标题：`从源码运行`
 ```bash
-git clone https://github.com/kzahel/agentline.git
+git clone https://github.com/april-jk/AgentLine.git
 cd agentline
 pnpm install
 pnpm start

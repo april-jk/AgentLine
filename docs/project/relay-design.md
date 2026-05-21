@@ -24,7 +24,7 @@ A relay service that enables phone clients to connect to agentline servers behin
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Phone/Browser  │────▶│     Relay       │◀────│   Yepanywhere   │
+│  Phone/Browser  │────▶│     Relay       │◀────│   AgentLine   │
 │                 │     │                 │     │                 │
 │  - SRP auth     │     │  - Routes msgs  │     │  - Holds SRP    │
 │  - Encrypts     │     │  - Cannot read  │     │    verifier     │
@@ -57,7 +57,7 @@ Returns relay URLs and version requirements. Allows migration without client upd
 }
 ```
 
-Yepanywhere server fetches this on startup (already fetches version info).
+AgentLine server fetches this on startup (already fetches version info).
 
 ### 2. Relay
 
@@ -72,7 +72,7 @@ Lightweight WebSocket router. Responsibilities:
 - Store user data
 - Handle SRP verification (user's agentline server does this)
 
-### 3. Yepanywhere Server Changes
+### 3. AgentLine Server Changes
 
 - **Relay client** - Persistent WebSocket connection to relay
 - **SRP verifier storage** - Store username, salt, verifier in data dir
@@ -94,8 +94,8 @@ Lightweight WebSocket router. Responsibilities:
 2. Enables "Remote Access"
 3. Enters username (e.g., `<user>`) - checked for availability
 4. Enters password
-5. Yepanywhere server stores SRP verifier (never the password)
-6. Yepanywhere server connects to relay, registers username
+5. AgentLine server stores SRP verifier (never the password)
+6. AgentLine server connects to relay, registers username
 
 ### Connecting from Phone
 
@@ -110,10 +110,10 @@ Lightweight WebSocket router. Responsibilities:
 
 ### SRP Authentication
 
-Using SRP-6a with SHA-256. Yepanywhere server stores verifier, never password.
+Using SRP-6a with SHA-256. AgentLine server stores verifier, never password.
 
 ```
-Phone                      Relay                      Yepanywhere
+Phone                      Relay                      AgentLine
   │                          │                          │
   │ ── SRP hello (A) ──────▶ │ ── forward ───────────▶ │
   │                          │                          │
@@ -200,7 +200,7 @@ SecureConnection extends WebSocketConnection, adding SRP handshake and encryptio
 
 For load balancing across multiple relays:
 
-1. **Registration** - Yepanywhere server registers with central DB (Redis/Postgres)
+1. **Registration** - AgentLine server registers with central DB (Redis/Postgres)
 2. **Discovery** - Phone asks "where is <user>?" → gets assigned relay URL
 3. **Routing** - Phone connects to correct relay
 

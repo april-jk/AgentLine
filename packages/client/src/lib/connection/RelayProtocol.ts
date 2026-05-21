@@ -314,7 +314,7 @@ export class RelayProtocol {
     }
 
     headers["Content-Type"] = "application/json";
-    headers["X-Yep-Anywhere"] = "true";
+    headers["X-AgentLine-Request"] = "true";
 
     const request: RelayRequest = {
       type: "request",
@@ -389,7 +389,7 @@ export class RelayProtocol {
       id,
       method,
       path: path.startsWith("/api") ? path : `/api${path}`,
-      headers: { "X-Yep-Anywhere": "true" },
+      headers: { "X-AgentLine-Request": "true" },
     };
 
     const startTime = Date.now();

@@ -48,16 +48,16 @@ Raw Terminal ←—————————————————————�
 
 ## Approach 2: SDK Process Wrapper (AgentLine)
 
-**Project:** [AgentLine](https://github.com/kzahel/agentline)
+**Project:** [AgentLine](https://github.com/april-jk/AgentLine)
 
 **How it works:** Uses official provider SDKs to spawn and manage agent processes:
 - **Claude:** `@anthropic-ai/claude-code` SDK — structured events (messages, tool calls, diffs, permission requests, thinking blocks)
 - **Codex:** `@openai/codex-sdk` — structured events (messages, shell commands, file patches, sandbox modes)
 - **Gemini:** `gemini -o stream-json` CLI — structured JSON stream (tool use, tool results)
 
-Each provider's SDK/CLI handles its own authentication. Yep wraps them all with provider-specific adapters that normalize events into a unified format.
+Each provider's SDK/CLI handles its own authentication. AgentLine wraps them all with provider-specific adapters that normalize events into a unified format.
 
-**Subscription access:** Yes — each SDK/CLI handles authentication independently (device auth, OAuth, etc.). Yep inherits whatever plan the user is authenticated with: Claude Pro/Max, ChatGPT Plus/Pro, etc.
+**Subscription access:** Yes — each SDK/CLI handles authentication independently (device auth, OAuth, etc.). AgentLine inherits whatever plan the user is authenticated with: Claude Pro/Max, ChatGPT Plus/Pro, etc.
 
 **What you get:**
 - Full structured data (messages, tool calls, diffs, permissions)
@@ -192,7 +192,7 @@ OpenCode previously had a mechanism for users to obtain Claude subscription toke
 
 As of this writing, no project provides a **stable, documented, multi-provider API for subscription-plan access.** The three strategies are:
 
-1. **Spawn the CLI** (emdash, Yep) — stable but per-provider, limited to what the CLI exposes
+1. **Spawn the CLI** (emdash, AgentLine) — stable but per-provider, limited to what the CLI exposes
 2. **Reverse-engineer OAuth** (pi-mono) — broad but fragile and TOS-grey
 3. **Legitimate OAuth where available** (OpenCode for Codex/Copilot) — stable but limited to providers that expose public OAuth clients
 4. **API keys only** (Vercel AI, OpenCode for other providers) — stable but expensive
@@ -211,7 +211,7 @@ However, providers have reasons to resist this. The official CLIs serve as contr
 ## Projects Referenced
 
 - **emdash:** [github.com/generalaction/emdash](https://github.com/generalaction/emdash) — YC W26, desktop terminal multiplexer
-- **AgentLine:** [github.com/kzahel/agentline](https://github.com/kzahel/agentline) — mobile-first structured supervisor
+- **AgentLine:** [github.com/april-jk/AgentLine](https://github.com/april-jk/AgentLine) — mobile-first structured supervisor
 - **pi-mono:** [github.com/badlogic/pi-mono](https://github.com/badlogic/pi-mono) — multi-provider coding agent with independent OAuth
 - **Vercel AI SDK:** [github.com/vercel/ai](https://github.com/vercel/ai) — provider-agnostic TypeScript SDK
 - **OpenCode:** [github.com/sst/opencode](https://github.com/sst/opencode) — open-source agentic coding CLI/server

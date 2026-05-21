@@ -37,7 +37,7 @@ import { useAppTheme } from "../styles/theme";
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 type AccountMode = "login" | "register";
 type HostAccessPasswordMap = Record<string, string>;
-const DEFAULT_CONTROL_PLANE_URL = "https://relay.oneceo.ai";
+const DEFAULT_CONTROL_PLANE_URL = "https://relay.agentline.com";
 const LEGACY_DIRECT_USERNAME_PLACEHOLDER = "mobiletest";
 
 function normalizeAccessPassword(value: string | null | undefined): string {
@@ -185,7 +185,7 @@ function deriveRelayWsUrl(controlPlaneUrl: string): string {
       .replace(/^https:\/\//, "wss://");
     return `${normalized}/ws`;
   } catch {
-    return "wss://relay.oneceo.ai/ws";
+    return "wss://relay.agentline.com/ws";
   }
 }
 

@@ -48,7 +48,7 @@ The pattern is simple: agent does background work, produces drafts, pushes a not
 
 Some ideas from OpenClaw's playbook we're considering for AgentLine:
 
-**Global identity (soul.md).** A persistent file at `~/.yep/soul.md` injected into every session. The agent builds up context about you over time — preferences, conventions, deployment targets. Opt-in, reviewable, yours. Off by default to avoid cross-project contamination.
+**Global identity (soul.md).** A persistent file at `~/.agentline/soul.md` injected into every session. The agent builds up context about you over time — preferences, conventions, deployment targets. Opt-in, reviewable, yours. Off by default to avoid cross-project contamination.
 
 **Scheduled tasks.** Cron-like capabilities — schedule a prompt to run at a specific time. Not "agent runs unsupervised forever" but "run the test suite nightly and push-notify me if anything breaks."
 

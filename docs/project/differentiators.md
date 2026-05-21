@@ -4,13 +4,13 @@ Last updated: 2026-02-25
 
 Anthropic's "Remote Control" (research preview, Max only) lets you continue a local Claude Code CLI session from the Claude mobile app or claude.ai/code. This doc tracks where AgentLine is ahead, at parity, and behind.
 
-Basically Yepanywhere is a "remote desktop" into all your AI agent sessions, lets you resume/create/control everything.
+Basically AgentLine is a "remote desktop" into all your AI agent sessions, lets you resume/create/control everything.
 
 Claude Remote Control is "interact with any currently running claude CLI session". No ability to create new ones or review past sessions.
 
 ## Feature Comparison
 
-| Feature | Yep | RC |
+| Feature | AgentLine | RC |
 |---------|:---:|:--:|
 | **Session Management** | | |
 | Create sessions from phone | ✅ | ❌ |
@@ -55,7 +55,7 @@ Claude Remote Control is "interact with any currently running claude CLI session
 
 ## Details
 
-## Where Yep Is Ahead
+## Where AgentLine Is Ahead
 
 ### Session Management
 - **Create sessions from phone** — RC cannot create new sessions; requires `claude remote-control` or `/rc` in terminal first
@@ -69,11 +69,11 @@ Claude Remote Control is "interact with any currently running claude CLI session
 - **Provider badges and filtering** — See which provider is running at a glance
 
 ### Connectivity & Security
-- **Free hosted relay** — Both provide relay infrastructure out of the box. Yep's free relay is E2E encrypted; RC routes through Anthropic's API servers
+- **Free hosted relay** — Both provide relay infrastructure out of the box. AgentLine's free relay is E2E encrypted; RC routes through Anthropic's API servers
 - **Self-hosted relay option** — Run your own relay for full control. RC has no self-hosted option
 - **End-to-end encryption** — NaCl (XSalsa20-Poly1305) + SRP-6a authentication. The relay sees only ciphertext. RC uses TLS to Anthropic's servers (Anthropic can see traffic)
 - **Direct LAN/Tailscale mode** — Zero cloud dependency option. RC always goes through Anthropic
-- **No extra install needed** — RC is built into the Claude CLI and mobile app. Yep requires installing and running a separate server
+- **No extra install needed** — RC is built into the Claude CLI and mobile app. AgentLine requires installing and running a separate server
 - **Works with API keys** — No subscription requirement. RC requires Pro or Max plan ($20+/mo)
 
 

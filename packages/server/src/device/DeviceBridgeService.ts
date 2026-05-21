@@ -26,7 +26,7 @@ const BRIDGE_VERSION_FALLBACK = "0.1.1";
 const BRIDGE_VERSION_URL = "https://updates.agentline.com/bridge/version";
 
 /** GitHub repo for downloading bridge binaries. */
-const BRIDGE_REPO = "kzahel/agentline";
+const BRIDGE_REPO = "april-jk/AgentLine";
 
 /** Cached bridge version from update server (5 minute TTL). */
 let cachedBridgeVersion: { version: string; timestamp: number } | null = null;
@@ -71,7 +71,7 @@ async function getBridgeVersion(options?: {
 
   return BRIDGE_VERSION_FALLBACK;
 }
-const ANDROID_SERVER_APK_NAME = "yep-device-server.apk";
+const ANDROID_SERVER_APK_NAME = "agentline-device-server.apk";
 const ANDROID_SERVER_APK_ENV_VAR = "ANDROID_DEVICE_SERVER_APK";
 const DATA_DIR_ENV_VAR = "AGENTLINE_DATA_DIR";
 const USE_APK_FOR_EMULATORS_ENV_VAR = "DEVICE_BRIDGE_USE_APK_FOR_EMULATOR";
@@ -255,15 +255,15 @@ export class DeviceBridgeService {
       this.getProdAndroidServerAPKPath(),
       path.resolve(
         import.meta.dirname,
-        "../../../android-device-server/app/build/outputs/apk/release/yep-device-server.apk",
+        "../../../android-device-server/app/build/outputs/apk/release/agentline-device-server.apk",
       ),
       path.resolve(
         process.cwd(),
-        "packages/android-device-server/app/build/outputs/apk/release/yep-device-server.apk",
+        "packages/android-device-server/app/build/outputs/apk/release/agentline-device-server.apk",
       ),
       path.resolve(
         process.cwd(),
-        "app/build/outputs/apk/release/yep-device-server.apk",
+        "app/build/outputs/apk/release/agentline-device-server.apk",
       ),
       path.join(os.homedir(), ".agentline", "bin", ANDROID_SERVER_APK_NAME),
     ];

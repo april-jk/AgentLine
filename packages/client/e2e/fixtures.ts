@@ -101,7 +101,7 @@ export interface RemoteAccessConfig {
   username: string;
   /** Password for SRP authentication */
   password: string;
-  /** Optional relay URL (defaults to wss://relay.oneceo.ai/ws) */
+  /** Optional relay URL (defaults to wss://relay.agentline.com/ws) */
   relayUrl?: string;
 }
 
@@ -114,10 +114,10 @@ export async function configureRemoteAccess(
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-Yep-Anywhere": "true",
+      "X-AgentLine-Request": "true",
     },
     body: JSON.stringify({
-      url: config.relayUrl ?? "wss://relay.oneceo.ai/ws",
+      url: config.relayUrl ?? "wss://relay.agentline.com/ws",
       username: config.username,
     }),
   });
@@ -131,7 +131,7 @@ export async function configureRemoteAccess(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Yep-Anywhere": "true",
+      "X-AgentLine-Request": "true",
     },
     body: JSON.stringify({ password: config.password }),
   });
@@ -145,7 +145,7 @@ export async function disableRemoteAccess(baseURL: string): Promise<void> {
   const response = await fetch(`${baseURL}/api/remote-access/clear`, {
     method: "POST",
     headers: {
-      "X-Yep-Anywhere": "true", // Required by security middleware
+      "X-AgentLine-Request": "true", // Required by security middleware
     },
   });
   if (!response.ok) {
@@ -171,7 +171,7 @@ export async function configureRelay(
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      "X-Yep-Anywhere": "true", // Required by security middleware
+      "X-AgentLine-Request": "true", // Required by security middleware
     },
     body: JSON.stringify(config),
   });
@@ -185,7 +185,7 @@ export async function disableRelay(baseURL: string): Promise<void> {
   const response = await fetch(`${baseURL}/api/remote-access/relay`, {
     method: "DELETE",
     headers: {
-      "X-Yep-Anywhere": "true", // Required by security middleware
+      "X-AgentLine-Request": "true", // Required by security middleware
     },
   });
   if (!response.ok) {
@@ -206,7 +206,7 @@ export async function waitForRelayStatus(
   while (Date.now() - startTime < timeoutMs) {
     const response = await fetch(`${baseURL}/api/remote-access/relay/status`, {
       headers: {
-        "X-Yep-Anywhere": "true",
+        "X-AgentLine-Request": "true",
       },
     });
     if (response.ok) {

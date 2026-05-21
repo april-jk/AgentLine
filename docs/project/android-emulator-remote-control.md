@@ -23,7 +23,7 @@ The primary use case is **relay connections** (phone → relay → server), not 
 ### System Diagram
 
 ```
-Phone                          Relay                Yep Server              Sidecar (Go)         Emulator
+Phone                          Relay                AgentLine Server              Sidecar (Go)         Emulator
   │                              │                      │                      │                    │
   │◄══ WSS (relay) ════════════►│◄══ WSS ═════════════►│                      │                    │
   │  encrypted control msgs      │  encrypted control   │                      │                    │
@@ -39,12 +39,12 @@ Phone                          Relay                Yep Server              Side
 
 ### What flows on each connection
 
-**Phone ↔ Relay ↔ Yep Server** (existing WebSocket, already built):
+**Phone ↔ Relay ↔ AgentLine Server** (existing WebSocket, already built):
 - Normal Claude session messages (unchanged)
 - Emulator signaling: SDP offer/answer, ICE candidates (small JSON, handful of messages at setup, then silent)
 - Emulator control: "start stream", "stop stream" (rare)
 
-**Yep Server ↔ Sidecar** (localhost WebSocket):
+**AgentLine Server ↔ Sidecar** (localhost WebSocket):
 - Forward signaling from client (SDP, ICE)
 - Session lifecycle (start/stop)
 - Emulator state changes
@@ -137,17 +137,17 @@ Emulator gRPC                Sidecar                           Phone
 - The binary grows ~3-5MB from x264. Still small.
 - CGo cross-compilation handled by CI (build on each platform, or use `zig cc`).
 
-## IPC Protocol: Yep Server ↔ Sidecar
+## IPC Protocol: AgentLine Server ↔ Sidecar
 
 The sidecar is a localhost HTTP + WebSocket server. Similar pattern to Chrome native messaging.
 
 ### Startup
 
 ```
-1. Yep server spawns: ./emulator-bridge --adb-path /path/to/adb
+1. AgentLine server spawns: ./emulator-bridge --adb-path /path/to/adb
 2. Sidecar picks a random available port
 3. Sidecar prints to stdout: {"port": 52387, "version": "0.1.0"}
-4. Yep server reads that line, connects
+4. AgentLine server reads that line, connects
 5. If sidecar crashes, server marks feature unavailable
 ```
 
@@ -248,7 +248,7 @@ Single WebSocket at `ws://localhost:{port}/ws`. All messages are JSON with a `ty
 ### Full Signaling Flow
 
 ```
-Phone                  Yep Server           Sidecar              Emulator
+Phone                  AgentLine Server           Sidecar              Emulator
   │                        │                    │                    │
   │── "start stream" ─────▶│                    │                    │
   │                        │── session.start ──▶│                    │
@@ -302,7 +302,7 @@ Touch events flow over the WebRTC DataChannel (not through the relay), so input 
 - Touch/key input via DataChannel (`internal/stream/input.go`)
 - Standalone test mode with HTTP signaling for local browser testing
 
-### Phase 2 — IPC integration with Yep server ✅
+### Phase 2 — IPC integration with AgentLine server ✅
 
 **Status:** Complete.
 
@@ -344,7 +344,7 @@ Touch events flow over the WebRTC DataChannel (not through the relay), so input 
 
 **Remaining:**
 1. CI pipeline: GitHub Actions workflow to build Go binaries for all platforms, attach to GitHub releases
-2. Auto-download logic in the Yep server (detect missing binary, fetch from release)
+2. Auto-download logic in the AgentLine server (detect missing binary, fetch from release)
 3. Bundle binary in Tauri desktop app
 4. Adaptive quality/framerate based on connection quality
 5. Orientation handling (portrait/landscape switching)

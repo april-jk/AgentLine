@@ -35,7 +35,7 @@ function formatErrors(errors: ZodError): {
   return { missing, invalid };
 }
 
-const GITHUB_ISSUES_URL = "https://github.com/kzahel/agentline/issues/new";
+const GITHUB_ISSUES_URL = "https://github.com/april-jk/AgentLine/issues/new";
 
 /**
  * Build a GitHub issue URL with pre-filled title and body for schema validation errors.

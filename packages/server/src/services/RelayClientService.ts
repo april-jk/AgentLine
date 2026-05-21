@@ -19,7 +19,7 @@ import {
 import { WebSocket } from "ws";
 
 export interface RelayClientConfig {
-  /** WebSocket URL of the relay server (e.g., wss://relay.oneceo.ai/ws) */
+  /** WebSocket URL of the relay server (e.g., wss://relay.agentline.com/ws) */
   relayUrl: string;
   /** Username to register with the relay */
   username: string;

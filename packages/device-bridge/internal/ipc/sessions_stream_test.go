@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kzahel/agentline/device-bridge/internal/device"
+	"github.com/april-jk/AgentLine/packages/device-bridge/internal/device"
 )
 
 type streamTestDevice struct {
@@ -248,7 +248,7 @@ func TestLoadAdaptiveTuningDefaults(t *testing.T) {
 }
 
 func TestLoadAdaptiveTuningTestCycleMode(t *testing.T) {
-	t.Setenv("YEP_BRIDGE_TEST_ADAPTIVE_PROFILE_CYCLE", "true")
+	t.Setenv("AGENTLINE_BRIDGE_TEST_ADAPTIVE_PROFILE_CYCLE", "true")
 
 	cfg := loadAdaptiveTuning()
 	if cfg.severeQueueDepth < cfg.moderateQueueDepth {
@@ -273,12 +273,12 @@ func TestLoadAdaptiveTuningTestCycleMode(t *testing.T) {
 }
 
 func TestLoadAdaptiveTuningEnvOverrides(t *testing.T) {
-	t.Setenv("YEP_BRIDGE_ADAPTIVE_MIN_BITRATE", "650000")
-	t.Setenv("YEP_BRIDGE_ADAPTIVE_SEVERE_QUEUE", "6")
-	t.Setenv("YEP_BRIDGE_ADAPTIVE_RESTART_COOLDOWN_MS", "2500")
-	t.Setenv("YEP_BRIDGE_ADAPTIVE_DROP_UNTIL_KEYFRAME", "true")
-	t.Setenv("YEP_BRIDGE_NAL_INACTIVITY_PROBE_MS", "2000")
-	t.Setenv("YEP_BRIDGE_NAL_INACTIVITY_CLOSE_AFTER_MS", "17000")
+	t.Setenv("AGENTLINE_BRIDGE_ADAPTIVE_MIN_BITRATE", "650000")
+	t.Setenv("AGENTLINE_BRIDGE_ADAPTIVE_SEVERE_QUEUE", "6")
+	t.Setenv("AGENTLINE_BRIDGE_ADAPTIVE_RESTART_COOLDOWN_MS", "2500")
+	t.Setenv("AGENTLINE_BRIDGE_ADAPTIVE_DROP_UNTIL_KEYFRAME", "true")
+	t.Setenv("AGENTLINE_BRIDGE_NAL_INACTIVITY_PROBE_MS", "2000")
+	t.Setenv("AGENTLINE_BRIDGE_NAL_INACTIVITY_CLOSE_AFTER_MS", "17000")
 
 	cfg := loadAdaptiveTuning()
 	if cfg.minBitrate != 650_000 {

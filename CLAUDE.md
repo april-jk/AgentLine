@@ -1,7 +1,5 @@
 # AgentLine
 
-For cross-project context (how this project relates to other Kyle projects), see `~/code/dotfiles/projects/README.md`.
-
 A mobile-first supervisor for Claude Code agents. Like the VS Code Claude extension, but designed for phones and multi-session workflows.
 
 **Key ideas:**
@@ -97,44 +95,15 @@ Always use the Android emulator to test when it's available. Check with `source 
 
 ## Browser Control (UI Testing)
 
-Use the claw-starter browser skill at `~/code/claw-starter` to automate browser-based testing of the web UI. This uses Playwright with headless Chromium.
+Use the in-app browser tooling or Playwright-based tests to automate browser verification of the web UI.
 
-**Start the browser server** (if not already running):
-
-```bash
-cd ~/code/claw-starter && npx tsx lib/browser/server.ts &
-```
-
-**CLI commands** (run from `~/code/claw-starter`):
+Recommended workflow:
 
 ```bash
-npx tsx lib/browser-cli.ts status              # Check if server is running
-npx tsx lib/browser-cli.ts open <url>           # Open URL in new tab
-npx tsx lib/browser-cli.ts navigate <url>       # Navigate current tab
-npx tsx lib/browser-cli.ts snapshot --efficient  # Read page (accessibility tree)
-npx tsx lib/browser-cli.ts screenshot           # Take screenshot (returns path)
-npx tsx lib/browser-cli.ts click e5             # Click element by ref
-npx tsx lib/browser-cli.ts type e5 "text"       # Type into element
-npx tsx lib/browser-cli.ts evaluate "JS expr"   # Run JS and return result
-npx tsx lib/browser-cli.ts tabs                 # List open tabs
-npx tsx lib/browser-cli.ts close                # Close tab
+pnpm --filter @agentline/client exec playwright test
 ```
 
-**Workflow**: snapshot → act (click/type) using element refs → snapshot again to verify.
-
-See `~/code/claw-starter/README.md` for the full CLI reference.
-
-## ChromeOS Debugging
-
-For Chromebook testing and debugging (screenshots, input, diagnostics), use the chromeos-testbed CLI — NOT the browser control skill (which is for local headless Chromium).
-
-```bash
-~/code/chromeos-testbed/bin/chromeos screenshot              # saves screenshot, prints path
-~/code/chromeos-testbed/bin/chromeos screenshot output.png   # saves to output.png
-~/code/chromeos-testbed/bin/chromeos help                    # full command list
-```
-
-Requires SSH access to `chromeroot`. See `~/code/chromeos-testbed/CLAUDE.md` for details.
+For interactive verification, prefer the local browser automation available in the Codex app or run the targeted E2E spec you are changing.
 
 ## After Editing Code
 

@@ -105,4 +105,4 @@ Open an issue on GitHub with:
 - Any errors from the browser console
 - Server logs if available
 
-[Report an Issue](https://github.com/kzahel/agentline/issues)
+[Report an Issue](https://github.com/april-jk/AgentLine/issues)

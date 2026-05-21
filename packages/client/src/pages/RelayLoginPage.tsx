@@ -87,7 +87,7 @@ function parseNativeBootstrapCredentials(): {
 }
 
 /** Default relay URL */
-const DEFAULT_RELAY_URL = "wss://relay.oneceo.ai/ws";
+const DEFAULT_RELAY_URL = "wss://relay.agentline.com/ws";
 
 type ConnectionStatus =
   | "idle"

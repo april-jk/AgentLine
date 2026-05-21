@@ -2,7 +2,7 @@
 
 ## Goal
 
-The emulator remote control (see [android-emulator-remote-control.md](android-emulator-remote-control.md)) is complete through Phase 3. It streams a running Android emulator to any browser via WebRTC, with touch and key input over a DataChannel. The sidecar binary (`emulator-bridge`) handles encoding and WebRTC; the Yep server manages its lifecycle.
+The emulator remote control (see [android-emulator-remote-control.md](android-emulator-remote-control.md)) is complete through Phase 3. It streams a running Android emulator to any browser via WebRTC, with touch and key input over a DataChannel. The sidecar binary (`emulator-bridge`) handles encoding and WebRTC; the AgentLine server manages its lifecycle.
 
 This document covers extending that same architecture to support **physical Android devices over USB** and (as a personal/internal tool) **ChromeOS devices over SSH**. The emulator path remains fully intact — we're widening the system, not replacing it.
 
@@ -11,7 +11,7 @@ This document covers extending that same architecture to support **physical Andr
 The entire pipeline is built and working for emulators:
 
 ```
-Phone ──(relay)──► Yep Server ──(WS IPC)──► Go sidecar ──(gRPC)──► Android Emulator
+Phone ──(relay)──► AgentLine Server ──(WS IPC)──► Go sidecar ──(gRPC)──► Android Emulator
                                                   │
                                         WebRTC P2P (H.264 video + DataChannel input)
                                                   │
@@ -105,11 +105,11 @@ Android devices connected via USB. No root needed. Uses the same `app_process` t
 
 **On-device: APK server**
 
-A minimal APK (`yep-device-server.apk`) with no UI, no manifest permissions, no install dialog. Launched by the sidecar:
+A minimal APK (`agentline-device-server.apk`) with no UI, no manifest permissions, no install dialog. Launched by the sidecar:
 
 ```bash
-adb -s <serial> push yep-device-server.apk /data/local/tmp/
-adb -s <serial> shell CLASSPATH=/data/local/tmp/yep-device-server.apk \
+adb -s <serial> push agentline-device-server.apk /data/local/tmp/
+adb -s <serial> shell CLASSPATH=/data/local/tmp/agentline-device-server.apk \
     app_process /system/bin com.agentline.DeviceServer
 adb -s <serial> forward tcp:27183 tcp:27183   # video
 adb -s <serial> forward tcp:27184 tcp:27184   # control
@@ -152,7 +152,7 @@ Implements `Device`. Connects to `localhost:27183/27184` (after sidecar does `ad
 
 **APK distribution**
 
-CI builds and attaches `yep-device-server.apk` to GitHub releases alongside the sidecar binary. Yep server auto-downloads it to `~/.agentline/bin/yep-device-server.apk` on first use, same mechanism as the sidecar binary.
+CI builds and attaches `agentline-device-server.apk` to GitHub releases alongside the sidecar binary. AgentLine server auto-downloads it to `~/.agentline/bin/agentline-device-server.apk` on first use, same mechanism as the sidecar binary.
 
 ---
 
@@ -279,7 +279,7 @@ All code lives in this repo.
 5. Add APK build + release artifact to CI alongside sidecar binary
 
 **Phase 3 progress (2026-03-02):**
-- ✅ `bridge-ci.yml` now builds/releases `device-bridge-*` binaries and `yep-device-server.apk`
+- ✅ `bridge-ci.yml` now builds/releases `device-bridge-*` binaries and `agentline-device-server.apk`
 - ✅ Server download endpoint now pulls both artifacts (`POST /api/devices/bridge/download`)
 - ✅ `DeviceBridgeService.startStream()` auto-ensures APK availability for Android/APK transport sessions
 

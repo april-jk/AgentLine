@@ -1,4 +1,4 @@
-module github.com/kzahel/agentline/device-bridge
+module github.com/april-jk/AgentLine/packages/device-bridge
 
 go 1.25.0
 

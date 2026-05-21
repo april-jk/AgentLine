@@ -121,7 +121,7 @@ Per-chat session isolation via composite key `userId:chatId` prevents context le
 
 Anthropic's [Jan 2026 crackdown](https://www.theregister.com/2026/02/20/anthropic_clarifies_ban_third_party_claude_access/) banned third-party tools that spoof client identity to use subscription OAuth tokens. AionUi's `claude-agent-acp` bridge requires an API key (no OAuth support), so users must pay per-token — significantly more expensive than a $200/month Max subscription.
 
-Yepanywhere uses the official Agent SDK with the user's own subscription credentials. Anthropic [confirmed](https://x.com/trq212/status/2024212378402095389) that individual use of the Agent SDK with Max subscriptions is permitted. This gives us a meaningful cost advantage for Claude users.
+AgentLine uses the official Agent SDK with the user's own subscription credentials. Anthropic [confirmed](https://x.com/trq212/status/2024212378402095389) that individual use of the Agent SDK with Max subscriptions is permitted. This gives us a meaningful cost advantage for Claude users.
 
 For Gemini, AionUi calls the `@google/genai` API directly (API key required). Google's Gemini CLI free tier uses Google OAuth with rate limits; AionUi bypasses this entirely. For Codex, both approaches use API keys — no subscription model exists.
 

@@ -5,7 +5,7 @@
 Replace our custom provider implementations (Codex, CodexOSS, Gemini, OpenCode) with a standardized ACP client. This separates concerns cleanly:
 
 - **Agent (Brain)**: Reasoning, planning, tool selection, session persistence, conversation history
-- **Yepanywhere (Body)**: Execute filesystem operations, run terminals, show UI, handle approvals
+- **AgentLine (Body)**: Execute filesystem operations, run terminals, show UI, handle approvals
 
 The agent controls its own loop and uses us for dumb I/O operations. We never store sessions - the agent handles persistence.
 
@@ -685,7 +685,7 @@ pnpm add @agentclientprotocol/sdk
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Yepanywhere Server                        │
+│                        AgentLine Server                        │
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │                      Provider Layer                          ││
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       ││

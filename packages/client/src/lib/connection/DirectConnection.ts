@@ -29,7 +29,7 @@ export class DirectConnection implements Connection {
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "X-Yep-Anywhere": "true",
+        "X-AgentLine-Request": "true",
         ...init?.headers,
       },
     });
@@ -65,7 +65,7 @@ export class DirectConnection implements Connection {
     const res = await fetch(`${API_BASE}${path}`, {
       credentials: "include",
       headers: {
-        "X-Yep-Anywhere": "true",
+        "X-AgentLine-Request": "true",
       },
     });
 
