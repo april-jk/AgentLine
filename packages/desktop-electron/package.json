@@ -69,6 +69,8 @@
     },
     "linux": {
       "icon": "../desktop/src-tauri/icons/icon.png",
+      "artifactName": "agentline-desktop-${version}-${arch}.${ext}",
+      "executableName": "agentline-desktop",
       "target": ["AppImage", "deb"]
     }
   }
