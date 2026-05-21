@@ -11,13 +11,10 @@ const repoRoot = path.resolve(packageRoot, "../..");
 const bundleRoot = path.join(repoRoot, "dist", "npm-package");
 const runtimeRoot = path.join(packageRoot, "runtime", "agentline");
 
-function resolveCommand(command) {
-  return process.platform === "win32" ? `${command}.cmd` : command;
-}
-
 function run(command, args, cwd) {
-  execFileSync(resolveCommand(command), args, {
+  execFileSync(command, args, {
     cwd,
+    shell: process.platform === "win32",
     stdio: "inherit",
   });
 }
