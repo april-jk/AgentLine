@@ -18,21 +18,15 @@ jobs:
     outputs:
       should_release_any: ${{ steps.plan.outputs.should_release_any }}
       should_release_root: ${{ steps.plan.outputs.should_release_root }}
-      should_release_desktop: ${{ steps.plan.outputs.should_release_desktop }}
       should_release_desktop_electron: ${{ steps.plan.outputs.should_release_desktop_electron }}
       should_release_mobile_rn: ${{ steps.plan.outputs.should_release_mobile_rn }}
       should_release_bridge: ${{ steps.plan.outputs.should_release_bridge }}
       root_version: ${{ steps.plan.outputs.root_version }}
       root_tag: ${{ steps.plan.outputs.root_tag }}
-      desktop_version: ${{ steps.plan.outputs.desktop_version }}
-      desktop_tag: ${{ steps.plan.outputs.desktop_tag }}
       desktop_electron_version: ${{ steps.plan.outputs.desktop_electron_version }}
-      desktop_electron_tag: ${{ steps.plan.outputs.desktop_electron_tag }}
       mobile_rn_version: ${{ steps.plan.outputs.mobile_rn_version }}
-      mobile_rn_tag: ${{ steps.plan.outputs.mobile_rn_tag }}
       bridge_version: ${{ steps.plan.outputs.bridge_version }}
-      bridge_tag: ${{ steps.plan.outputs.bridge_tag }}
-      missing_tags: ${{ steps.plan.outputs.missing_tags }}
+      should_refresh_existing_release: ${{ steps.plan.outputs.should_refresh_existing_release }}
 
     steps:
       - name: Checkout code
@@ -59,21 +53,14 @@ jobs:
           };
 
           const rootVersion = readJson("package.json").version;
-          const desktopVersion = readJson("packages/desktop/package.json").version;
           const desktopElectronVersion =
             readJson("packages/desktop-electron/package.json").version;
           const mobileRnVersion = readJson("packages/mobile-rn/package.json").version;
           const bridgeVersion = rootVersion;
-
-          const plan = [
-            ["root", `v${rootVersion}`],
-            ["desktop", `desktop-v${desktopVersion}`],
-            ["desktop_electron", `desktop-electron-v${desktopElectronVersion}`],
-            ["mobile_rn", `mobile-rn-v${mobileRnVersion}`],
-            ["bridge", `bridge-v${bridgeVersion}`],
-          ];
-
-          const missing = plan.filter(([, tag]) => !existsTag(tag));
+          const rootTag = `v${rootVersion}`;
+          const rootMissing = !existsTag(rootTag);
+          const manualDispatch = process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
+          const shouldRefresh = manualDispatch || rootMissing;
           const out = fs.createWriteStream(process.env.GITHUB_OUTPUT, {
             flags: "a",
           });
@@ -81,52 +68,29 @@ jobs:
           const write = (key, value) => out.write(`${key}=${value}\n`);
 
           write("root_version", rootVersion);
-          write("root_tag", `v${rootVersion}`);
-          write("desktop_version", desktopVersion);
-          write("desktop_tag", `desktop-v${desktopVersion}`);
+          write("root_tag", rootTag);
           write("desktop_electron_version", desktopElectronVersion);
-          write(
-            "desktop_electron_tag",
-            `desktop-electron-v${desktopElectronVersion}`,
-          );
           write("mobile_rn_version", mobileRnVersion);
-          write("mobile_rn_tag", `mobile-rn-v${mobileRnVersion}`);
           write("bridge_version", bridgeVersion);
-          write("bridge_tag", `bridge-v${bridgeVersion}`);
-          write("should_release_root", String(!existsTag(`v${rootVersion}`)));
-          write(
-            "should_release_desktop",
-            String(!existsTag(`desktop-v${desktopVersion}`)),
-          );
-          write(
-            "should_release_desktop_electron",
-            String(!existsTag(`desktop-electron-v${desktopElectronVersion}`)),
-          );
-          write(
-            "should_release_mobile_rn",
-            String(!existsTag(`mobile-rn-v${mobileRnVersion}`)),
-          );
-          write(
-            "should_release_bridge",
-            String(!existsTag(`bridge-v${bridgeVersion}`)),
-          );
-          write("should_release_any", String(missing.length > 0));
-          write(
-            "missing_tags",
-            missing.map(([, tag]) => tag).join(" "),
-          );
+          write("should_release_root", String(rootMissing));
+          write("should_release_desktop_electron", String(shouldRefresh));
+          write("should_release_mobile_rn", String(shouldRefresh));
+          write("should_release_bridge", String(shouldRefresh));
+          write("should_release_any", String(shouldRefresh));
+          write("should_refresh_existing_release", String(manualDispatch && !rootMissing));
           out.end();
 
           const summary = [
-            `Root tag: v${rootVersion}`,
-            `Desktop tag: desktop-v${desktopVersion}`,
-            `Desktop Electron tag: desktop-electron-v${desktopElectronVersion}`,
-            `Mobile RN tag: mobile-rn-v${mobileRnVersion}`,
-            `Bridge tag: bridge-v${bridgeVersion}`,
+            `Unified release tag: ${rootTag}`,
+            `Desktop Electron version: ${desktopElectronVersion}`,
+            `Mobile RN version: ${mobileRnVersion}`,
+            `Bridge version: ${bridgeVersion}`,
             "",
-            missing.length
-              ? `Missing tags to create: ${missing.map(([, tag]) => tag).join(", ")}`
-              : "All release tags already exist; nothing to do.",
+            shouldRefresh
+              ? manualDispatch && !rootMissing
+                ? "Manual refresh requested for an existing unified release."
+                : `Unified release ${rootMissing ? "will be created" : "will be refreshed"}.`
+              : "Unified release tag already exists and no refresh was requested.",
           ].join("\n");
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
           NODE
@@ -174,11 +138,39 @@ jobs:
       - name: Typecheck mobile RN
         run: pnpm --filter @agentline/mobile-rn typecheck
 
+  cleanup_legacy_component_releases:
+    if: needs.prepare.outputs.should_release_any == 'true'
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete legacy component releases and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mapfile -t legacy_tags < <(
+            gh release list --limit 200 --json tagName --jq '.[].tagName' | \
+              grep -E '^(desktop-v|desktop-electron-v|mobile-rn-v|bridge-v)' || true
+          )
+
+          if [ "${#legacy_tags[@]}" -eq 0 ]; then
+            echo "No legacy component releases found."
+            exit 0
+          fi
+
+          printf 'Deleting legacy component releases:\n%s\n' "${legacy_tags[@]}"
+          for tag in "${legacy_tags[@]}"; do
+            gh release delete "$tag" --yes --cleanup-tag || true
+          done
+
   publish_root:
     if: needs.prepare.outputs.should_release_root == 'true'
     needs:
       - prepare
       - verify
+      - cleanup_legacy_component_releases
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -267,12 +259,12 @@ jobs:
             echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- npm publish: \`${NPM_STATUS}\`"
             echo
-            echo "### Component Tags"
+            echo "### Bundled App Versions"
             echo
-            echo "- Desktop (Tauri): \`${{ needs.prepare.outputs.desktop_tag }}\`"
-            echo "- Desktop Electron: \`${{ needs.prepare.outputs.desktop_electron_tag }}\`"
-            echo "- Mobile RN: \`${{ needs.prepare.outputs.mobile_rn_tag }}\`"
-            echo "- Device Bridge: \`${{ needs.prepare.outputs.bridge_tag }}\`"
+            echo "- Desktop Electron: \`${{ needs.prepare.outputs.desktop_electron_version }}\`"
+            echo "- Mobile RN: \`${{ needs.prepare.outputs.mobile_rn_version }}\`"
+            echo "- Device Bridge: \`${{ needs.prepare.outputs.bridge_version }}\`"
+            echo "- Desktop (Tauri): deprecated and excluded from the main release bundle"
             echo
             if [ "${{ steps.npm_publish.outputs.published }}" != "true" ]; then
               echo "> npm publish did not complete during this run."
@@ -301,20 +293,7 @@ jobs:
             dist/npm-package/checksums-sha256.txt
           draft: false
           prerelease: false
-
-  release-desktop:
-    if: always() && needs.prepare.outputs.should_release_desktop == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
-    needs:
-      - prepare
-      - verify
-      - publish_root
-    permissions:
-      contents: write
-    uses: ./.github/workflows/desktop-ci.yml
-    with:
-      release_tag: ${{ needs.prepare.outputs.desktop_tag }}
-      release_version: ${{ needs.prepare.outputs.desktop_version }}
-    secrets: inherit
+          make_latest: true
 
   release-desktop-electron:
     if: always() && needs.prepare.outputs.should_release_desktop_electron == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
@@ -322,12 +301,14 @@ jobs:
       - prepare
       - verify
       - publish_root
+      - cleanup_legacy_component_releases
     permissions:
       contents: write
     uses: ./.github/workflows/desktop-electron-ci.yml
     with:
-      release_tag: ${{ needs.prepare.outputs.desktop_electron_tag }}
-      release_version: ${{ needs.prepare.outputs.desktop_electron_version }}
+      release_tag: ${{ needs.prepare.outputs.root_tag }}
+      release_version: ${{ needs.prepare.outputs.root_version }}
+      create_release: false
     secrets: inherit
 
   release-mobile-rn:
@@ -336,12 +317,14 @@ jobs:
       - prepare
       - verify
       - publish_root
+      - cleanup_legacy_component_releases
     permissions:
       contents: write
     uses: ./.github/workflows/mobile-rn-ci.yml
     with:
-      release_tag: ${{ needs.prepare.outputs.mobile_rn_tag }}
-      release_version: ${{ needs.prepare.outputs.mobile_rn_version }}
+      release_tag: ${{ needs.prepare.outputs.root_tag }}
+      release_version: ${{ needs.prepare.outputs.root_version }}
+      create_release: false
     secrets: inherit
 
   release-bridge:
@@ -350,10 +333,98 @@ jobs:
       - prepare
       - verify
       - publish_root
+      - cleanup_legacy_component_releases
     permissions:
       contents: write
     uses: ./.github/workflows/bridge-ci.yml
     with:
-      release_tag: ${{ needs.prepare.outputs.bridge_tag }}
+      release_tag: ${{ needs.prepare.outputs.root_tag }}
       release_version: ${{ needs.prepare.outputs.bridge_version }}
+      create_release: false
     secrets: inherit
+
+  finalize_root_release:
+    if: always() && needs.prepare.outputs.should_release_any == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped') && needs.release-desktop-electron.result == 'success' && needs.release-mobile-rn.result == 'success' && needs.release-bridge.result == 'success'
+    needs:
+      - prepare
+      - publish_root
+      - cleanup_legacy_component_releases
+      - release-desktop-electron
+      - release-mobile-rn
+      - release-bridge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-electron-*
+          path: release-assets
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: mobile-rn-*
+          path: release-assets
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: device-bridge-*
+          path: release-assets
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: agentline-device-server-apk
+          path: release-assets
+
+      - name: Generate app asset checksums
+        shell: bash
+        run: |
+          cd release-assets
+          find . -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum > app-assets-checksums-sha256.txt
+
+      - name: Create unified release body
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.root_version }}"
+          awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{found=0} found" CHANGELOG.md > /tmp/release-notes.md
+
+          {
+            echo "## AgentLine v${VERSION}"
+            echo
+            echo "- Version: \`${VERSION}\`"
+            echo "- Tag: \`${{ needs.prepare.outputs.root_tag }}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo
+            echo "### App Bundles"
+            echo
+            echo "- Desktop app: Electron"
+            echo "- Mobile app: React Native"
+            echo "- Desktop (Tauri): deprecated and not published in this unified release"
+            echo
+            echo "### Included Build Versions"
+            echo
+            echo "- Desktop Electron package version: \`${{ needs.prepare.outputs.desktop_electron_version }}\`"
+            echo "- Mobile RN package version: \`${{ needs.prepare.outputs.mobile_rn_version }}\`"
+            echo "- Device Bridge package version: \`${{ needs.prepare.outputs.bridge_version }}\`"
+            echo
+            cat /tmp/release-notes.md
+          } > /tmp/unified-release-body.md
+
+      - name: Upload unified app assets to root release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.root_tag }}
+          name: AgentLine v${{ needs.prepare.outputs.root_version }}
+          body_path: /tmp/unified-release-body.md
+          files: |
+            release-assets/*
+          draft: false
+          prerelease: false
+          make_latest: true

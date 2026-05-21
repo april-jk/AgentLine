@@ -1,9 +1,6 @@
 name: Bridge CI
 
 on:
-  push:
-    tags:
-      - "bridge-v*"
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -13,6 +10,10 @@ on:
       release_version:
         required: true
         type: string
+      create_release:
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -21,6 +22,7 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
+      create_release: ${{ steps.resolve.outputs.create_release }}
       release_enabled: ${{ steps.resolve.outputs.release_enabled }}
       release_tag: ${{ steps.resolve.outputs.release_tag }}
       release_version: ${{ steps.resolve.outputs.release_version }}
@@ -32,14 +34,17 @@ jobs:
             echo "release_enabled=true" >> "$GITHUB_OUTPUT"
             echo "release_tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
             echo "release_version=${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
+            echo "create_release=${{ inputs.create_release }}" >> "$GITHUB_OUTPUT"
           elif [[ "${GITHUB_REF}" == refs/tags/bridge-v* ]]; then
             echo "release_enabled=true" >> "$GITHUB_OUTPUT"
             echo "release_tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
             echo "release_version=${GITHUB_REF_NAME#bridge-v}" >> "$GITHUB_OUTPUT"
+            echo "create_release=true" >> "$GITHUB_OUTPUT"
           else
             echo "release_enabled=false" >> "$GITHUB_OUTPUT"
             echo "release_tag=" >> "$GITHUB_OUTPUT"
             echo "release_version=dev" >> "$GITHUB_OUTPUT"
+            echo "create_release=false" >> "$GITHUB_OUTPUT"
           fi
 
   build-bridge:
@@ -127,7 +132,7 @@ jobs:
           path: packages/android-device-server/app/build/outputs/apk/release/agentline-device-server.apk
 
   release:
-    if: always() && needs.prepare.outputs.release_enabled == 'true' && needs['build-bridge'].result == 'success' && needs['build-apk'].result == 'success'
+    if: always() && needs.prepare.outputs.release_enabled == 'true' && needs.prepare.outputs.create_release == 'true' && needs['build-bridge'].result == 'success' && needs['build-apk'].result == 'success'
     needs:
       - prepare
       - build-bridge
