@@ -225,10 +225,24 @@ jobs:
           sha256sum "$PACKAGE_TARBALL" > checksums-sha256.txt
           echo "tarball=${PACKAGE_TARBALL}" >> "$GITHUB_OUTPUT"
 
-      - name: Publish to npm
+      - name: Try publishing to npm
+        id: npm_publish
+        shell: bash
         run: |
           cd dist/npm-package
-          npm publish --provenance --access public
+          set +e
+          npm publish --provenance --access public 2>&1 | tee /tmp/npm-publish.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -eq 0 ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "summary=Published to npm successfully." >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            summary=$(tail -n 20 /tmp/npm-publish.log | tr '\n' ' ' | sed 's/[[:space:]]\\+/ /g')
+            echo "summary=${summary}" >> "$GITHUB_OUTPUT"
+            echo "npm publish failed; continuing GitHub release flow."
+          fi
+          exit 0
 
       - name: Extract changelog for release notes
         shell: bash
@@ -239,12 +253,19 @@ jobs:
       - name: Create release body
         shell: bash
         run: |
+          if [ "${{ steps.npm_publish.outputs.published }}" = "true" ]; then
+            NPM_STATUS="succeeded"
+          else
+            NPM_STATUS="not published"
+          fi
+
           {
             echo "## AgentLine v${{ needs.prepare.outputs.root_version }}"
             echo
             echo "- Version: \`${{ needs.prepare.outputs.root_version }}\`"
             echo "- Tag: \`${{ needs.prepare.outputs.root_tag }}\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- npm publish: \`${NPM_STATUS}\`"
             echo
             echo "### Component Tags"
             echo
@@ -253,6 +274,11 @@ jobs:
             echo "- Mobile RN: \`${{ needs.prepare.outputs.mobile_rn_tag }}\`"
             echo "- Device Bridge: \`${{ needs.prepare.outputs.bridge_tag }}\`"
             echo
+            if [ "${{ steps.npm_publish.outputs.published }}" != "true" ]; then
+              echo "> npm publish did not complete during this run."
+              echo "> Reason: ${{ steps.npm_publish.outputs.summary }}"
+              echo
+            fi
             cat /tmp/release-notes.md
           } > /tmp/release-body.md
 
