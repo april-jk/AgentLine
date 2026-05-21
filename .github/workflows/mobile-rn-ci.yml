@@ -1,0 +1,177 @@
+name: Mobile RN CI
+
+on:
+  push:
+    tags:
+      - "mobile-rn-v*"
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      release_enabled: ${{ steps.resolve.outputs.release_enabled }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      release_version: ${{ steps.resolve.outputs.release_version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_call" ]; then
+            echo "release_enabled=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+            echo "release_version=${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF}" == refs/tags/mobile-rn-v* ]]; then
+            echo "release_enabled=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_version=${GITHUB_REF_NAME#mobile-rn-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_enabled=false" >> "$GITHUB_OUTPUT"
+            echo "release_tag=" >> "$GITHUB_OUTPUT"
+            echo "release_version=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-android:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck mobile RN
+        run: pnpm --filter @agentline/mobile-rn typecheck
+
+      - name: Build Android release APK
+        run: pnpm --filter @agentline/mobile-rn build:android:release-apk
+
+      - name: Build Android release AAB
+        run: pnpm --filter @agentline/mobile-rn build:android:release-aab
+
+      - name: Prepare Android release assets
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.release_version }}"
+          mkdir -p release-assets
+          cp packages/mobile-rn/android/app/build/outputs/apk/release/*.apk "release-assets/AgentLine-Mobile-RN-${VERSION}-android.apk"
+          cp packages/mobile-rn/android/app/build/outputs/bundle/release/*.aab "release-assets/AgentLine-Mobile-RN-${VERSION}-android.aab"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-rn-android
+          path: release-assets/*
+
+  build-ios:
+    if: ${{ vars.AGENTLINE_IOS_DEVELOPMENT_TEAM != '' || secrets.AGENTLINE_IOS_DEVELOPMENT_TEAM != '' }}
+    needs: prepare
+    runs-on: macos-latest
+    env:
+      AGENTLINE_IOS_DEVELOPMENT_TEAM: ${{ vars.AGENTLINE_IOS_DEVELOPMENT_TEAM || secrets.AGENTLINE_IOS_DEVELOPMENT_TEAM }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build iOS archive
+        run: pnpm --filter @agentline/mobile-rn build:ios:archive
+
+      - name: Prepare iOS release asset
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.release_version }}"
+          ARCHIVE="packages/mobile-rn/ios/build/archive/AgentLine-${VERSION}.xcarchive"
+          mkdir -p release-assets
+          ditto -c -k --sequesterRsrc --keepParent "$ARCHIVE" "release-assets/AgentLine-Mobile-RN-${VERSION}-ios.xcarchive.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-rn-ios
+          path: release-assets/*
+
+  release:
+    if: needs.prepare.outputs.release_enabled == 'true' && needs['build-android'].result == 'success' && (needs['build-ios'].result == 'success' || needs['build-ios'].result == 'skipped')
+    needs:
+      - prepare
+      - build-android
+      - build-ios
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Ensure release tag exists
+        shell: bash
+        run: |
+          TAG="${{ needs.prepare.outputs.release_tag }}"
+          if git rev-parse --verify "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG" "${GITHUB_SHA}"
+            git push origin "$TAG"
+          fi
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd release-assets
+          find . -maxdepth 1 -type f -print0 | xargs -0 sha256sum > checksums-sha256.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.release_tag }}
+          name: AgentLine Mobile RN v${{ needs.prepare.outputs.release_version }}
+          body: |
+            ## AgentLine Mobile RN v${{ needs.prepare.outputs.release_version }}
+
+            - Version: `${{ needs.prepare.outputs.release_version }}`
+            - Tag: `${{ needs.prepare.outputs.release_tag }}`
+            - Commit: `${{ github.sha }}`
+
+            Android release binaries are always attached. iOS archives are attached when signing inputs are configured.
+          files: |
+            release-assets/*
+          draft: false
+          prerelease: false

@@ -1,4 +1,4 @@
-name: Release from main
+name: Release Orchestrator
 
 on:
   push:
@@ -11,13 +11,179 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should_release_any: ${{ steps.plan.outputs.should_release_any }}
+      should_release_root: ${{ steps.plan.outputs.should_release_root }}
+      should_release_desktop: ${{ steps.plan.outputs.should_release_desktop }}
+      should_release_desktop_electron: ${{ steps.plan.outputs.should_release_desktop_electron }}
+      should_release_mobile_rn: ${{ steps.plan.outputs.should_release_mobile_rn }}
+      should_release_bridge: ${{ steps.plan.outputs.should_release_bridge }}
+      root_version: ${{ steps.plan.outputs.root_version }}
+      root_tag: ${{ steps.plan.outputs.root_tag }}
+      desktop_version: ${{ steps.plan.outputs.desktop_version }}
+      desktop_tag: ${{ steps.plan.outputs.desktop_tag }}
+      desktop_electron_version: ${{ steps.plan.outputs.desktop_electron_version }}
+      desktop_electron_tag: ${{ steps.plan.outputs.desktop_electron_tag }}
+      mobile_rn_version: ${{ steps.plan.outputs.mobile_rn_version }}
+      mobile_rn_tag: ${{ steps.plan.outputs.mobile_rn_tag }}
+      bridge_version: ${{ steps.plan.outputs.bridge_version }}
+      bridge_tag: ${{ steps.plan.outputs.bridge_tag }}
+      missing_tags: ${{ steps.plan.outputs.missing_tags }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release plan
+        id: plan
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const cp = require("node:child_process");
+
+          const readJson = (path) => JSON.parse(fs.readFileSync(path, "utf8"));
+          const existsTag = (tag) => {
+            try {
+              cp.execSync(`git rev-parse --verify ${tag}`, { stdio: "ignore" });
+              return true;
+            } catch {
+              return false;
+            }
+          };
+
+          const rootVersion = readJson("package.json").version;
+          const desktopVersion = readJson("packages/desktop/package.json").version;
+          const desktopElectronVersion =
+            readJson("packages/desktop-electron/package.json").version;
+          const mobileRnVersion = readJson("packages/mobile-rn/package.json").version;
+          const bridgeVersion = rootVersion;
+
+          const plan = [
+            ["root", `v${rootVersion}`],
+            ["desktop", `desktop-v${desktopVersion}`],
+            ["desktop_electron", `desktop-electron-v${desktopElectronVersion}`],
+            ["mobile_rn", `mobile-rn-v${mobileRnVersion}`],
+            ["bridge", `bridge-v${bridgeVersion}`],
+          ];
+
+          const missing = plan.filter(([, tag]) => !existsTag(tag));
+          const out = fs.createWriteStream(process.env.GITHUB_OUTPUT, {
+            flags: "a",
+          });
+
+          const write = (key, value) => out.write(`${key}=${value}\n`);
+
+          write("root_version", rootVersion);
+          write("root_tag", `v${rootVersion}`);
+          write("desktop_version", desktopVersion);
+          write("desktop_tag", `desktop-v${desktopVersion}`);
+          write("desktop_electron_version", desktopElectronVersion);
+          write(
+            "desktop_electron_tag",
+            `desktop-electron-v${desktopElectronVersion}`,
+          );
+          write("mobile_rn_version", mobileRnVersion);
+          write("mobile_rn_tag", `mobile-rn-v${mobileRnVersion}`);
+          write("bridge_version", bridgeVersion);
+          write("bridge_tag", `bridge-v${bridgeVersion}`);
+          write("should_release_root", String(!existsTag(`v${rootVersion}`)));
+          write(
+            "should_release_desktop",
+            String(!existsTag(`desktop-v${desktopVersion}`)),
+          );
+          write(
+            "should_release_desktop_electron",
+            String(!existsTag(`desktop-electron-v${desktopElectronVersion}`)),
+          );
+          write(
+            "should_release_mobile_rn",
+            String(!existsTag(`mobile-rn-v${mobileRnVersion}`)),
+          );
+          write(
+            "should_release_bridge",
+            String(!existsTag(`bridge-v${bridgeVersion}`)),
+          );
+          write("should_release_any", String(missing.length > 0));
+          write(
+            "missing_tags",
+            missing.map(([, tag]) => tag).join(" "),
+          );
+          out.end();
+
+          const summary = [
+            `Root tag: v${rootVersion}`,
+            `Desktop tag: desktop-v${desktopVersion}`,
+            `Desktop Electron tag: desktop-electron-v${desktopElectronVersion}`,
+            `Mobile RN tag: mobile-rn-v${mobileRnVersion}`,
+            `Bridge tag: bridge-v${bridgeVersion}`,
+            "",
+            missing.length
+              ? `Missing tags to create: ${missing.map(([, tag]) => tag).join(", ")}`
+              : "All release tags already exist; nothing to do.",
+          ].join("\n");
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
+          NODE
+
+  verify:
+    if: needs.prepare.outputs.should_release_any == 'true'
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run type checking
+        run: pnpm typecheck
+
+      - name: Run client smoke tests
+        run: pnpm --filter @agentline/client exec vitest run src/hooks/__tests__/useRecentProject.test.ts src/api/client.test.ts
+
+      - name: Run server smoke tests
+        run: pnpm --filter @agentline/server test -- security.test.ts sessions.test.ts
+
+      - name: Build remote client
+        run: pnpm --filter @agentline/client build:remote
+
+      - name: Build relay
+        run: pnpm --filter @agentline/relay build
+
+      - name: Build desktop electron
+        run: pnpm --filter @agentline/desktop-electron build
+
+      - name: Typecheck mobile RN
+        run: pnpm --filter @agentline/mobile-rn typecheck
+
+  publish-root:
+    if: needs.prepare.outputs.should_release_root == 'true'
+    needs:
+      - prepare
+      - verify
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
       attestations: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,63 +193,29 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
-      - name: Resolve release version
-        id: release
-        shell: bash
+      - name: Verify changelog has root version entry
         run: |
-          VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")
-          TAG="v${VERSION}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          if git rev-parse "${TAG}" >/dev/null 2>&1; then
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-            echo "Release ${TAG} already exists; skipping publish." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "Preparing release ${TAG} from ${GITHUB_SHA}." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Verify changelog has entry for version
-        if: steps.release.outputs.should_release == 'true'
-        run: |
-          VERSION="${{ steps.release.outputs.version }}"
+          VERSION="${{ needs.prepare.outputs.root_version }}"
           if ! grep -q "## \[${VERSION}\]" CHANGELOG.md; then
-            echo "Error: CHANGELOG.md does not contain an entry for version ${VERSION}"
-            echo "Please add a '## [${VERSION}]' section to CHANGELOG.md before releasing."
+            echo "CHANGELOG.md is missing version ${VERSION}"
             exit 1
           fi
-          echo "Changelog entry found for version ${VERSION}"
 
       - name: Install dependencies
-        if: steps.release.outputs.should_release == 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Run linter
-        if: steps.release.outputs.should_release == 'true'
-        run: pnpm lint
-
-      - name: Run type checking
-        if: steps.release.outputs.should_release == 'true'
-        run: pnpm typecheck
-
-      - name: Run tests
-        if: steps.release.outputs.should_release == 'true'
-        run: pnpm test
-
       - name: Build bundle for npm
-        if: steps.release.outputs.should_release == 'true'
         run: pnpm build:bundle
         env:
-          NPM_VERSION: ${{ steps.release.outputs.version }}
+          NPM_VERSION: ${{ needs.prepare.outputs.root_version }}
 
       - name: Pack npm artifact
-        if: steps.release.outputs.should_release == 'true'
         id: pack
         shell: bash
         run: |
@@ -93,59 +225,101 @@ jobs:
           sha256sum "$PACKAGE_TARBALL" > checksums-sha256.txt
           echo "tarball=${PACKAGE_TARBALL}" >> "$GITHUB_OUTPUT"
 
-      - name: Verify package contents
-        if: steps.release.outputs.should_release == 'true'
-        run: |
-          cd dist/npm-package
-          npm pack --dry-run
-          echo "Package contents verified"
-
       - name: Publish to npm
-        if: steps.release.outputs.should_release == 'true'
         run: |
           cd dist/npm-package
           npm publish --provenance --access public
 
       - name: Extract changelog for release notes
-        if: steps.release.outputs.should_release == 'true'
+        shell: bash
         run: |
-          VERSION="${{ steps.release.outputs.version }}"
+          VERSION="${{ needs.prepare.outputs.root_version }}"
           awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{found=0} found" CHANGELOG.md > /tmp/release-notes.md
-          echo "Release notes for $VERSION:"
-          cat /tmp/release-notes.md
 
       - name: Create release body
-        if: steps.release.outputs.should_release == 'true'
         shell: bash
         run: |
           {
-            echo "## AgentLine v${{ steps.release.outputs.version }}"
+            echo "## AgentLine v${{ needs.prepare.outputs.root_version }}"
             echo
-            echo "- Version: \`${{ steps.release.outputs.version }}\`"
-            echo "- Tag: \`${{ steps.release.outputs.tag }}\`"
+            echo "- Version: \`${{ needs.prepare.outputs.root_version }}\`"
+            echo "- Tag: \`${{ needs.prepare.outputs.root_tag }}\`"
             echo "- Commit: \`${GITHUB_SHA}\`"
+            echo
+            echo "### Component Tags"
+            echo
+            echo "- Desktop (Tauri): \`${{ needs.prepare.outputs.desktop_tag }}\`"
+            echo "- Desktop Electron: \`${{ needs.prepare.outputs.desktop_electron_tag }}\`"
+            echo "- Mobile RN: \`${{ needs.prepare.outputs.mobile_rn_tag }}\`"
+            echo "- Device Bridge: \`${{ needs.prepare.outputs.bridge_tag }}\`"
             echo
             cat /tmp/release-notes.md
           } > /tmp/release-body.md
 
-      - name: Create and push release tag
-        if: steps.release.outputs.should_release == 'true'
+      - name: Create and push root tag
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "${{ steps.release.outputs.tag }}" "${GITHUB_SHA}"
-          git push origin "${{ steps.release.outputs.tag }}"
+          git tag "${{ needs.prepare.outputs.root_tag }}" "${GITHUB_SHA}"
+          git push origin "${{ needs.prepare.outputs.root_tag }}"
 
       - name: Create GitHub Release
-        if: steps.release.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.release.outputs.tag }}
-          name: AgentLine v${{ steps.release.outputs.version }}
+          tag_name: ${{ needs.prepare.outputs.root_tag }}
+          name: AgentLine v${{ needs.prepare.outputs.root_version }}
           body_path: /tmp/release-body.md
           files: |
             dist/npm-package/${{ steps.pack.outputs.tarball }}
             dist/npm-package/checksums-sha256.txt
           draft: false
           prerelease: false
+
+  release-desktop:
+    if: needs.prepare.outputs.should_release_desktop == 'true' && (needs['publish-root'].result == 'success' || needs['publish-root'].result == 'skipped')
+    needs:
+      - prepare
+      - verify
+      - publish-root
+    uses: ./.github/workflows/desktop-ci.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.desktop_tag }}
+      release_version: ${{ needs.prepare.outputs.desktop_version }}
+    secrets: inherit
+
+  release-desktop-electron:
+    if: needs.prepare.outputs.should_release_desktop_electron == 'true' && (needs['publish-root'].result == 'success' || needs['publish-root'].result == 'skipped')
+    needs:
+      - prepare
+      - verify
+      - publish-root
+    uses: ./.github/workflows/desktop-electron-ci.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.desktop_electron_tag }}
+      release_version: ${{ needs.prepare.outputs.desktop_electron_version }}
+    secrets: inherit
+
+  release-mobile-rn:
+    if: needs.prepare.outputs.should_release_mobile_rn == 'true' && (needs['publish-root'].result == 'success' || needs['publish-root'].result == 'skipped')
+    needs:
+      - prepare
+      - verify
+      - publish-root
+    uses: ./.github/workflows/mobile-rn-ci.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.mobile_rn_tag }}
+      release_version: ${{ needs.prepare.outputs.mobile_rn_version }}
+    secrets: inherit
+
+  release-bridge:
+    if: needs.prepare.outputs.should_release_bridge == 'true' && (needs['publish-root'].result == 'success' || needs['publish-root'].result == 'skipped')
+    needs:
+      - prepare
+      - verify
+      - publish-root
+    uses: ./.github/workflows/bridge-ci.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.bridge_tag }}
+      release_version: ${{ needs.prepare.outputs.bridge_version }}
+    secrets: inherit

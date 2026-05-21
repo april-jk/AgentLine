@@ -2,25 +2,48 @@ name: Bridge CI
 
 on:
   push:
-    branches: [main]
     tags:
-      - 'bridge-v*'
-    paths:
-      - 'packages/device-bridge/**'
-      - 'packages/android-device-server/**'
-      - '.github/workflows/bridge-ci.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'packages/device-bridge/**'
-      - 'packages/android-device-server/**'
-      - '.github/workflows/bridge-ci.yml'
+      - "bridge-v*"
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      release_enabled: ${{ steps.resolve.outputs.release_enabled }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      release_version: ${{ steps.resolve.outputs.release_version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_call" ]; then
+            echo "release_enabled=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+            echo "release_version=${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF}" == refs/tags/bridge-v* ]]; then
+            echo "release_enabled=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_version=${GITHUB_REF_NAME#bridge-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_enabled=false" >> "$GITHUB_OUTPUT"
+            echo "release_tag=" >> "$GITHUB_OUTPUT"
+            echo "release_version=dev" >> "$GITHUB_OUTPUT"
+          fi
+
   build-bridge:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -41,9 +64,7 @@ jobs:
             goarch: arm64
             runner: ubuntu-22.04-arm
             binary: device-bridge-linux-arm64
-
     runs-on: ${{ matrix.runner }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -56,21 +77,16 @@ jobs:
       - name: Build binary
         working-directory: packages/device-bridge
         env:
-          CGO_ENABLED: '1'
+          CGO_ENABLED: "1"
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          BRIDGE_VERSION: ${{ needs.prepare.outputs.release_version }}
         run: |
-          # For darwin/amd64 cross-compile on arm64 runner, tell Clang to target x86_64
           if [ "${{ matrix.goos }}" = "darwin" ] && [ "${{ matrix.goarch }}" = "amd64" ]; then
             export CC="clang -arch x86_64"
           fi
 
-          VERSION="dev"
-          if [[ "$GITHUB_REF" == refs/tags/bridge-v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/bridge-v}"
-          fi
-
-          go build -ldflags="-s -w -X main.bridgeVersion=$VERSION" \
+          go build -ldflags="-s -w -X main.bridgeVersion=${BRIDGE_VERSION}" \
             -o "${{ matrix.binary }}" ./cmd/bridge/
 
       - name: Verify binary
@@ -86,8 +102,8 @@ jobs:
           path: packages/device-bridge/${{ matrix.binary }}
 
   build-apk:
+    needs: prepare
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -95,7 +111,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -111,12 +127,16 @@ jobs:
           path: packages/android-device-server/app/build/outputs/apk/release/agentline-device-server.apk
 
   release:
-    if: startsWith(github.ref, 'refs/tags/bridge-v')
-    needs: [build-bridge, build-apk]
+    if: needs.prepare.outputs.release_enabled == 'true'
+    needs:
+      - prepare
+      - build-bridge
+      - build-apk
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -124,9 +144,18 @@ jobs:
           path: binaries
           merge-multiple: true
 
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/bridge-v}" >> "$GITHUB_OUTPUT"
+      - name: Ensure release tag exists
+        shell: bash
+        run: |
+          TAG="${{ needs.prepare.outputs.release_tag }}"
+          if git rev-parse --verify "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG" "${GITHUB_SHA}"
+            git push origin "$TAG"
+          fi
 
       - name: Generate checksums
         working-directory: binaries
@@ -137,9 +166,14 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Device Bridge v${{ steps.version.outputs.VERSION }}
+          tag_name: ${{ needs.prepare.outputs.release_tag }}
+          name: Device Bridge v${{ needs.prepare.outputs.release_version }}
           body: |
-            ## Device Bridge v${{ steps.version.outputs.VERSION }}
+            ## Device Bridge v${{ needs.prepare.outputs.release_version }}
+
+            - Version: `${{ needs.prepare.outputs.release_version }}`
+            - Tag: `${{ needs.prepare.outputs.release_tag }}`
+            - Commit: `${{ github.sha }}`
 
             Pre-built sidecar binaries and Android device server APK for device streaming.
 

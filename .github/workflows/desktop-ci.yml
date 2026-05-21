@@ -2,66 +2,83 @@ name: Desktop CI
 
 on:
   push:
-    branches: [main]
     tags:
-      - 'desktop-v*'
-    paths:
-      - 'packages/desktop/**'
-      - 'packages/shared/**'
-      - '.github/workflows/desktop-ci.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'packages/desktop/**'
-      - 'packages/shared/**'
-      - '.github/workflows/desktop-ci.yml'
+      - "desktop-v*"
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      release_enabled: ${{ steps.resolve.outputs.release_enabled }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+      release_version: ${{ steps.resolve.outputs.release_version }}
+    steps:
+      - id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_call" ]; then
+            echo "release_enabled=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+            echo "release_version=${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF}" == refs/tags/desktop-v* ]]; then
+            echo "release_enabled=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_version=${GITHUB_REF_NAME#desktop-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_enabled=false" >> "$GITHUB_OUTPUT"
+            echo "release_tag=" >> "$GITHUB_OUTPUT"
+            echo "release_version=dev" >> "$GITHUB_OUTPUT"
+          fi
+
   build-tauri:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: macos-latest
-            args: '--target aarch64-apple-darwin'
+            args: "--target aarch64-apple-darwin"
             rust_target: aarch64-apple-darwin
             target_triple: aarch64-apple-darwin
           - platform: macos-latest
-            args: '--target x86_64-apple-darwin'
+            args: "--target x86_64-apple-darwin"
             rust_target: x86_64-apple-darwin
             target_triple: x86_64-apple-darwin
           - platform: ubuntu-22.04
-            args: ''
-            rust_target: ''
-            target_triple: ''
+            args: ""
+            rust_target: ""
+            target_triple: ""
           - platform: ubuntu-22.04-arm
-            args: ''
-            rust_target: ''
-            target_triple: ''
+            args: ""
+            rust_target: ""
+            target_triple: ""
           - platform: windows-latest
-            args: ''
-            rust_target: ''
-            target_triple: ''
-
+            args: ""
+            rust_target: ""
+            target_triple: ""
     runs-on: ${{ matrix.platform }}
-
     env:
       HAS_MACOS_SIGNING: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 != '' }}
       HAS_MACOS_NOTARIZATION: ${{ secrets.ASC_API_KEY_P8_BASE64 != '' }}
       HAS_WINDOWS_SIGNING: ${{ secrets.AZURE_CLIENT_SECRET != '' }}
       HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
-      # linuxdeploy AppImage compat: strip can't handle .relr.dyn on Ubuntu 22.04+,
-      # and CI runners may lack FUSE for running the linuxdeploy AppImage
-      NO_STRIP: 'true'
-      APPIMAGE_EXTRACT_AND_RUN: '1'
-
+      NO_STRIP: "true"
+      APPIMAGE_EXTRACT_AND_RUN: "1"
     steps:
       - uses: actions/checkout@v4
 
-      # --- Node.js + pnpm ---
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -70,7 +87,6 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
-      # --- Rust ---
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -79,16 +95,14 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './packages/desktop/src-tauri -> target'
+          workspaces: "./packages/desktop/src-tauri -> target"
 
-      # --- Linux system dependencies ---
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsoup-3.0-dev libjavascriptcoregtk-4.1-dev xdg-utils
 
-      # --- macOS code signing ---
       - name: Set up macOS code signing keychain
         if: matrix.platform == 'macos-latest' && env.HAS_MACOS_SIGNING == 'true'
         env:
@@ -107,7 +121,6 @@ jobs:
             -T /usr/bin/productsign
           security set-key-partition-list -S apple-tool:,apple:,codesign: \
             -s -k "$MACOS_KEYCHAIN_PASSWORD" build.keychain
-          echo "Available signing identities:"
           security find-identity -v -p codesigning build.keychain
           rm -f certificate.p12
 
@@ -123,10 +136,6 @@ jobs:
           chmod 600 "$KEY_PATH"
           echo "APPLE_API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
 
-      # --- Signing env vars ---
-      # These MUST be set conditionally via GITHUB_ENV, not in the static env block.
-      # Tauri's bundler treats empty-string env vars as "present" and crashes
-      # trying to decode empty keys or import empty certificates.
       - name: Set signing env vars
         shell: bash
         run: |
@@ -152,58 +161,48 @@ jobs:
             echo "WINDOWS_SIGNING_PROFILE=${{ vars.AZURE_TRUSTED_SIGNING_PROFILE }}" >> "$GITHUB_ENV"
           fi
 
-      # --- Windows signing tool ---
       - name: Install trusted-signing-cli
         if: matrix.platform == 'windows-latest' && env.HAS_WINDOWS_SIGNING == 'true'
         run: cargo install trusted-signing-cli
 
-      # --- Install frontend dependencies ---
-      # --ignore-scripts avoids building native modules (e.g. better-sqlite3)
-      # that belong to other workspace packages and aren't needed for the desktop build
       - name: Install frontend dependencies
         run: pnpm install --ignore-scripts
 
-      # --- Extract changelog ---
       - name: Extract changelog
         id: changelog
-        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        if: needs.prepare.outputs.release_enabled == 'true'
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#desktop-v}"
+          VERSION="${{ needs.prepare.outputs.release_version }}"
           NOTES=$(awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{found=0} found" packages/desktop/CHANGELOG.md)
           echo "notes<<EOF" >> "$GITHUB_OUTPUT"
           echo "$NOTES" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      # --- Build Tauri app ---
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET_TRIPLE: ${{ matrix.target_triple }}
-          # Windows signing
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         with:
           projectPath: packages/desktop
           tauriScript: pnpm tauri
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && 'desktop-v__VERSION__' || '' }}
-          releaseName: 'AgentLine Desktop v__VERSION__'
+          tagName: ${{ needs.prepare.outputs.release_enabled == 'true' && needs.prepare.outputs.release_tag || '' }}
+          releaseName: ${{ needs.prepare.outputs.release_enabled == 'true' && format('AgentLine Desktop v{0}', needs.prepare.outputs.release_version) || '' }}
           releaseBody: ${{ steps.changelog.outputs.notes || 'See the assets to download and install this version.' }}
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: ${{ startsWith(github.ref, 'refs/tags/') }}
+          includeUpdaterJson: ${{ needs.prepare.outputs.release_enabled == 'true' }}
           updaterJsonKeepUniversal: true
-          # On Linux, skip AppImage here — it's built separately below to work around
-          # Tauri's patchelf corrupting the bun sidecar (github.com/tauri-apps/tauri/issues/11898).
           args: >-
             ${{ matrix.args }}
             ${{ runner.os == 'Linux' && '--bundles deb,rpm' || '' }}
             ${{ env.HAS_UPDATER_KEY == 'true' && '--config ''{"bundle":{"createUpdaterArtifacts":"v2"}}''' || '' }}
             ${{ matrix.platform == 'windows-latest' && env.WINDOWS_SIGNING_ACCOUNT != '' && env.WINDOWS_SIGNING_PROFILE != '' && format('--config ''{{"bundle":{{"windows":{{"signCommand":"trusted-signing-cli -e https://eus.codesigning.azure.net -a {0} -c {1} %1"}}}}}}''', env.WINDOWS_SIGNING_ACCOUNT, env.WINDOWS_SIGNING_PROFILE) || '' }}
 
-      # --- Diagnose flaky DMG bundling ---
       - name: Check for flaky DMG bundling failure
         if: failure() && matrix.platform == 'macos-latest'
         run: |
@@ -211,10 +210,6 @@ jobs:
           echo "::error::macOS DMG bundling failed. This is likely the known flaky hdiutil issue on GitHub Actions runners (not a code problem). Re-run this job: gh run rerun ${{ github.run_id }} --failed"
           echo ""
 
-      # --- Linux AppImage (built separately) ---
-      # Tauri's patchelf corrupts large ELF binaries like bun during AppImage bundling
-      # (github.com/tauri-apps/tauri/issues/11898). Work around by building with a tiny
-      # dummy ELF in place of bun, then extracting and swapping in the real binary.
       - name: Build Linux AppImage
         if: runner.os == 'Linux'
         shell: bash
@@ -224,44 +219,37 @@ jobs:
           TRIPLE=$(rustc -vV | sed -n 's/^host: //p')
           BUN_BIN="$PROJECT_DIR/src-tauri/binaries/bun-${TRIPLE}"
 
-          # Save real bun and replace with tiny dummy ELF
           cp "$BUN_BIN" /tmp/bun-real
           cp /usr/bin/true "$BUN_BIN"
 
-          # Build AppImage with dummy (Rust binary is cached from deb/rpm build above)
           pnpm tauri build --bundles appimage
 
-          # Find the built AppImage
           APPIMAGE=$(find "$PROJECT_DIR/src-tauri/target/release/bundle/appimage" -name '*.AppImage' -type f | head -1)
           echo "Built AppImage: $APPIMAGE ($(stat -c%s "$APPIMAGE") bytes)"
 
-          # Extract, swap dummy for real bun, recreate
           WORKDIR=$(mktemp -d)
           cd "$WORKDIR"
           "$APPIMAGE" --appimage-extract
           cp /tmp/bun-real squashfs-root/usr/bin/bun
           chmod +x squashfs-root/usr/bin/bun
 
-          # Recreate AppImage with appimagetool
           ARCH_NAME=$(uname -m)
           curl -fsSL "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH_NAME}.AppImage" -o appimagetool
           chmod +x appimagetool
           ARCH="$ARCH_NAME" ./appimagetool squashfs-root/ "$APPIMAGE"
           echo "Final AppImage: $APPIMAGE ($(stat -c%s "$APPIMAGE") bytes with real bun)"
 
-          # Restore real bun in workspace
           cp /tmp/bun-real "$BUN_BIN"
 
       - name: Upload Linux AppImage to release
-        if: runner.os == 'Linux' && startsWith(github.ref, 'refs/tags/desktop-v')
+        if: runner.os == 'Linux' && needs.prepare.outputs.release_enabled == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           APPIMAGE=$(find packages/desktop/src-tauri/target/release/bundle/appimage -name '*.AppImage' -type f | head -1)
           echo "Uploading: $APPIMAGE"
-          gh release upload "${GITHUB_REF_NAME}" "$APPIMAGE" --clobber
+          gh release upload "${{ needs.prepare.outputs.release_tag }}" "$APPIMAGE" --clobber
 
-      # --- Cleanup ---
       - name: Clean up macOS keychain
         if: matrix.platform == 'macos-latest' && always()
         run: |
@@ -269,8 +257,10 @@ jobs:
           rm -rf ~/private_keys 2>/dev/null || true
 
   finalize-release:
-    if: startsWith(github.ref, 'refs/tags/desktop-v')
-    needs: build-tauri
+    if: needs.prepare.outputs.release_enabled == 'true'
+    needs:
+      - prepare
+      - build-tauri
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -279,24 +269,30 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ needs.prepare.outputs.release_tag }}"
           gh release view "$TAG" --json assets --jq '.assets[].name' | grep '\.sig$' | while read -r name; do
             echo "Deleting $name"
             gh release delete-asset "$TAG" "$name" --yes
-          done
+          done || true
 
       - name: Update release body with download table
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#desktop-v}"
+          TAG="${{ needs.prepare.outputs.release_tag }}"
+          VERSION="${{ needs.prepare.outputs.release_version }}"
           REPO="${GITHUB_REPOSITORY}"
           BASE="https://github.com/${REPO}/releases/download/${TAG}"
 
           CHANGELOG=$(awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{found=0} found" packages/desktop/CHANGELOG.md)
 
           {
+            echo "## AgentLine Desktop v${VERSION}"
+            echo
+            echo "- Version: \`${VERSION}\`"
+            echo "- Tag: \`${TAG}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo ""
             if [ -n "$CHANGELOG" ]; then
               echo "$CHANGELOG"
               echo ""
@@ -305,11 +301,11 @@ jobs:
             echo ""
             echo "| Platform | |"
             echo "|----------|-|"
-            echo "| macOS (Apple Silicon) | [.dmg](${BASE}/YepAnywhere_${VERSION}_aarch64.dmg) |"
-            echo "| macOS (Intel) | [.dmg](${BASE}/YepAnywhere_${VERSION}_x64.dmg) |"
-            echo "| Windows | [.exe](${BASE}/YepAnywhere_${VERSION}_x64-setup.exe) · [.msi](${BASE}/YepAnywhere_${VERSION}_x64_en-US.msi) |"
-            echo "| Linux x86_64 | [.AppImage](${BASE}/YepAnywhere_${VERSION}_amd64.AppImage) · [.deb](${BASE}/YepAnywhere_${VERSION}_amd64.deb) · [.rpm](${BASE}/YepAnywhere-${VERSION}-1.x86_64.rpm) |"
-            echo "| Linux ARM64 | [.AppImage](${BASE}/YepAnywhere_${VERSION}_aarch64.AppImage) · [.deb](${BASE}/YepAnywhere_${VERSION}_arm64.deb) · [.rpm](${BASE}/YepAnywhere-${VERSION}-1.aarch64.rpm) |"
+            echo "| macOS (Apple Silicon) | [.dmg](${BASE}/AgentLine_${VERSION}_aarch64.dmg) |"
+            echo "| macOS (Intel) | [.dmg](${BASE}/AgentLine_${VERSION}_x64.dmg) |"
+            echo "| Windows | [.exe](${BASE}/AgentLine_${VERSION}_x64-setup.exe) · [.msi](${BASE}/AgentLine_${VERSION}_x64_en-US.msi) |"
+            echo "| Linux x86_64 | [.AppImage](${BASE}/AgentLine_${VERSION}_amd64.AppImage) · [.deb](${BASE}/AgentLine_${VERSION}_amd64.deb) · [.rpm](${BASE}/AgentLine-${VERSION}-1.x86_64.rpm) |"
+            echo "| Linux ARM64 | [.AppImage](${BASE}/AgentLine_${VERSION}_aarch64.AppImage) · [.deb](${BASE}/AgentLine_${VERSION}_arm64.deb) · [.rpm](${BASE}/AgentLine-${VERSION}-1.aarch64.rpm) |"
           } > /tmp/release-body.md
 
           gh release edit "$TAG" --notes-file /tmp/release-body.md

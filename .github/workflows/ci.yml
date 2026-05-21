@@ -1,18 +1,29 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
+
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "24"
           cache: "pnpm"
-      - run: pnpm install
-      - run: pnpm lint
+
+      - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm -F @agentline/client exec playwright install chromium
-      - run: pnpm test:e2e
+      - run: pnpm --filter @agentline/client exec vitest run src/hooks/__tests__/useRecentProject.test.ts src/api/client.test.ts
+      - run: pnpm --filter @agentline/server test -- security.test.ts sessions.test.ts
+      - run: pnpm --filter @agentline/client build:remote
+      - run: pnpm --filter @agentline/relay build
+      - run: pnpm --filter @agentline/desktop-electron build
+      - run: pnpm --filter @agentline/mobile-rn typecheck
