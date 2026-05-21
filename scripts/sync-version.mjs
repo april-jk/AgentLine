@@ -15,12 +15,17 @@ function writeText(path, value) {
   writeFileSync(path, value);
 }
 
+function detectEol(text) {
+  return text.includes("\r\n") ? "\r\n" : "\n";
+}
+
 function updateJson(relativePath, updater) {
   const path = resolve(repoRoot, relativePath);
   const before = readText(path);
   const data = JSON.parse(before);
   updater(data);
-  const after = `${JSON.stringify(data, null, 2)}\n`;
+  const eol = detectEol(before);
+  const after = `${JSON.stringify(data, null, 2)}\n`.replace(/\n/g, eol);
   return { path, before, after };
 }
 
