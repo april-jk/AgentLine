@@ -33,9 +33,19 @@ function updateText(relativePath, updater) {
 
 const rootPackage = JSON.parse(readText(rootPackagePath));
 const version = rootPackage.version;
+const mobileAppConfigPath = resolve(repoRoot, "packages/mobile-rn/app.json");
+const mobileAppConfig = JSON.parse(readText(mobileAppConfigPath));
+const mobileIosBundleId = mobileAppConfig.expo?.ios?.bundleIdentifier;
+const mobileAndroidPackage = mobileAppConfig.expo?.android?.package;
 
 if (!version) {
   throw new Error("Root package.json is missing a version field.");
+}
+
+if (!mobileIosBundleId || !mobileAndroidPackage) {
+  throw new Error(
+    "packages/mobile-rn/app.json must define both expo.ios.bundleIdentifier and expo.android.package.",
+  );
 }
 
 const updates = [
@@ -82,15 +92,20 @@ const updates = [
     content.replace(/versionName = ".*"/, `versionName = "${version}"`),
   ),
   updateText("packages/mobile-rn/android/app/build.gradle", (content) =>
-    content.replace(/versionName ".*"/, `versionName "${version}"`),
+    content
+      .replace(/namespace '.*'/, `namespace '${mobileAndroidPackage}'`)
+      .replace(/applicationId '.*'/, `applicationId '${mobileAndroidPackage}'`)
+      .replace(/versionName ".*"/, `versionName "${version}"`),
   ),
   updateText(
     "packages/mobile-rn/ios/AgentLine.xcodeproj/project.pbxproj",
     (content) =>
-      content.replace(
-        /MARKETING_VERSION = .*;/g,
-        `MARKETING_VERSION = ${version};`,
-      ),
+      content
+        .replace(/MARKETING_VERSION = .*;/g, `MARKETING_VERSION = ${version};`)
+        .replace(
+          /PRODUCT_BUNDLE_IDENTIFIER = .*;/g,
+          `PRODUCT_BUNDLE_IDENTIFIER = ${mobileIosBundleId};`,
+        ),
   ),
   updateText("packages/server/src/device/DeviceBridgeService.ts", (content) =>
     content.replace(
