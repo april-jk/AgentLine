@@ -104,6 +104,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
+          pattern: desktop-electron-*
           path: release-assets
           merge-multiple: true
 

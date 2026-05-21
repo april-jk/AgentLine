@@ -138,11 +138,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download all artifacts
+      - name: Download bridge binaries
         uses: actions/download-artifact@v4
         with:
+          pattern: device-bridge-*
           path: binaries
           merge-multiple: true
+
+      - name: Download Android device server APK
+        uses: actions/download-artifact@v4
+        with:
+          name: agentline-device-server-apk
+          path: binaries
 
       - name: Ensure release tag exists
         shell: bash

@@ -172,6 +172,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
+          pattern: mobile-rn-*
           path: release-assets
           merge-multiple: true
 
