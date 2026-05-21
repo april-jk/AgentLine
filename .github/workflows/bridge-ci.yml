@@ -28,7 +28,7 @@ jobs:
       - id: resolve
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "workflow_call" ]; then
+          if [ -n "${{ inputs.release_tag }}" ] && [ -n "${{ inputs.release_version }}" ]; then
             echo "release_enabled=true" >> "$GITHUB_OUTPUT"
             echo "release_tag=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
             echo "release_version=${{ inputs.release_version }}" >> "$GITHUB_OUTPUT"
