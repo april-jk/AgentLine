@@ -303,7 +303,7 @@ jobs:
           prerelease: false
 
   release-desktop:
-    if: needs.prepare.outputs.should_release_desktop == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
+    if: always() && needs.prepare.outputs.should_release_desktop == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
     needs:
       - prepare
       - verify
@@ -317,7 +317,7 @@ jobs:
     secrets: inherit
 
   release-desktop-electron:
-    if: needs.prepare.outputs.should_release_desktop_electron == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
+    if: always() && needs.prepare.outputs.should_release_desktop_electron == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
     needs:
       - prepare
       - verify
@@ -331,7 +331,7 @@ jobs:
     secrets: inherit
 
   release-mobile-rn:
-    if: needs.prepare.outputs.should_release_mobile_rn == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
+    if: always() && needs.prepare.outputs.should_release_mobile_rn == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
     needs:
       - prepare
       - verify
@@ -345,7 +345,7 @@ jobs:
     secrets: inherit
 
   release-bridge:
-    if: needs.prepare.outputs.should_release_bridge == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
+    if: always() && needs.prepare.outputs.should_release_bridge == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
     needs:
       - prepare
       - verify
