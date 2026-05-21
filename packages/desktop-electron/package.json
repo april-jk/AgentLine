@@ -1,6 +1,6 @@
 {
   "name": "@agentline/desktop-electron",
-  "version": "0.1.1",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "Electron desktop shell for AgentLine.",
@@ -51,27 +51,42 @@
     "directories": {
       "output": "release"
     },
-    "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
     "extraResources": [
       {
         "from": "runtime",
         "to": "runtime",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
       "icon": "../desktop/src-tauri/icons/icon.icns",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "win": {
       "icon": "../desktop/src-tauri/icons/icon.ico",
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "linux": {
       "icon": "../desktop/src-tauri/icons/icon.png",
       "artifactName": "agentline-desktop-${version}-${arch}.${ext}",
       "executableName": "agentline-desktop",
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     }
   }
 }

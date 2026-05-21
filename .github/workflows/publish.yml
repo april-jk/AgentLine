@@ -119,6 +119,9 @@ jobs:
       - name: Run type checking
         run: pnpm typecheck
 
+      - name: Verify unified release versions
+        run: pnpm version:check
+
       - name: Run client smoke tests
         run: pnpm --filter @agentline/client exec vitest run src/hooks/__tests__/useRecentProject.test.ts src/api/client.test.ts
 

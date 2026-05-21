@@ -127,7 +127,7 @@ Fix any errors before considering the task complete.
 
 For app release packaging, use the version-specific release guide before running build commands.
 
-- 0.1.0 Android/iOS RN builds and macOS/Windows/Linux Electron builds: `docs/releases/0.1.0.md`
+- 1.0.1 Android/iOS RN builds and macOS/Windows/Linux Electron builds: `docs/releases/1.0.1.md`
 - The guide records the build commands, required local toolchains, and where to find generated artifacts after compilation.
 - Use this release guide when asked to compile, package, archive, or locate app binaries for mobile or desktop releases.
 
@@ -147,7 +147,7 @@ The package is published to npm as `agentline` using GitHub Actions with OIDC tr
 
 1. Update `CHANGELOG.md` with a new version section:
    ```markdown
-   ## [0.1.11] - 2025-01-24
+   ## [1.0.2] - 2026-05-21
 
    ### Added
    - New feature description
@@ -160,8 +160,8 @@ The package is published to npm as `agentline` using GitHub Actions with OIDC tr
 
 3. Tag and push:
    ```bash
-   git tag v0.1.11
-   git push origin v0.1.11
+   git tag v1.0.2
+   git push origin v1.0.2
    ```
 
 The CI workflow verifies the changelog contains an entry for the version being released. If missing, the release will fail with instructions to update the changelog.
