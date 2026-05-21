@@ -53,9 +53,8 @@ jobs:
           };
 
           const rootVersion = readJson("package.json").version;
-          const desktopElectronVersion =
-            readJson("packages/desktop-electron/package.json").version;
-          const mobileRnVersion = readJson("packages/mobile-rn/package.json").version;
+          const desktopElectronVersion = rootVersion;
+          const mobileRnVersion = rootVersion;
           const bridgeVersion = rootVersion;
           const rootTag = `v${rootVersion}`;
           const rootMissing = !existsTag(rootTag);
@@ -82,9 +81,9 @@ jobs:
 
           const summary = [
             `Unified release tag: ${rootTag}`,
-            `Desktop Electron version: ${desktopElectronVersion}`,
-            `Mobile RN version: ${mobileRnVersion}`,
-            `Bridge version: ${bridgeVersion}`,
+            `Desktop Electron release version: ${desktopElectronVersion}`,
+            `Mobile RN release version: ${mobileRnVersion}`,
+            `Devices runtime release version: ${bridgeVersion}`,
             "",
             shouldRefresh
               ? manualDispatch && !rootMissing
@@ -259,11 +258,11 @@ jobs:
             echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- npm publish: \`${NPM_STATUS}\`"
             echo
-            echo "### Bundled App Versions"
+            echo "### Unified Release Components"
             echo
-            echo "- Desktop Electron: \`${{ needs.prepare.outputs.desktop_electron_version }}\`"
-            echo "- Mobile RN: \`${{ needs.prepare.outputs.mobile_rn_version }}\`"
-            echo "- Device Bridge: \`${{ needs.prepare.outputs.bridge_version }}\`"
+            echo "- Desktop app (Electron): \`${{ needs.prepare.outputs.desktop_electron_version }}\`"
+            echo "- Mobile app (React Native): \`${{ needs.prepare.outputs.mobile_rn_version }}\`"
+            echo "- Devices runtime: \`${{ needs.prepare.outputs.bridge_version }}\`"
             echo "- Desktop (Tauri): deprecated and excluded from the main release bundle"
             echo
             if [ "${{ steps.npm_publish.outputs.published }}" != "true" ]; then
@@ -408,11 +407,11 @@ jobs:
             echo "- Mobile app: React Native"
             echo "- Desktop (Tauri): deprecated and not published in this unified release"
             echo
-            echo "### Included Build Versions"
+            echo "### Unified Release Components"
             echo
-            echo "- Desktop Electron package version: \`${{ needs.prepare.outputs.desktop_electron_version }}\`"
-            echo "- Mobile RN package version: \`${{ needs.prepare.outputs.mobile_rn_version }}\`"
-            echo "- Device Bridge package version: \`${{ needs.prepare.outputs.bridge_version }}\`"
+            echo "- Desktop app (Electron): \`${{ needs.prepare.outputs.desktop_electron_version }}\`"
+            echo "- Mobile app (React Native): \`${{ needs.prepare.outputs.mobile_rn_version }}\`"
+            echo "- Devices runtime: \`${{ needs.prepare.outputs.bridge_version }}\`"
             echo
             cat /tmp/release-notes.md
           } > /tmp/unified-release-body.md

@@ -74,6 +74,28 @@ jobs:
           node-version: "24"
           cache: "pnpm"
 
+      - name: Align mobile app version to unified release
+        if: needs.prepare.outputs.release_enabled == 'true'
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.release_version }}"
+          node <<'NODE'
+          const fs = require("node:fs");
+          const patchJson = (path, updater) => {
+            const data = JSON.parse(fs.readFileSync(path, "utf8"));
+            updater(data);
+            fs.writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+          };
+          patchJson("packages/mobile-rn/package.json", (pkg) => {
+            pkg.version = process.env.VERSION;
+          });
+          patchJson("packages/mobile-rn/app.json", (app) => {
+            app.expo.version = process.env.VERSION;
+          });
+          NODE
+        env:
+          VERSION: ${{ needs.prepare.outputs.release_version }}
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -140,6 +162,28 @@ jobs:
         with:
           node-version: "24"
           cache: "pnpm"
+
+      - name: Align mobile app version to unified release
+        if: needs.prepare.outputs.release_enabled == 'true'
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.release_version }}"
+          node <<'NODE'
+          const fs = require("node:fs");
+          const patchJson = (path, updater) => {
+            const data = JSON.parse(fs.readFileSync(path, "utf8"));
+            updater(data);
+            fs.writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+          };
+          patchJson("packages/mobile-rn/package.json", (pkg) => {
+            pkg.version = process.env.VERSION;
+          });
+          patchJson("packages/mobile-rn/app.json", (app) => {
+            app.expo.version = process.env.VERSION;
+          });
+          NODE
+        env:
+          VERSION: ${{ needs.prepare.outputs.release_version }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
