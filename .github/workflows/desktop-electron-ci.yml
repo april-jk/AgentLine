@@ -69,7 +69,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Typecheck desktop electron
         run: pnpm --filter @agentline/desktop-electron typecheck
@@ -92,7 +92,7 @@ jobs:
           if-no-files-found: warn
 
   release:
-    if: needs.prepare.outputs.release_enabled == 'true'
+    if: always() && needs.prepare.outputs.release_enabled == 'true' && needs.build.result == 'success'
     needs:
       - prepare
       - build

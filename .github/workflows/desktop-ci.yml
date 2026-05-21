@@ -257,7 +257,7 @@ jobs:
           rm -rf ~/private_keys 2>/dev/null || true
 
   finalize-release:
-    if: needs.prepare.outputs.release_enabled == 'true'
+    if: always() && needs.prepare.outputs.release_enabled == 'true' && needs['build-tauri'].result == 'success'
     needs:
       - prepare
       - build-tauri

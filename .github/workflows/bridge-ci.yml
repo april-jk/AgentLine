@@ -127,7 +127,7 @@ jobs:
           path: packages/android-device-server/app/build/outputs/apk/release/agentline-device-server.apk
 
   release:
-    if: needs.prepare.outputs.release_enabled == 'true'
+    if: always() && needs.prepare.outputs.release_enabled == 'true' && needs['build-bridge'].result == 'success' && needs['build-apk'].result == 'success'
     needs:
       - prepare
       - build-bridge

@@ -143,7 +143,7 @@ jobs:
           path: release-assets/*
 
   release:
-    if: needs.prepare.outputs.release_enabled == 'true' && needs['build-android'].result == 'success' && (needs['build-ios'].result == 'success' || needs['build-ios'].result == 'skipped')
+    if: always() && needs.prepare.outputs.release_enabled == 'true' && needs['build-android'].result == 'success' && (needs['build-ios'].result == 'success' || needs['build-ios'].result == 'skipped')
     needs:
       - prepare
       - build-android

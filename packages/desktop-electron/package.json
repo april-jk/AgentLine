@@ -3,6 +3,14 @@
   "version": "0.1.1",
   "private": true,
   "type": "module",
+  "homepage": "https://github.com/april-jk/AgentLine",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/april-jk/AgentLine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/april-jk/AgentLine/issues"
+  },
   "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "node scripts/dev.mjs",
