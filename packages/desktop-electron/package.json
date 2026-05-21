@@ -3,6 +3,11 @@
   "version": "0.1.1",
   "private": true,
   "type": "module",
+  "description": "Electron desktop shell for AgentLine.",
+  "author": {
+    "name": "april-jk",
+    "email": "april-jk@users.noreply.github.com"
+  },
   "homepage": "https://github.com/april-jk/AgentLine",
   "repository": {
     "type": "git",
