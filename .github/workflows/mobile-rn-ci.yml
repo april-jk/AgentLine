@@ -79,6 +79,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build shared package
+        run: pnpm --filter @agentline/shared build
+
       - name: Typecheck mobile RN
         run: pnpm --filter @agentline/mobile-rn typecheck
 
@@ -119,6 +122,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @agentline/shared build
 
       - name: Build iOS archive
         run: pnpm --filter @agentline/mobile-rn build:ios:archive
