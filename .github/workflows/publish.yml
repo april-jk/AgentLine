@@ -174,7 +174,7 @@ jobs:
       - name: Typecheck mobile RN
         run: pnpm --filter @agentline/mobile-rn typecheck
 
-  publish-root:
+  publish_root:
     if: needs.prepare.outputs.should_release_root == 'true'
     needs:
       - prepare
@@ -277,11 +277,11 @@ jobs:
           prerelease: false
 
   release-desktop:
-    if: needs.prepare.outputs.should_release_desktop == 'true' && (needs['publish-root'].result == 'success' || needs['publish-root'].result == 'skipped')
+    if: needs.prepare.outputs.should_release_desktop == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
     needs:
       - prepare
       - verify
-      - publish-root
+      - publish_root
     uses: ./.github/workflows/desktop-ci.yml
     with:
       release_tag: ${{ needs.prepare.outputs.desktop_tag }}
@@ -289,11 +289,11 @@ jobs:
     secrets: inherit
 
   release-desktop-electron:
-    if: needs.prepare.outputs.should_release_desktop_electron == 'true' && (needs['publish-root'].result == 'success' || needs['publish-root'].result == 'skipped')
+    if: needs.prepare.outputs.should_release_desktop_electron == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
     needs:
       - prepare
       - verify
-      - publish-root
+      - publish_root
     uses: ./.github/workflows/desktop-electron-ci.yml
     with:
       release_tag: ${{ needs.prepare.outputs.desktop_electron_tag }}
@@ -301,11 +301,11 @@ jobs:
     secrets: inherit
 
   release-mobile-rn:
-    if: needs.prepare.outputs.should_release_mobile_rn == 'true' && (needs['publish-root'].result == 'success' || needs['publish-root'].result == 'skipped')
+    if: needs.prepare.outputs.should_release_mobile_rn == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
     needs:
       - prepare
       - verify
-      - publish-root
+      - publish_root
     uses: ./.github/workflows/mobile-rn-ci.yml
     with:
       release_tag: ${{ needs.prepare.outputs.mobile_rn_tag }}
@@ -313,11 +313,11 @@ jobs:
     secrets: inherit
 
   release-bridge:
-    if: needs.prepare.outputs.should_release_bridge == 'true' && (needs['publish-root'].result == 'success' || needs['publish-root'].result == 'skipped')
+    if: needs.prepare.outputs.should_release_bridge == 'true' && (needs.publish_root.result == 'success' || needs.publish_root.result == 'skipped')
     needs:
       - prepare
       - verify
-      - publish-root
+      - publish_root
     uses: ./.github/workflows/bridge-ci.yml
     with:
       release_tag: ${{ needs.prepare.outputs.bridge_tag }}
