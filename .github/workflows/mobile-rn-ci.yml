@@ -88,16 +88,32 @@ jobs:
       - name: Build Android release APK
         run: pnpm --filter @agentline/mobile-rn build:android:release-apk
 
-      - name: Build Android release AAB
-        run: pnpm --filter @agentline/mobile-rn build:android:release-aab
-
-      - name: Prepare Android release assets
+      - name: Capture Android release APK
         shell: bash
         run: |
           VERSION="${{ needs.prepare.outputs.release_version }}"
           mkdir -p release-assets
-          cp packages/mobile-rn/android/app/build/outputs/apk/release/*.apk "release-assets/AgentLine-Mobile-RN-${VERSION}-android.apk"
-          cp packages/mobile-rn/android/app/build/outputs/bundle/release/*.aab "release-assets/AgentLine-Mobile-RN-${VERSION}-android.aab"
+          APK_PATH="$(find packages/mobile-rn/android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          if [ -z "$APK_PATH" ]; then
+            echo "Expected a release APK, but none was found."
+            exit 1
+          fi
+          cp "$APK_PATH" "release-assets/AgentLine-Mobile-RN-${VERSION}-android.apk"
+
+      - name: Build Android release AAB
+        run: pnpm --filter @agentline/mobile-rn build:android:release-aab
+
+      - name: Capture Android release AAB
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.release_version }}"
+          mkdir -p release-assets
+          AAB_PATH="$(find packages/mobile-rn/android/app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' | head -n 1)"
+          if [ -z "$AAB_PATH" ]; then
+            echo "Expected a release Android App Bundle, but none was found."
+            exit 1
+          fi
+          cp "$AAB_PATH" "release-assets/AgentLine-Mobile-RN-${VERSION}-android.aab"
 
       - uses: actions/upload-artifact@v4
         with:
