@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -10,8 +11,12 @@ const repoRoot = path.resolve(packageRoot, "../..");
 const bundleRoot = path.join(repoRoot, "dist", "npm-package");
 const runtimeRoot = path.join(packageRoot, "runtime", "agentline");
 
+function resolveCommand(command) {
+  return process.platform === "win32" ? `${command}.cmd` : command;
+}
+
 function run(command, args, cwd) {
-  execFileSync(command, args, {
+  execFileSync(resolveCommand(command), args, {
     cwd,
     stdio: "inherit",
   });
