@@ -669,5 +669,80 @@ document.querySelectorAll(".home-section-nav").forEach(function (nav) {
     observer.observe(section);
   });
   setCurrent(sections[0].id);
+
+  if (
+    window.matchMedia("(max-width: 1020px)").matches ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    return;
+  }
+
+  var snapTargets = sections.filter(function (section) {
+    return section.id !== "install";
+  });
+  var wheelDelta = 0;
+  var wheelTimer = 0;
+  var isSnapping = false;
+  var lastSnapAt = 0;
+  var wheelThreshold = 190;
+  var snapCooldown = 720;
+
+  function nearestIndex() {
+    var viewportAnchor = window.scrollY + 74;
+    var nearest = 0;
+    var nearestDistance = Infinity;
+
+    snapTargets.forEach(function (section, index) {
+      var distance = Math.abs(section.offsetTop - viewportAnchor);
+      if (distance < nearestDistance) {
+        nearest = index;
+        nearestDistance = distance;
+      }
+    });
+
+    return nearest;
+  }
+
+  function snapTo(index) {
+    var target = snapTargets[Math.max(0, Math.min(index, snapTargets.length - 1))];
+    if (!target) return;
+
+    isSnapping = true;
+    lastSnapAt = Date.now();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    window.setTimeout(function () {
+      isSnapping = false;
+      wheelDelta = 0;
+    }, 620);
+  }
+
+  window.addEventListener(
+    "wheel",
+    function (event) {
+      if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+
+      var now = Date.now();
+      if (isSnapping || now - lastSnapAt < snapCooldown) {
+        event.preventDefault();
+        return;
+      }
+
+      wheelDelta += event.deltaY;
+      window.clearTimeout(wheelTimer);
+      wheelTimer = window.setTimeout(function () {
+        wheelDelta = 0;
+      }, 180);
+
+      if (Math.abs(wheelDelta) < wheelThreshold) {
+        event.preventDefault();
+        return;
+      }
+
+      event.preventDefault();
+      snapTo(nearestIndex() + (wheelDelta > 0 ? 1 : -1));
+    },
+    { passive: false }
+  );
 });
 </script>

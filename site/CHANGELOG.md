@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.36] - 2026-05-22
+
+### Changed
+- Refine the homepage section progress control into a slimmer desktop rail.
+- Add desktop wheel snapping so committed scroll gestures land on the next or previous homepage section.
+
 ## [site-v1.5.35] - 2026-05-22
 
 ### Changed
