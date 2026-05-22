@@ -1,4 +1,5 @@
 ---
+import { withBase } from "../lib/paths";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
@@ -16,8 +17,8 @@ const downloadPlatforms = [
       "把 AgentLine 固定在 Apple Silicon 开发机上，是桌面端里最顺手的一种开始方式。任务留在本机持续运行，手机只接手关键决策。",
     note: "GitHub Release v1.0.1，可直接下载 DMG 或 ZIP。",
     visualTone: "desktop",
-    primaryImage: "/screenshots/session-complete-real.png",
-    secondaryImage: "/screenshots/overview-projects-real.png",
+    primaryImage: withBase("/screenshots/session-complete-real.png"),
+    secondaryImage: withBase("/screenshots/overview-projects-real.png"),
     imageAlt: "AgentLine desktop install preview for macOS",
     actions: [
       {
@@ -46,8 +47,8 @@ const downloadPlatforms = [
       "把会话留在这台 Windows 主机上，让桌面执行和手机审批同时成立。适合办公机、家庭主机和常驻远程桌面环境。",
     note: "GitHub Release v1.0.1，当前提供安装版和便携版两个 Windows 包。",
     visualTone: "desktop",
-    primaryImage: "/screenshots/session-running-real.png",
-    secondaryImage: "/screenshots/overview-projects-real.png",
+    primaryImage: withBase("/screenshots/session-running-real.png"),
+    secondaryImage: withBase("/screenshots/overview-projects-real.png"),
     imageAlt: "AgentLine desktop session on a Windows-style download panel",
     actions: [
       {
@@ -76,8 +77,8 @@ const downloadPlatforms = [
       "给常驻 Linux 工作站和主机的轻量入口。适合把代理留在开发机、家用工作站或实验机上持续执行。",
     note: "GitHub Release v1.0.1，当前提供 AppImage 和 Debian 包。",
     visualTone: "desktop",
-    primaryImage: "/screenshots/sessions-list-real.png",
-    secondaryImage: "/screenshots/overview-projects-real.png",
+    primaryImage: withBase("/screenshots/sessions-list-real.png"),
+    secondaryImage: withBase("/screenshots/overview-projects-real.png"),
     imageAlt: "AgentLine Linux workstation overview",
     actions: [
       {
@@ -106,8 +107,8 @@ const downloadPlatforms = [
       "iOS 现在走 TestFlight 内测分发。先填写测试收集表，留下你的 TestFlight 邮箱，我们会再向你发送邀请。",
     note: "把鼠标放到“填写收集表”上就会显示飞书二维码，扫码后填写信息即可。",
     visualTone: "mobile",
-    primaryImage: "/screenshots/session-mobile-real.png",
-    secondaryImage: "/screenshots/session-mobile-complete-real.png",
+    primaryImage: withBase("/screenshots/session-mobile-real.png"),
+    secondaryImage: withBase("/screenshots/session-mobile-complete-real.png"),
     imageAlt: "AgentLine mobile supervision preview for future App Store release",
     actions: [
       {
@@ -118,7 +119,7 @@ const downloadPlatforms = [
         hoverCard: {
           title: "扫码填写 TestFlight 收集表",
           description: "填写邮箱后，我们会按内测节奏发送 TestFlight 邀请。",
-          imageSrc: "/screenshots/ios-testflight-feishu-qr-only.png",
+          imageSrc: withBase("/screenshots/ios-testflight-feishu-qr-only.png"),
           imageAlt: "Feishu QR code for iOS TestFlight signup form",
         },
       },
@@ -141,8 +142,8 @@ const downloadPlatforms = [
       "离开工位以后，Android 往往是最先接手代理的一端。直接装 APK 就能开始看进度、做审批、接推送。",
     note: "GitHub Release v1.0.1，同时提供 APK 与 AAB。",
     visualTone: "mobile",
-    primaryImage: "/screenshots/session-mobile-real.png",
-    secondaryImage: "/screenshots/session-mobile-complete-real.png",
+    primaryImage: withBase("/screenshots/session-mobile-real.png"),
+    secondaryImage: withBase("/screenshots/session-mobile-complete-real.png"),
     imageAlt: "AgentLine Android mobile supervision view",
     actions: [
       {
@@ -325,7 +326,7 @@ const downloadPlatforms = [
     <section id="proof" class="section section-soft home-proof">
       <div class="container proof-grid">
         <figure class="proof-shot">
-          <img src="/screenshots/overview-projects-real.png" alt="Project overview showing multiple tracked workspaces in AgentLine" width="1440" height="1000" loading="lazy" />
+          <img src={withBase("/screenshots/overview-projects-real.png")} alt="Project overview showing multiple tracked workspaces in AgentLine" width="1440" height="1000" loading="lazy" />
         </figure>
         <div class="proof-copy">
           <p class="eyebrow">Runtime</p>
@@ -352,7 +353,7 @@ const downloadPlatforms = [
         <div class="theme-rail">
           <article class="theme-feature">
             <figure class="theme-feature-visual theme-shot theme-shot-mobile">
-              <img src="/screenshots/session-mobile-real.png" alt="Review an active coding session from phone" width="430" height="932" loading="lazy" />
+              <img src={withBase("/screenshots/session-mobile-real.png")} alt="Review an active coding session from phone" width="430" height="932" loading="lazy" />
             </figure>
             <div class="theme-feature-copy">
               <p class="theme-feature-index">01</p>
@@ -363,7 +364,7 @@ const downloadPlatforms = [
           </article>
           <article class="theme-feature is-reverse">
             <figure class="theme-feature-visual theme-shot theme-shot-mobile">
-              <img src="/screenshots/sessions-list-mobile-real.png" alt="Mobile session list for fast switching and triage" width="430" height="932" loading="lazy" />
+              <img src={withBase("/screenshots/sessions-list-mobile-real.png")} alt="Mobile session list for fast switching and triage" width="430" height="932" loading="lazy" />
             </figure>
             <div class="theme-feature-copy">
               <p class="theme-feature-index">02</p>
@@ -374,7 +375,7 @@ const downloadPlatforms = [
           </article>
           <article class="theme-feature">
             <figure class="theme-feature-visual theme-shot theme-shot-mobile">
-              <img src="/screenshots/session-mobile-complete-real.png" alt="Completed mobile session with readable result state" width="430" height="932" loading="lazy" />
+              <img src={withBase("/screenshots/session-mobile-complete-real.png")} alt="Completed mobile session with readable result state" width="430" height="932" loading="lazy" />
             </figure>
             <div class="theme-feature-copy">
               <p class="theme-feature-index">03</p>
@@ -390,7 +391,7 @@ const downloadPlatforms = [
     <section id="security" class="section section-soft home-proof">
       <div class="container proof-grid">
         <figure class="proof-shot">
-          <img src="/screenshots/overview-projects-real.png" alt="Host overview for selecting where sessions live and how they are reached" width="1440" height="1000" loading="lazy" />
+          <img src={withBase("/screenshots/overview-projects-real.png")} alt="Host overview for selecting where sessions live and how they are reached" width="1440" height="1000" loading="lazy" />
         </figure>
         <div class="proof-copy">
           <p class="eyebrow">Remote Access</p>
@@ -417,7 +418,7 @@ const downloadPlatforms = [
         <div class="theme-rail">
           <article class="theme-feature is-reverse">
             <figure class="theme-feature-visual theme-shot">
-              <img src="/screenshots/session-running-real.png" alt="Conversation panel for supervising an active agent session" width="1440" height="1000" loading="lazy" />
+              <img src={withBase("/screenshots/session-running-real.png")} alt="Conversation panel for supervising an active agent session" width="1440" height="1000" loading="lazy" />
             </figure>
             <div class="theme-feature-copy">
               <p class="theme-feature-index">01</p>
@@ -428,7 +429,7 @@ const downloadPlatforms = [
           </article>
           <article class="theme-feature">
             <figure class="theme-feature-visual theme-shot">
-              <img src="/screenshots/overview-projects-real.png" alt="Multi-project overview for power users and teams" width="1440" height="1000" loading="lazy" />
+              <img src={withBase("/screenshots/overview-projects-real.png")} alt="Multi-project overview for power users and teams" width="1440" height="1000" loading="lazy" />
             </figure>
             <div class="theme-feature-copy">
               <p class="theme-feature-index">02</p>
@@ -451,11 +452,11 @@ const downloadPlatforms = [
 agentline</code></pre>
           <div class="cta-row">
             <a href="#install" class="btn btn-primary">回到下载</a>
-            <a href="/remote" class="btn btn-secondary">打开登录页</a>
+            <a href={withBase("/remote/")} class="btn btn-secondary">打开登录页</a>
           </div>
         </div>
         <figure class="proof-shot">
-          <img src="/screenshots/session-complete-real.png" alt="Configured desktop session after install" width="1440" height="1000" loading="lazy" />
+          <img src={withBase("/screenshots/session-complete-real.png")} alt="Configured desktop session after install" width="1440" height="1000" loading="lazy" />
         </figure>
       </div>
     </section>

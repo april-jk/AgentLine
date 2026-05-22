@@ -1,4 +1,5 @@
 ---
+import { withBase } from "../lib/paths";
 import ArticleLayout from "../layouts/ArticleLayout.astro";
 ---
 
@@ -45,8 +46,8 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   <p>This isn't new. We've been tracking this exact pattern:</p>
 
   <ul>
-    <li><strong>January 2026:</strong> Anthropic <a href="https://news.ycombinator.com/item?id=46549823">blocks third-party tools</a> that spoof Claude Code's client identity. We wrote about <a href="/tos-compliance">how YA differs from those tools</a>.</li>
-    <li><strong>February 2026:</strong> Anthropic <a href="/sdk-auth-clarification">updates legal docs</a>, causing confusion about Agent SDK usage. Clarified within hours &mdash; individual use is fine.</li>
+    <li><strong>January 2026:</strong> Anthropic <a href="https://news.ycombinator.com/item?id=46549823">blocks third-party tools</a> that spoof Claude Code's client identity. We wrote about <a href={withBase("/tos-compliance")}>how YA differs from those tools</a>.</li>
+    <li><strong>February 2026:</strong> Anthropic <a href={withBase("/sdk-auth-clarification")}>updates legal docs</a>, causing confusion about Agent SDK usage. Clarified within hours &mdash; individual use is fine.</li>
     <li><strong>February 2026:</strong> Google bans Antigravity/OpenClaw users. No clarification, no reversal, no functioning support.</li>
   </ul>
 
@@ -83,7 +84,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     <li><a href="https://discuss.ai.google.dev/t/account-restricted-without-warning-google-ai-ultra-oauth-via-openclaw/122778">Google AI Forum: Account restricted without warning</a></li>
     <li><a href="https://discuss.ai.google.dev/t/important-reminder-antigravity-terms-of-service-section-6-recent-gemini-access-suspensions/125193">Google AI Forum: Antigravity ToS Section 6 reminder</a></li>
     <li><a href="https://antigravity.google/terms">Antigravity Terms of Service</a></li>
-    <li><a href="/tos-compliance">Our Jan 2026 post: How we use the Claude SDK</a></li>
-    <li><a href="/sdk-auth-clarification">Our Feb 2026 post: The Agent SDK auth scare</a></li>
+    <li><a href={withBase("/tos-compliance")}>Our Jan 2026 post: How we use the Claude SDK</a></li>
+    <li><a href={withBase("/sdk-auth-clarification")}>Our Feb 2026 post: The Agent SDK auth scare</a></li>
   </ul>
 </ArticleLayout>

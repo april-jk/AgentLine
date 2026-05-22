@@ -1,4 +1,5 @@
 ---
+import { withBase } from "../lib/paths";
 import ArticleLayout from "../layouts/ArticleLayout.astro";
 ---
 
@@ -20,15 +21,15 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <div class="screenshot-grid">
     <div class="screenshot-item">
-      <img src="/screenshots/conversation.png" alt="Chat interface with file uploads">
+      <img src={withBase("/screenshots/conversation.png")} alt="Chat interface with file uploads">
       <p>Chat with your agent</p>
     </div>
     <div class="screenshot-item">
-      <img src="/screenshots/approval.png" alt="Tool approval request">
+      <img src={withBase("/screenshots/approval.png")} alt="Tool approval request">
       <p>Approve tool requests</p>
     </div>
     <div class="screenshot-item">
-      <img src="/screenshots/navigation.png" alt="Multi-session dashboard">
+      <img src={withBase("/screenshots/navigation.png")} alt="Multi-session dashboard">
       <p>See all sessions at a glance</p>
     </div>
   </div>
@@ -83,8 +84,8 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   </ul>
 
   <div class="desktop-screenshots">
-    <img src="/screenshots/desktop.png" alt="Desktop view">
-    <img src="/screenshots/desktop-diff.png" alt="Desktop diff view">
+    <img src={withBase("/screenshots/desktop.png")} alt="Desktop view">
+    <img src={withBase("/screenshots/desktop-diff.png")} alt="Desktop diff view">
   </div>
 
   <h2>Getting Started</h2>
@@ -144,7 +145,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
   <div class="cta-section">
     <h3>Try It Now</h3>
     <p>Install AgentLine and enable the public relay. Your dev machine in your pocket.</p>
-    <a href="/#install" class="btn btn-primary">Get Started</a>
+    <a href={withBase("/#install")} class="btn btn-primary">Get Started</a>
   </div>
 </ArticleLayout>
 

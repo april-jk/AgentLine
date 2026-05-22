@@ -1,4 +1,6 @@
 ---
+import { withBase } from "../lib/paths";
+
 interface Props {
   showPrivacy?: boolean;
 }
@@ -12,7 +14,7 @@ const { showPrivacy = true } = Astro.props;
       <a href="https://github.com/april-jk/AgentLine">GitHub</a>
       <a href="https://www.npmjs.com/package/agentline">npm</a>
       <a href="https://github.com/april-jk/AgentLine/issues">Issues</a>
-      {showPrivacy && <a href="/privacy">Privacy</a>}
+      {showPrivacy && <a href={withBase("/privacy")}>Privacy</a>}
     </div>
     <p>MIT License</p>
   </div>

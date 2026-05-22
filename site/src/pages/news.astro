@@ -1,4 +1,5 @@
 ---
+import { withBase } from "../lib/paths";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
@@ -25,14 +26,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>Android Dev Without a Desktop: Remote Device Control</h2>
-              <div class="news-item-meta">March 3, 2026 &middot; <a href="/remote-device-control">View article</a></div>
+              <div class="news-item-meta">March 3, 2026 &middot; <a href={withBase("/remote-device-control")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>
           <div class="news-item-content">
             <div class="article-content">
               <p>I've been building Android apps from my phone using AI agents, but I always had to walk to my computer to see the result. Not anymore. AgentLine now streams your Android device or emulator to your phone over WebRTC &mdash; H264 video, full touch input, low latency. The full dev loop closes on your phone. Next up: accessibility tree support so agents can verify their own work.</p>
-              <p><a href="/remote-device-control">Read the full post</a></p>
+              <p><a href={withBase("/remote-device-control")}>Read the full post</a></p>
             </div>
           </div>
         </article>
@@ -41,14 +42,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>What I Learned from the OpenClaw Guy's AI Coding Workflow</h2>
-              <div class="news-item-meta">February 27, 2026 &middot; <a href="/ai-coding-workflow-openclaw">View article</a></div>
+              <div class="news-item-meta">February 27, 2026 &middot; <a href={withBase("/ai-coding-workflow-openclaw")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>
           <div class="news-item-content">
             <div class="article-content">
               <p>Peter Steinberger shipped 8,471 commits in 72 days across 48 repos. I've done 4,092 in 101 days while raising two young kids. This isn't a comparison &mdash; it's about what I learned from watching his workflow and how it changed my approach: adopting Codex, rethinking pull requests, and using phone-based constraints as a forcing function for better engineering.</p>
-              <p><a href="/ai-coding-workflow-openclaw">Read the full post</a></p>
+              <p><a href={withBase("/ai-coding-workflow-openclaw")}>Read the full post</a></p>
             </div>
           </div>
         </article>
@@ -57,14 +58,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>Five Ways to Access AI Subscriptions Programmatically (and What Breaks)</h2>
-              <div class="news-item-meta">February 25, 2026 &middot; <a href="/subscription-access-approaches">View article</a></div>
+              <div class="news-item-meta">February 25, 2026 &middot; <a href={withBase("/subscription-access-approaches")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>
           <div class="news-item-content">
             <div class="article-content">
               <p>AI coding agents cost $15-75/MTok via API keys, but $20-200/mo via subscriptions. Every wrapper project has to pick an approach to bridge that gap. We read the source code of five projects &mdash; emdash, AgentLine, OpenCode, pi-mono, and Vercel AI SDK &mdash; and found five distinct strategies, from raw terminal passthrough to reverse-engineered OAuth. Some have already gotten users banned.</p>
-              <p><a href="/subscription-access-approaches">Read the full post</a></p>
+              <p><a href={withBase("/subscription-access-approaches")}>Read the full post</a></p>
             </div>
           </div>
         </article>
@@ -73,14 +74,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>Claude Code Remote Control vs AgentLine</h2>
-              <div class="news-item-meta">February 24, 2026 &middot; <a href="/claude-code-remote-control">View article</a></div>
+              <div class="news-item-meta">February 24, 2026 &middot; <a href={withBase("/claude-code-remote-control")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>
           <div class="news-item-content">
             <div class="article-content">
               <p>Anthropic just announced Remote Control &mdash; a new Claude Code feature that lets you continue terminal sessions from your phone. We're thrilled they're validating this workflow. Here's how it compares to AgentLine and what we add on top: multi-session dashboard, phone-initiated sessions, server-owned processes, and more.</p>
-              <p><a href="/claude-code-remote-control">Read the full post</a></p>
+              <p><a href={withBase("/claude-code-remote-control")}>Read the full post</a></p>
             </div>
           </div>
         </article>
@@ -89,14 +90,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>Google Is Banning Paying Subscribers for Using OpenClaw</h2>
-              <div class="news-item-meta">February 23, 2026 &middot; <a href="/google-openclaw-crackdown">View article</a></div>
+              <div class="news-item-meta">February 23, 2026 &middot; <a href={withBase("/google-openclaw-crackdown")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>
           <div class="news-item-content">
             <div class="article-content">
               <p>Google permanently banned hundreds of AI Pro and Ultra subscribers for using OpenClaw to access the Antigravity backend. No warning, no appeal, still charging $249/month. This is the same pattern we've been writing about since January &mdash; and why AgentLine only uses official CLI harnesses.</p>
-              <p><a href="/google-openclaw-crackdown">Read the full post</a></p>
+              <p><a href={withBase("/google-openclaw-crackdown")}>Read the full post</a></p>
             </div>
           </div>
         </article>
@@ -105,14 +106,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>The Agent SDK Auth Scare (and Why You're Fine)</h2>
-              <div class="news-item-meta">February 19, 2026 &middot; <a href="/sdk-auth-clarification">View article</a></div>
+              <div class="news-item-meta">February 19, 2026 &middot; <a href={withBase("/sdk-auth-clarification")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>
           <div class="news-item-content">
             <div class="article-content">
               <p>Anthropic updated their legal docs and the community panicked. One paragraph says Pro/Max covers the Agent SDK, the next says OAuth tokens can't be used with it. A Claude Code product lead clarified on X that nothing is changing. Here's our reading of why individual SDK use is fine.</p>
-              <p><a href="/sdk-auth-clarification">Read the full post</a></p>
+              <p><a href={withBase("/sdk-auth-clarification")}>Read the full post</a></p>
             </div>
           </div>
         </article>
@@ -121,14 +122,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>Does Your AI Agent Have a Soul?</h2>
-              <div class="news-item-meta">February 16, 2026 &middot; <a href="/openclaw-and-agentline">View article</a></div>
+              <div class="news-item-meta">February 16, 2026 &middot; <a href={withBase("/openclaw-and-agentline")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>
           <div class="news-item-content">
             <div class="article-content">
               <p>Peter Steinberger just announced he's joining OpenAI. OpenClaw will move to a foundation and stay open source. Here's our perspective on where these tools overlap, diverge, and where the space is heading &mdash; from soul.md and heartbeat systems to the long tail of agent tasks.</p>
-              <p><a href="/openclaw-and-agentline">Read the full post</a></p>
+              <p><a href={withBase("/openclaw-and-agentline")}>Read the full post</a></p>
             </div>
           </div>
         </article>
@@ -137,7 +138,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>Introducing Public Relay: Supervise Claude Code from Anywhere</h2>
-              <div class="news-item-meta">January 21, 2026 &middot; <a href="/public-relay">View article</a></div>
+              <div class="news-item-meta">January 21, 2026 &middot; <a href={withBase("/public-relay")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>
@@ -153,7 +154,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
               <p>No accounts required. No Firebase, no database, no tracking. Your password never leaves your device.</p>
 
-              <p><a href="/public-relay">Read the full announcement</a> for screenshots, installation instructions, and the complete feature set.</p>
+              <p><a href={withBase("/public-relay")}>Read the full announcement</a> for screenshots, installation instructions, and the complete feature set.</p>
             </div>
           </div>
         </article>
@@ -162,7 +163,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="news-item-header" data-toggle>
             <div>
               <h2>How We Use the Claude SDK (and Why We're Not Like the Blocked Tools)</h2>
-              <div class="news-item-meta">January 11, 2026 &middot; <a href="/tos-compliance">View article</a></div>
+              <div class="news-item-meta">January 11, 2026 &middot; <a href={withBase("/tos-compliance")}>View article</a></div>
             </div>
             <span class="news-item-expand">+</span>
           </div>

@@ -1,22 +1,26 @@
 ---
+import { withBase } from "../lib/paths";
+
 interface Props {
   activePage?: string;
 }
 
 const { activePage } = Astro.props;
+const darkLogo = withBase("/branding/lockup-dark.svg");
+const lightLogo = withBase("/branding/lockup-light.svg");
 ---
 
 <header>
   <div class="container header-content">
-    <a href="/" class="logo">
-      <img src="/branding/lockup-dark.svg" alt="AgentLine" />
+    <a href={withBase("/")} class="logo">
+      <img src={darkLogo} alt="AgentLine" data-logo-dark={darkLogo} data-logo-light={lightLogo} />
     </a>
 
     <nav aria-label="Primary">
-      <a href="/" class={activePage === 'home' ? 'active' : ''}>Product</a>
-      <a href="/news" class={activePage === 'news' ? 'active' : ''}>News</a>
+      <a href={withBase("/")} class={activePage === 'home' ? 'active' : ''}>Product</a>
+      <a href={withBase("/news")} class={activePage === 'news' ? 'active' : ''}>News</a>
       <a href="https://github.com/april-jk/AgentLine">GitHub</a>
-      <a href="/remote" class="login-link">Log In</a>
+      <a href={withBase("/remote/")} class="login-link">Log In</a>
 
       <button class="theme-toggle" aria-label="Toggle theme" type="button">
         <svg class="icon-sun" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -64,14 +68,14 @@ const { activePage } = Astro.props;
 
     var logo = document.querySelector('.logo img');
     if (logo) {
-      logo.src = next === 'light' ? '/branding/lockup-light.svg' : '/branding/lockup-dark.svg';
+      logo.src = next === 'light' ? logo.dataset.logoLight : logo.dataset.logoDark;
     }
   });
 
   var theme = document.documentElement.getAttribute('data-theme');
   if (theme === 'light') {
     var logo = document.querySelector('.logo img');
-    if (logo) logo.src = '/branding/lockup-light.svg';
+    if (logo) logo.src = logo.dataset.logoLight;
   }
 })();
 </script>

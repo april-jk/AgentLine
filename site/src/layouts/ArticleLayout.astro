@@ -1,6 +1,7 @@
 ---
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
+import { withBase } from "../lib/paths";
 import BaseLayout from "./BaseLayout.astro";
 
 interface Props {
@@ -64,7 +65,7 @@ const jsonLd = JSON.stringify({
           <h1>{title}</h1>
           <div class="article-meta">
             <span>{date}</span>
-            <a href="/news">Back to News</a>
+            <a href={withBase("/news")}>Back to News</a>
           </div>
         </div>
       </div>

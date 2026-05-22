@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.33] - 2026-05-22
+
+### Fixed
+- Load website CSS, icons, screenshots, and the remote client correctly from the GitHub Pages `/AgentLine/` subpath.
+
 ## [site-v1.5.32] - 2026-05-22
 
 ### Changed

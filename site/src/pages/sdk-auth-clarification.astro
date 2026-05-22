@@ -1,4 +1,5 @@
 ---
+import { withBase } from "../lib/paths";
 import ArticleLayout from "../layouts/ArticleLayout.astro";
 ---
 
@@ -41,7 +42,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     <li><strong>We're not a third-party service</strong> routing your credentials &mdash; we're a local interface to your own Claude Code sessions</li>
   </ul>
 
-  <p>We covered this in detail in our <a href="/tos-compliance">January compliance post</a> when the earlier wave of third-party tools got blocked. The core facts haven't changed.</p>
+  <p>We covered this in detail in our <a href={withBase("/tos-compliance")}>January compliance post</a> when the earlier wave of third-party tools got blocked. The core facts haven't changed.</p>
 
   <h3>The bigger picture</h3>
   <p>The <a href="https://news.ycombinator.com/item?id=47069299">HN thread</a> is worth reading. The community frustration isn't really about AgentLine or any specific tool &mdash; it's about contradictory docs creating uncertainty for developers who want to build on Claude's platform.</p>
@@ -55,6 +56,6 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     <li><a href="https://code.claude.com/docs/en/legal-and-compliance">Anthropic Legal and Compliance docs</a></li>
     <li><a href="https://x.com/trq212/status/2024212378402095389">Thariq's clarification on X</a></li>
     <li><a href="https://news.ycombinator.com/item?id=47069299">HN discussion thread (160+ comments)</a></li>
-    <li><a href="/tos-compliance">Our January compliance post</a></li>
+    <li><a href={withBase("/tos-compliance")}>Our January compliance post</a></li>
   </ul>
 </ArticleLayout>

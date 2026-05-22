@@ -1,4 +1,5 @@
 ---
+import { withBase } from "../lib/paths";
 import ArticleLayout from "../layouts/ArticleLayout.astro";
 ---
 
@@ -27,23 +28,23 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <div class="screenshot-row">
     <figure>
-      <img src="/screenshots/device-sidebar.png" alt="AgentLine sidebar showing Devices tab alongside sessions, projects, and agents" loading="lazy" />
+      <img src={withBase("/screenshots/device-sidebar.png")} alt="AgentLine sidebar showing Devices tab alongside sessions, projects, and agents" loading="lazy" />
       <figcaption>Devices in the sidebar</figcaption>
     </figure>
     <figure>
-      <img src="/screenshots/device-list.png" alt="Device list showing Android emulators, ChromeOS devices, and iOS Simulators" loading="lazy" />
+      <img src={withBase("/screenshots/device-list.png")} alt="Device list showing Android emulators, ChromeOS devices, and iOS Simulators" loading="lazy" />
       <figcaption>Auto-discovered devices</figcaption>
     </figure>
     <figure>
-      <img src="/screenshots/device-stream.png" alt="Live stream of an Android emulator showing the home screen with touch controls" loading="lazy" />
+      <img src={withBase("/screenshots/device-stream.png")} alt="Live stream of an Android emulator showing the home screen with touch controls" loading="lazy" />
       <figcaption>Android stream</figcaption>
     </figure>
     <figure>
-      <img src="/screenshots/device-stream-ios.png" alt="Live stream of an iOS Simulator running an app, controlled from a phone" loading="lazy" />
+      <img src={withBase("/screenshots/device-stream-ios.png")} alt="Live stream of an iOS Simulator running an app, controlled from a phone" loading="lazy" />
       <figcaption>iOS Simulator stream</figcaption>
     </figure>
     <figure>
-      <img src="/screenshots/device-settings.png" alt="Stream quality settings showing frame rate, resolution, and adaptive quality controls" loading="lazy" />
+      <img src={withBase("/screenshots/device-settings.png")} alt="Stream quality settings showing frame rate, resolution, and adaptive quality controls" loading="lazy" />
       <figcaption>Quality &amp; performance settings</figcaption>
     </figure>
   </div>
@@ -66,7 +67,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <p>Device control ships in AgentLine today. Enable Device Bridge in Settings, and any Android emulator, Android device, or iOS Simulator shows up automatically in the Devices tab. iOS support is for Simulators running on your Mac &mdash; real iOS devices are not yet supported. It's still in beta &mdash; expect rough edges.</p>
 
-  <p><a href="/#install" class="cta-link">Install AgentLine</a></p>
+  <p><a href={withBase("/#install")} class="cta-link">Install AgentLine</a></p>
 </ArticleLayout>
 
 <style>
