@@ -174,6 +174,18 @@ const downloadPlatforms = [
   <Header activePage="home" />
 
   <main id="main-content" class="mkt-main page-home">
+    <nav class="home-section-nav" aria-label="Homepage sections">
+      <a href="#hero" aria-label="Intro"><span>Intro</span></a>
+      <a href="#value" aria-label="Why AgentLine works"><span>Why</span></a>
+      <a href="#proof" aria-label="Runtime overview"><span>Runtime</span></a>
+      <a href="#themes" aria-label="Mobile workflows"><span>Mobile</span></a>
+      <a href="#security" aria-label="Remote access"><span>Access</span></a>
+      <a href="#compare" aria-label="Comparison"><span>Compare</span></a>
+      <a href="#quickstart" aria-label="Quickstart"><span>Start</span></a>
+      <a href="#faq" aria-label="FAQ"><span>FAQ</span></a>
+      <a href="#finish" aria-label="Download AgentLine"><span>Finish</span></a>
+    </nav>
+
     <section id="hero" class="hero hero-install-shell">
       <div
         class="container hero-install-layout"
@@ -501,7 +513,7 @@ agentline</code></pre>
       </div>
     </section>
 
-    <section class="section final-cta">
+    <section id="finish" class="section final-cta">
       <div class="container">
         <h2>把等待代理，变成调度代理。</h2>
         <p>少一点空等，多一点推进。代理继续跑，你只在需要的时候出手。</p>
@@ -612,5 +624,50 @@ document.querySelectorAll("[data-download-center]").forEach(function (root) {
       }
     });
   });
+});
+
+document.querySelectorAll(".home-section-nav").forEach(function (nav) {
+  var links = Array.from(nav.querySelectorAll('a[href^="#"]'));
+  var sections = links
+    .map(function (link) {
+      var id = link.getAttribute("href").slice(1);
+      return document.getElementById(id);
+    })
+    .filter(Boolean);
+
+  if (!sections.length || !("IntersectionObserver" in window)) return;
+
+  function setCurrent(id) {
+    links.forEach(function (link) {
+      if (link.getAttribute("href") === "#" + id) {
+        link.setAttribute("aria-current", "true");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+  }
+
+  var observer = new IntersectionObserver(
+    function (entries) {
+      var visible = entries
+        .filter(function (entry) {
+          return entry.isIntersecting;
+        })
+        .sort(function (a, b) {
+          return b.intersectionRatio - a.intersectionRatio;
+        })[0];
+
+      if (visible) setCurrent(visible.target.id);
+    },
+    {
+      rootMargin: "-35% 0px -45% 0px",
+      threshold: [0.18, 0.32, 0.5],
+    }
+  );
+
+  sections.forEach(function (section) {
+    observer.observe(section);
+  });
+  setCurrent(sections[0].id);
 });
 </script>

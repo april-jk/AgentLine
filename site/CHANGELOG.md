@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.35] - 2026-05-22
+
+### Changed
+- Give homepage sections more viewport-scale breathing room with native scroll snap.
+- Add lightweight section anchor dots for desktop homepage navigation.
+- Tune mobile and reduced-motion behavior so the landing page remains readable and responsive.
+
 ## [site-v1.5.34] - 2026-05-22
 
 ### Changed
