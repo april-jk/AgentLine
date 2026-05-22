@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.34] - 2026-05-22
+
+### Changed
+- Use the current app icon in the website header brand mark.
+- Convert the homepage FAQ cards into an expandable accordion list.
+
 ## [site-v1.5.33] - 2026-05-22
 
 ### Fixed

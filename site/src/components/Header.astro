@@ -6,14 +6,14 @@ interface Props {
 }
 
 const { activePage } = Astro.props;
-const darkLogo = withBase("/branding/lockup-dark.svg");
-const lightLogo = withBase("/branding/lockup-light.svg");
+const appIcon = withBase("/icon-512.png");
 ---
 
 <header>
   <div class="container header-content">
-    <a href={withBase("/")} class="logo">
-      <img src={darkLogo} alt="AgentLine" data-logo-dark={darkLogo} data-logo-light={lightLogo} />
+    <a href={withBase("/")} class="logo" aria-label="AgentLine home">
+      <img src={appIcon} alt="" width="34" height="34" />
+      <span>AgentLine</span>
     </a>
 
     <nav aria-label="Primary">
@@ -65,17 +65,6 @@ const lightLogo = withBase("/branding/lockup-light.svg");
     var next = current === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
-
-    var logo = document.querySelector('.logo img');
-    if (logo) {
-      logo.src = next === 'light' ? logo.dataset.logoLight : logo.dataset.logoDark;
-    }
   });
-
-  var theme = document.documentElement.getAttribute('data-theme');
-  if (theme === 'light') {
-    var logo = document.querySelector('.logo img');
-    if (logo) logo.src = logo.dataset.logoLight;
-  }
 })();
 </script>
