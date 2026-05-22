@@ -6,6 +6,8 @@ dist/
 build/
 *.tsbuildinfo
 .astro/
+.gocache/
+.gomodcache/
 
 # Environment
 .env
