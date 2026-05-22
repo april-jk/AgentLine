@@ -61,6 +61,11 @@ packages/server/generated/codex-app-server/
 
 # Text files in repo root
 /*.txt
+/*.gif
+/*.jpeg
+/*.jpg
+/*.png
+/*.webp
 /release-artifacts/
 /releaseFiles/
 /.agents/
