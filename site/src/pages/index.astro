@@ -455,19 +455,37 @@ const downloadPlatforms = [
     </section>
 
     <section id="quickstart" class="section section-soft">
-      <div class="container proof-grid">
-        <div class="proof-copy">
+      <div class="container quickstart-layout">
+        <div class="proof-copy quickstart-copy">
           <p class="eyebrow">Get Started</p>
-          <h2>先装起来，三十秒就能看到效果。</h2>
-          <p>如果你只是想先试一下，走最短路径就够了。装完，打开本地地址，马上就能开始看会话。</p>
-          <pre class="code"><code>npm i -g agentline
-agentline</code></pre>
+          <h2>先下载桌面端，再把手机接进来。</h2>
+          <p>
+            AgentLine 现在以桌面安装包和移动端内测包为主。先在承载代理的电脑上启动桌面端，
+            再用手机接收审批、查看进度和处理阻塞。
+          </p>
           <div class="cta-row">
             <a href="#install" class="btn btn-primary">回到下载</a>
             <a href={withBase("/remote/")} class="btn btn-secondary">打开登录页</a>
           </div>
         </div>
-        <figure class="proof-shot">
+        <div class="quickstart-cards" aria-label="AgentLine setup path">
+          <article class="quickstart-card">
+            <span>01</span>
+            <h3>选择你的桌面平台</h3>
+            <p>macOS、Windows、Linux 都在首屏下载区。下载安装到这台真正跑代理的机器上。</p>
+          </article>
+          <article class="quickstart-card">
+            <span>02</span>
+            <h3>确认会话留在本机</h3>
+            <p>代理进程继续由你的电脑承载，手机只是监督、审批和回到关键上下文。</p>
+          </article>
+          <article class="quickstart-card">
+            <span>03</span>
+            <h3>需要远程时再登录</h3>
+            <p>已经配置远程入口后，再从登录页接入；没有配置时，先回到下载区安装桌面端。</p>
+          </article>
+        </div>
+        <figure class="proof-shot quickstart-shot">
           <img src={withBase("/screenshots/session-complete-real.png")} alt="Configured desktop session after install" width="1440" height="1000" loading="lazy" />
         </figure>
       </div>

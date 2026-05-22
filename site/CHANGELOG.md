@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.37] - 2026-05-22
+
+### Changed
+- Replace the unavailable quickstart npm command with a desktop-first setup path.
+- Give the homepage quickstart section a roomier three-step layout.
+
 ## [site-v1.5.36] - 2026-05-22
 
 ### Changed
