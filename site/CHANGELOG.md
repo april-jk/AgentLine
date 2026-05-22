@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.38] - 2026-05-23
+
+### Changed
+- Reframe the News page as AgentLine product updates with a smaller Field Notes section.
+- Remove stale npm install and old-brand references from linked site articles.
+
 ## [site-v1.5.37] - 2026-05-22
 
 ### Changed
