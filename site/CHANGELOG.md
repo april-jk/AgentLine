@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.32] - 2026-05-22
+
+### Changed
+- Point homepage download calls-to-action at the current public release assets.
+- Collapse the marketing navigation back into a single homepage product story.
+- Align public website icons with the current app mark.
+
 ## [site-v1.5.31] - 2026-04-13
 
 ### Fixed
