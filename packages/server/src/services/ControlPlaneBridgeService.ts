@@ -96,6 +96,8 @@ export class ControlPlaneBridgeService {
   private readonly state: ControlPlaneBridgeState;
   private timer: ReturnType<typeof setInterval> | null = null;
   private syncing = false;
+  private registeredDevice: ControlPlaneBridgeDevice | null = null;
+  private lastHeartbeatSentAtMs = 0;
 
   constructor(options: ControlPlaneBridgeServiceOptions) {
     this.config = options.config;
@@ -188,19 +190,37 @@ export class ControlPlaneBridgeService {
     >,
   ): Promise<ControlPlaneBridgeState> {
     if ("baseUrl" in updates) {
+      if (this.config.baseUrl !== updates.baseUrl?.trim()) {
+        this.clearRegisteredDevice();
+      }
       this.config.baseUrl = updates.baseUrl?.trim() || undefined;
     }
     if ("accessToken" in updates) {
+      if (this.config.accessToken !== updates.accessToken?.trim()) {
+        this.clearRegisteredDevice();
+      }
       this.config.accessToken = updates.accessToken?.trim() || undefined;
     }
     if ("relayUrl" in updates) {
       this.config.relayUrl = updates.relayUrl?.trim() || undefined;
     }
     if ("deviceName" in updates) {
+      if (
+        updates.deviceName?.trim() &&
+        updates.deviceName.trim() !== this.config.deviceName
+      ) {
+        this.clearRegisteredDevice();
+      }
       this.config.deviceName =
         updates.deviceName?.trim() || this.config.deviceName;
     }
     if ("deviceType" in updates) {
+      if (
+        updates.deviceType?.trim() &&
+        updates.deviceType.trim() !== this.config.deviceType
+      ) {
+        this.clearRegisteredDevice();
+      }
       this.config.deviceType =
         updates.deviceType?.trim() || this.config.deviceType;
     }
@@ -218,6 +238,7 @@ export class ControlPlaneBridgeService {
       this.state.deviceId = undefined;
       this.state.relayUsername = undefined;
       this.state.lastError = undefined;
+      this.clearRegisteredDevice();
       this.emitStateChanged();
       return this.getState();
     }
@@ -250,12 +271,20 @@ export class ControlPlaneBridgeService {
 
     this.syncing = true;
     try {
-      const registration = await this.registerDevice();
-      const device = registration.device;
-      this.state.deviceId = device.id;
-      this.state.relayUsername = device.relayUsername;
+      const device = await this.ensureRegisteredDevice();
       await this.ensureRelayConfig(device.relayUsername);
-      await this.sendHeartbeat(device.id);
+      try {
+        await this.sendHeartbeatIfDue(device.id);
+      } catch (error) {
+        if (!this.isDeviceMissingError(error)) {
+          throw error;
+        }
+
+        this.clearRegisteredDevice();
+        const refreshedDevice = await this.ensureRegisteredDevice();
+        await this.ensureRelayConfig(refreshedDevice.relayUsername);
+        await this.sendHeartbeat(refreshedDevice.id);
+      }
 
       this.state.lastSyncAt = new Date().toISOString();
       this.state.lastError = undefined;
@@ -389,6 +418,33 @@ export class ControlPlaneBridgeService {
     });
   }
 
+  private rememberRegisteredDevice(device: ControlPlaneBridgeDevice): void {
+    this.registeredDevice = device;
+    this.state.deviceId = device.id;
+    this.state.relayUsername = device.relayUsername;
+  }
+
+  private clearRegisteredDevice(): void {
+    this.registeredDevice = null;
+    this.lastHeartbeatSentAtMs = 0;
+    this.state.deviceId = undefined;
+    this.state.relayUsername = undefined;
+  }
+
+  private async ensureRegisteredDevice(): Promise<ControlPlaneBridgeDevice> {
+    if (
+      this.registeredDevice &&
+      this.state.deviceId === this.registeredDevice.id &&
+      this.state.relayUsername === this.registeredDevice.relayUsername
+    ) {
+      return this.registeredDevice;
+    }
+
+    const registration = await this.registerDevice();
+    this.rememberRegisteredDevice(registration.device);
+    return registration.device;
+  }
+
   private async sendHeartbeat(deviceId: string): Promise<HeartbeatResponse> {
     const nowIso = new Date().toISOString();
     const lanEndpoint = this.config.hostEndpointProvider?.() ?? null;
@@ -438,7 +494,30 @@ export class ControlPlaneBridgeService {
       },
     );
     this.state.lastHeartbeatAt = new Date().toISOString();
+    this.lastHeartbeatSentAtMs = Date.now();
     return response;
+  }
+
+  private async sendHeartbeatIfDue(
+    deviceId: string,
+  ): Promise<HeartbeatResponse | null> {
+    const elapsedMs = Date.now() - this.lastHeartbeatSentAtMs;
+    if (
+      this.lastHeartbeatSentAtMs > 0 &&
+      elapsedMs < this.config.heartbeatIntervalMs
+    ) {
+      return null;
+    }
+
+    return this.sendHeartbeat(deviceId);
+  }
+
+  private isDeviceMissingError(error: unknown): boolean {
+    return (
+      error instanceof ControlPlaneRequestError &&
+      error.status === 404 &&
+      error.message === "device_not_found"
+    );
   }
 
   private async ensureRelayConfig(relayUsername: string): Promise<void> {
