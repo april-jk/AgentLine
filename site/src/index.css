@@ -1249,6 +1249,7 @@ li {
 .download-action-group {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .download-action {
@@ -1291,6 +1292,67 @@ li {
   background: color-mix(in oklab, var(--bg-soft), transparent 18%);
   color: var(--text-muted);
   cursor: not-allowed;
+}
+
+.download-action-group.has-hover-card {
+  isolation: isolate;
+}
+
+.download-hover-card {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 12px);
+  width: min(244px, 72vw);
+  padding: 14px;
+  border-radius: 22px;
+  background: rgba(255, 251, 244, 0.98);
+  border: 1px solid rgba(221, 193, 156, 0.42);
+  box-shadow: 0 22px 56px rgba(29, 40, 65, 0.16);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px) scale(0.98);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.download-action-group.has-hover-card[data-hover-card-open="true"] .download-hover-card,
+.download-action-group.has-hover-card:hover .download-hover-card,
+.download-action-group.has-hover-card:focus-within .download-hover-card,
+.download-action-group.has-hover-card .download-action:hover + .download-hover-card,
+.download-action-group.has-hover-card .download-action:focus-visible + .download-hover-card {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.download-hover-card-copy {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.download-hover-card-title {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.download-hover-card-text {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.download-hover-card-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(221, 193, 156, 0.3);
 }
 
 .download-center-note {
@@ -1757,6 +1819,19 @@ footer a:hover {
   .download-action,
   .download-action-disabled {
     width: 100%;
+  }
+
+  .download-hover-card {
+    left: 50%;
+    transform: translate(-50%, 8px) scale(0.98);
+  }
+
+  .download-action-group.has-hover-card[data-hover-card-open="true"] .download-hover-card,
+  .download-action-group.has-hover-card:hover .download-hover-card,
+  .download-action-group.has-hover-card:focus-within .download-hover-card,
+  .download-action-group.has-hover-card .download-action:hover + .download-hover-card,
+  .download-action-group.has-hover-card .download-action:focus-visible + .download-hover-card {
+    transform: translate(-50%, 0) scale(1);
   }
 
   .download-center-stage {

@@ -3,10 +3,10 @@ import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-const releaseVersion = "0.1.0";
+const releaseVersion = "1.0.1";
 const releaseTag = `v${releaseVersion}`;
 const releaseAssetBase = `https://github.com/april-jk/AgentLine/releases/download/${releaseTag}`;
-const releasePage = "https://github.com/april-jk/AgentLine/releases/latest";
+const releasePage = `https://github.com/april-jk/AgentLine/releases/tag/${releaseTag}`;
 const downloadPlatforms = [
   {
     key: "macos",
@@ -14,7 +14,7 @@ const downloadPlatforms = [
     headline: "AgentLine for macOS",
     description:
       "把 AgentLine 固定在 Apple Silicon 开发机上，是桌面端里最顺手的一种开始方式。任务留在本机持续运行，手机只接手关键决策。",
-    note: "GitHub Release v0.1.0，可直接取 DMG 或 ZIP。",
+    note: "GitHub Release v1.0.1，可直接下载 DMG 或 ZIP。",
     visualTone: "desktop",
     primaryImage: "/screenshots/session-complete-real.png",
     secondaryImage: "/screenshots/overview-projects-real.png",
@@ -23,14 +23,14 @@ const downloadPlatforms = [
       {
         label: "下载 DMG",
         kind: "link",
-        href: `${releaseAssetBase}/AgentLine-Desktop-${releaseVersion}-macos-arm64.dmg`,
+        href: `${releaseAssetBase}/AgentLine.Desktop-${releaseVersion}-arm64.dmg`,
         style: "primary",
         detail: `${releaseTag} · Apple Silicon`,
       },
       {
         label: "下载 ZIP",
         kind: "link",
-        href: `${releaseAssetBase}/AgentLine-Desktop-${releaseVersion}-macos-arm64.zip`,
+        href: `${releaseAssetBase}/AgentLine.Desktop-${releaseVersion}-arm64-mac.zip`,
         style: "secondary",
         detail: `${releaseTag} · 免安装分发`,
       },
@@ -44,32 +44,25 @@ const downloadPlatforms = [
     headline: "AgentLine for Windows",
     description:
       "把会话留在这台 Windows 主机上，让桌面执行和手机审批同时成立。适合办公机、家庭主机和常驻远程桌面环境。",
-    note: "GitHub Release v0.1.0，含 Portable 版本。",
+    note: "GitHub Release v1.0.1，当前提供安装版和便携版两个 Windows 包。",
     visualTone: "desktop",
     primaryImage: "/screenshots/session-running-real.png",
     secondaryImage: "/screenshots/overview-projects-real.png",
     imageAlt: "AgentLine desktop session on a Windows-style download panel",
     actions: [
       {
-        label: "下载 x64",
+        label: "下载安装版",
         kind: "link",
-        href: `${releaseAssetBase}/AgentLine-Desktop-Setup-${releaseVersion}-win-x64.exe`,
+        href: `${releaseAssetBase}/AgentLine.Desktop.Setup.${releaseVersion}.exe`,
         style: "primary",
-        detail: `${releaseTag} · Windows 11 x64`,
+        detail: `${releaseTag} · Windows installer`,
       },
       {
-        label: "下载 Arm64",
+        label: "下载便携版",
         kind: "link",
-        href: `${releaseAssetBase}/AgentLine-Desktop-Setup-${releaseVersion}-win-arm64.exe`,
+        href: `${releaseAssetBase}/AgentLine.Desktop.${releaseVersion}.exe`,
         style: "secondary",
-        detail: `${releaseTag} · Windows on ARM`,
-      },
-      {
-        label: "Release",
-        kind: "link",
-        href: releasePage,
-        style: "dark",
-        detail: "含 Portable 与历史版本",
+        detail: `${releaseTag} · Portable`,
       },
     ],
     iconType: "svg",
@@ -81,7 +74,7 @@ const downloadPlatforms = [
     headline: "AgentLine for Linux",
     description:
       "给常驻 Linux 工作站和主机的轻量入口。适合把代理留在开发机、家用工作站或实验机上持续执行。",
-    note: "GitHub Release v0.1.0，当前以 AppImage 为主。",
+    note: "GitHub Release v1.0.1，当前提供 AppImage 和 Debian 包。",
     visualTone: "desktop",
     primaryImage: "/screenshots/sessions-list-real.png",
     secondaryImage: "/screenshots/overview-projects-real.png",
@@ -90,16 +83,16 @@ const downloadPlatforms = [
       {
         label: "下载 AppImage",
         kind: "link",
-        href: `${releaseAssetBase}/AgentLine-Desktop-${releaseVersion}-linux-x64.AppImage`,
+        href: `${releaseAssetBase}/agentline-desktop-${releaseVersion}-x86_64.AppImage`,
         style: "primary",
-        detail: `${releaseTag} · Linux x64`,
+        detail: `${releaseTag} · x86_64`,
       },
       {
-        label: "查看所有包",
+        label: "下载 DEB",
         kind: "link",
-        href: releasePage,
-        style: "dark",
-        detail: "历史版本与完整构建产物",
+        href: `${releaseAssetBase}/agentline-desktop-${releaseVersion}-amd64.deb`,
+        style: "secondary",
+        detail: `${releaseTag} · Debian/Ubuntu`,
       },
     ],
     iconType: "svg",
@@ -110,25 +103,31 @@ const downloadPlatforms = [
     label: "iOS",
     headline: "AgentLine for iPhone",
     description:
-      "iOS 分发还在准备上架流程，所以这里先把状态讲清楚。移动监督体验已经就绪，但正式的 App Store 发布还没有开放。",
-    note: "移动监督体验已准备好，当前先从 Android 或桌面端开始。",
+      "iOS 现在走 TestFlight 内测分发。先填写测试收集表，留下你的 TestFlight 邮箱，我们会再向你发送邀请。",
+    note: "把鼠标放到“填写收集表”上就会显示飞书二维码，扫码后填写信息即可。",
     visualTone: "mobile",
     primaryImage: "/screenshots/session-mobile-real.png",
     secondaryImage: "/screenshots/session-mobile-complete-real.png",
     imageAlt: "AgentLine mobile supervision preview for future App Store release",
     actions: [
       {
-        label: "App Store 即将推出",
+        label: "填写收集表",
         kind: "disabled",
         style: "primary",
-        detail: "上架流程进行中",
+        detail: "扫码填写 TestFlight 信息",
+        hoverCard: {
+          title: "扫码填写 TestFlight 收集表",
+          description: "填写邮箱后，我们会按内测节奏发送 TestFlight 邀请。",
+          imageSrc: "/screenshots/ios-testflight-feishu-qr-only.png",
+          imageAlt: "Feishu QR code for iOS TestFlight signup form",
+        },
       },
       {
-        label: "查看最新 Release",
+        label: "查看 v1.0.1",
         kind: "link",
         href: releasePage,
         style: "dark",
-        detail: "先从桌面端或 Android 开始",
+        detail: "桌面端与 Android 已可直接下载",
       },
     ],
     iconType: "svg",
@@ -140,7 +139,7 @@ const downloadPlatforms = [
     headline: "AgentLine for Android",
     description:
       "离开工位以后，Android 往往是最先接手代理的一端。直接装 APK 就能开始看进度、做审批、接推送。",
-    note: "GitHub Release v0.1.0，同时提供 APK 与 AAB。",
+    note: "GitHub Release v1.0.1，同时提供 APK 与 AAB。",
     visualTone: "mobile",
     primaryImage: "/screenshots/session-mobile-real.png",
     secondaryImage: "/screenshots/session-mobile-complete-real.png",
@@ -149,14 +148,14 @@ const downloadPlatforms = [
       {
         label: "下载 APK",
         kind: "link",
-        href: `${releaseAssetBase}/AgentLine-${releaseVersion}-android-release.apk`,
+        href: `${releaseAssetBase}/AgentLine-Mobile-RN-${releaseVersion}-android.apk`,
         style: "primary",
         detail: `${releaseTag} · 直接安装`,
       },
       {
         label: "下载 AAB",
         kind: "link",
-        href: `${releaseAssetBase}/AgentLine-${releaseVersion}-android-release.aab`,
+        href: `${releaseAssetBase}/AgentLine-Mobile-RN-${releaseVersion}-android.aab`,
         style: "secondary",
         detail: `${releaseTag} · 商店或企业分发`,
       },
@@ -226,11 +225,15 @@ const downloadPlatforms = [
                 <p class="download-center-description">{platform.description}</p>
                 <div class="download-center-actions">
                   {platform.actions.map((action) => (
-                    <div class="download-action-group">
+                    <div class={`download-action-group${action.hoverCard ? " has-hover-card" : ""}`}>
                       {action.kind === "disabled" ? (
-                        <span class={`download-action download-action-${action.style === "secondary" ? "secondary" : action.style === "dark" ? "dark" : "disabled"}`} aria-disabled="true">
+                        <button
+                          type="button"
+                          class={`download-action download-action-${action.style === "secondary" ? "secondary" : action.style === "dark" ? "dark" : "disabled"}`}
+                          aria-disabled="true"
+                        >
                           {action.label}
-                        </span>
+                        </button>
                       ) : (
                         <a
                           href={action.kind === "link" ? action.href : releasePage}
@@ -241,6 +244,22 @@ const downloadPlatforms = [
                           {action.label}
                         </a>
                       )}
+                      {action.hoverCard ? (
+                        <div class="download-hover-card" role="presentation" aria-hidden="true">
+                          <div class="download-hover-card-copy">
+                            <p class="download-hover-card-title">{action.hoverCard.title}</p>
+                            <p class="download-hover-card-text">{action.hoverCard.description}</p>
+                          </div>
+                          <img
+                            src={action.hoverCard.imageSrc}
+                            alt={action.hoverCard.imageAlt}
+                            width="184"
+                            height="184"
+                            loading="lazy"
+                            class="download-hover-card-image"
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -494,6 +513,7 @@ document.querySelectorAll("[data-download-center]").forEach(function (root) {
   var tablist = root.querySelector("[role='tablist']");
   var tabs = Array.from(root.querySelectorAll("[role='tab']"));
   var panels = Array.from(root.querySelectorAll("[role='tabpanel']"));
+  var hoverCards = Array.from(root.querySelectorAll(".download-action-group.has-hover-card"));
 
   if (!tablist || !tabs.length || !panels.length) return;
 
@@ -564,6 +584,26 @@ document.querySelectorAll("[data-download-center]").forEach(function (root) {
   window.addEventListener("resize", function () {
     var current = root.querySelector("[role='tab'][aria-selected='true']");
     if (current) moveIndicator(current);
+  });
+
+  hoverCards.forEach(function (group) {
+    function openCard() {
+      group.setAttribute("data-hover-card-open", "true");
+    }
+
+    function closeCard() {
+      group.setAttribute("data-hover-card-open", "false");
+    }
+
+    group.setAttribute("data-hover-card-open", "false");
+    group.addEventListener("mouseenter", openCard);
+    group.addEventListener("mouseleave", closeCard);
+    group.addEventListener("focusin", openCard);
+    group.addEventListener("focusout", function (event) {
+      if (!group.contains(event.relatedTarget)) {
+        closeCard();
+      }
+    });
   });
 });
 </script>
