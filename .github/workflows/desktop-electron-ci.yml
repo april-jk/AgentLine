@@ -79,6 +79,9 @@ jobs:
       - name: Verify unified release versions
         run: pnpm version:check
 
+      - name: Build shared package
+        run: pnpm --filter @agentline/shared build
+
       - name: Typecheck desktop electron
         run: pnpm --filter @agentline/desktop-electron typecheck
 
