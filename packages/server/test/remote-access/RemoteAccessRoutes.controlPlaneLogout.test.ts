@@ -25,7 +25,7 @@ describe("Remote access routes - control-plane logout hard invalidation", () => 
         hostAccessConfigured: true,
       }),
       getRelayConfig: vi.fn().mockReturnValue({
-        url: "wss://relay.agentline.com/ws",
+        url: "wss://relay.oneceo.ai/ws",
         username: "desktop-a1b2c3",
       }),
       configure: vi.fn(),

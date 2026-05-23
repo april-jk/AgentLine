@@ -1,3 +1,4 @@
+import { DEFAULT_RELAY_WS_URL } from "@agentline/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
@@ -50,7 +51,7 @@ function parseRelayHashCredentials(
     const params = new URLSearchParams(hash.slice(1));
     const relayUsername = params.get("u")?.trim().toLowerCase() ?? "";
     const accessPassword = params.get("p") ?? "";
-    const relayUrl = params.get("r")?.trim() || "wss://relay.agentline.com/ws";
+    const relayUrl = params.get("r")?.trim() || DEFAULT_RELAY_WS_URL;
     const clientGrant = params.get("cg")?.trim() || undefined;
     if (!relayUsername || !accessPassword) return null;
 

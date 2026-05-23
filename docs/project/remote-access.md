@@ -9,7 +9,7 @@ The easiest way to access AgentLine remotely. Zero-config, no port forwarding re
 **Setup via Settings UI:**
 1. Go to Settings → Remote Access
 2. Enter a username and password
-3. Connect from anywhere at `agentline.com/remote`
+3. Connect from anywhere at `relay.oneceo.ai/remote`
 
 **Setup via CLI (for headless/automated deployments):**
 ```bash

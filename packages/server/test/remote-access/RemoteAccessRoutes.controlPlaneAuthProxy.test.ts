@@ -9,7 +9,7 @@ function createRemoteAccessServiceStub() {
       hostAccessConfigured: true,
     }),
     getRelayConfig: vi.fn().mockReturnValue({
-      url: "wss://relay.agentline.com/ws",
+      url: "wss://relay.oneceo.ai/ws",
       username: "desktop-a1b2c3",
     }),
     getUsername: vi.fn().mockReturnValue("desktop-a1b2c3"),
@@ -67,7 +67,7 @@ describe("Remote access routes - control-plane auth proxy", () => {
       },
       body: JSON.stringify({
         mode: "register",
-        baseUrl: "relay.agentline.com/",
+        baseUrl: "relay.oneceo.ai/",
         email: "a@b.com",
         password: "password-123",
       }),
@@ -75,7 +75,7 @@ describe("Remote access routes - control-plane auth proxy", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      baseUrl: "https://relay.agentline.com",
+      baseUrl: "https://relay.oneceo.ai",
       accessToken: "token-123",
       expiresAt: "2099-01-01T00:00:00.000Z",
       user: { id: "u-1", email: "a@b.com" },
@@ -103,7 +103,7 @@ describe("Remote access routes - control-plane auth proxy", () => {
       },
       body: JSON.stringify({
         mode: "login",
-        baseUrl: "https://relay.agentline.com",
+        baseUrl: "https://relay.oneceo.ai",
         email: "a@b.com",
         password: "password-123",
       }),
@@ -138,7 +138,7 @@ describe("Remote access routes - control-plane auth proxy", () => {
       remoteAccessService: createRemoteAccessServiceStub() as never,
       controlPlaneBridgeService: {
         getAuthContext: vi.fn().mockReturnValue({
-          baseUrl: "https://relay.agentline.com",
+          baseUrl: "https://relay.oneceo.ai",
           accessToken: "token-123",
         }),
       } as never,
@@ -153,7 +153,7 @@ describe("Remote access routes - control-plane auth proxy", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      baseUrl: "https://relay.agentline.com",
+      baseUrl: "https://relay.oneceo.ai",
       lastEmail: "desktop@example.com",
       hasAccessToken: true,
       authenticated: true,
@@ -165,7 +165,7 @@ describe("Remote access routes - control-plane auth proxy", () => {
       },
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://relay.agentline.com/api/v1/me",
+      "https://relay.oneceo.ai/api/v1/me",
       expect.objectContaining({
         headers: {
           Authorization: "Bearer token-123",
@@ -187,7 +187,7 @@ describe("Remote access routes - control-plane auth proxy", () => {
       remoteAccessService: createRemoteAccessServiceStub() as never,
       serverSettingsService: {
         getSetting: vi.fn((key: string) => {
-          if (key === "controlPlaneBaseUrl") return "https://relay.agentline.com";
+          if (key === "controlPlaneBaseUrl") return "https://relay.oneceo.ai";
           if (key === "controlPlaneAccessToken") return "token-123";
           if (key === "controlPlaneLastEmail") return "desktop@example.com";
           return undefined;
@@ -199,7 +199,7 @@ describe("Remote access routes - control-plane auth proxy", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      baseUrl: "https://relay.agentline.com",
+      baseUrl: "https://relay.oneceo.ai",
       lastEmail: "desktop@example.com",
       hasAccessToken: true,
       authenticated: false,

@@ -1,3 +1,5 @@
+import { DEFAULT_CONTROL_PLANE_URL as PUBLIC_CONTROL_PLANE_URL } from "../../../../shared/dist/relay-defaults.js";
+
 export type LoginRequest = {
   email: string;
   password: string;
@@ -80,7 +82,6 @@ type ControlPlaneDevice = {
 };
 
 const RELAY_HEARTBEAT_STALE_MS = 60 * 1000;
-const PUBLIC_CONTROL_PLANE_URL = "https://relay.agentline.com";
 
 const maybeEnv = (
   globalThis as {

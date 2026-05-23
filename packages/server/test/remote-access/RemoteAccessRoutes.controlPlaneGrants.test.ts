@@ -10,7 +10,7 @@ describe("Remote access routes - control-plane client grant status mapping", () 
         hostAccessConfigured: true,
       }),
       getRelayConfig: vi.fn().mockReturnValue({
-        url: "wss://relay.agentline.com/ws",
+        url: "wss://relay.oneceo.ai/ws",
         username: "desktop-a1b2c3",
       }),
       getUsername: vi.fn().mockReturnValue("desktop-a1b2c3"),

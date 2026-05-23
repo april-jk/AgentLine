@@ -88,7 +88,7 @@ Open http://localhost:3400 in your browser. The app auto-detects installed CLI a
 agentline --setup-remote-access --username myserver --password "secretpass123"
 ```
 
-Then connect from anywhere at [agentline.com/remote](https://agentline.com/remote).
+Then connect from anywhere at [relay.oneceo.ai/remote](https://relay.oneceo.ai/remote).
 
 All traffic is end-to-end encrypted and we can't see your data. No accounts required.
 

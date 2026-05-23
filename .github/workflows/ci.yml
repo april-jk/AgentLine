@@ -20,6 +20,7 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
+      - run: pnpm domain:check
       - run: pnpm typecheck
       - run: pnpm --filter @agentline/client exec vitest run src/hooks/__tests__/useRecentProject.test.ts src/api/client.test.ts
       - run: pnpm --filter @agentline/server test -- security.test.ts sessions.test.ts

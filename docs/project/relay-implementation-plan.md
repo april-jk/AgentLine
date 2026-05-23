@@ -364,7 +364,7 @@ The key insight: the WebSocket is already connected (upgrade happened at relay),
 
 **File: `packages/client/src/pages/SettingsPage.tsx`**
 - Add relay section when remote access is enabled
-- Input for relay URL (default placeholder: `wss://relay.agentline.com/ws`)
+- Input for relay URL (default placeholder: `wss://relay.oneceo.ai/ws`)
 - Input for relay username
 - Status indicator (connected/disconnected/error)
 
@@ -547,7 +547,7 @@ Implementation notes:
 
 2. **Relay mode** (new): Enter relay username + SRP credentials
    - For NAT traversal, public internet access
-   - Default relay: `wss://remote.agentline.com/ws`
+   - Default relay: `wss://relay.oneceo.ai/ws`
 
 **File: `packages/client/src/remote-main.tsx`**
 
@@ -582,11 +582,11 @@ Relay connection flow:
 - Relay username input (e.g., "crostini")
 - SRP username input
 - SRP password input
-- Optional: relay URL override (default: `wss://remote.agentline.com/ws`)
+- Optional: relay URL override (default: `wss://relay.oneceo.ai/ws`)
 
 ```typescript
 async function connectViaRelay(relayUsername: string, srpUsername: string, srpPassword: string) {
-  const relayUrl = customRelayUrl || "wss://remote.agentline.com/ws";
+  const relayUrl = customRelayUrl || "wss://relay.oneceo.ai/ws";
 
   // 1. Connect to relay
   const ws = new WebSocket(relayUrl);
@@ -716,14 +716,14 @@ This can be added later without changing the core relay protocol.
 8. Navigate to relay login, enter relay username + SRP credentials
 9. Verify SRP auth completes and app works through relay
 
-### Production Testing (with remote.agentline.com)
+### Production Testing (with relay.oneceo.ai)
 
 1. Start agentline: `pnpm start`
-2. Configure relay: Settings > Remote Access > Relay URL = `wss://remote.agentline.com/ws`
+2. Configure relay: Settings > Remote Access > Relay URL = `wss://relay.oneceo.ai/ws`
 3. Set relay username
 4. Enable remote access with SRP username/password
 5. Verify relay status shows "Connected"
-6. Open `https://remote.agentline.com` on phone
+6. Open `https://relay.oneceo.ai` on phone
 7. Use relay login with same relay username + SRP credentials
 8. Verify connection works through public relay
 

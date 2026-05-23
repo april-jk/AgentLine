@@ -4,6 +4,10 @@
  * Reusable in both Settings and Onboarding flows.
  */
 
+import {
+  DEFAULT_RELAY_WS_URL,
+  DEFAULT_REMOTE_LOGIN_URL,
+} from "@agentline/shared";
 import { useEffect, useState } from "react";
 import { fetchJSON } from "../api/client";
 import { type RelayStatus, useRemoteAccess } from "../hooks/useRemoteAccess";
@@ -11,8 +15,8 @@ import { useI18n } from "../i18n";
 import { parseUserAgent } from "../lib/deviceDetection";
 import { QRCode } from "./QRCode";
 
-const DEFAULT_RELAY_URL = "wss://relay.agentline.com/ws";
-const CONNECT_URL = "https://relay.agentline.com/remote/login";
+const DEFAULT_RELAY_URL = DEFAULT_RELAY_WS_URL;
+const CONNECT_URL = DEFAULT_REMOTE_LOGIN_URL;
 
 export interface RemoteAccessSetupProps {
   /** Custom title (default: "Remote Access") */

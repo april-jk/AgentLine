@@ -1,3 +1,4 @@
+import { DEFAULT_RELAY_WS_URL } from "@agentline/shared";
 import { fetchJSON } from "../api/client";
 import {
   deriveRelayWsUrl as deriveRelayWsUrlFromControlPlane,
@@ -32,7 +33,7 @@ export function deriveRelayWsUrl(controlPlaneUrl: string): string {
   const normalized = normalizeControlPlaneBaseUrl(controlPlaneUrl);
   return normalized
     ? deriveRelayWsUrlFromControlPlane(normalized)
-    : "wss://relay.agentline.com/ws";
+    : DEFAULT_RELAY_WS_URL;
 }
 
 export function loadStoredAccountAuth(): StoredAccountAuth | null {

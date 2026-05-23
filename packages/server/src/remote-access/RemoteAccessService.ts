@@ -20,7 +20,7 @@ import {
 const CURRENT_VERSION = 1;
 
 export interface RelayConfig {
-  /** Relay server URL (e.g., wss://relay.agentline.com/ws) */
+  /** Relay server URL (e.g., wss://relay.oneceo.ai/ws) */
   url: string;
   /** Username for relay registration (also used as SRP identity) */
   username: string;

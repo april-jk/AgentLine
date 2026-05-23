@@ -12,6 +12,12 @@ export {
   buildDesktopDiscoveryPorts,
 } from "./desktop-discovery.js";
 
+export {
+  DEFAULT_CONTROL_PLANE_URL,
+  DEFAULT_RELAY_WS_URL,
+  DEFAULT_REMOTE_LOGIN_URL,
+} from "./relay-defaults.js";
+
 // File path detection (shared between server and client)
 export type { DetectedFilePath, TextSegment } from "./filePathDetection.js";
 export {

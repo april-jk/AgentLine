@@ -49,7 +49,7 @@ Returns relay URLs and version requirements. Allows migration without client upd
 {
   "relay": {
     "servers": [
-      { "url": "wss://relay.agentline.com", "region": "us" }
+      { "url": "wss://relay.oneceo.ai", "region": "us" }
     ],
     "minVersion": "0.3.0",
     "maxVersion": null
@@ -177,7 +177,7 @@ class SecureConnection implements Connection {
 new SecureConnection('wss://192.168.1.50:3400/ws', '<user>')
 
 // Via relay - WS to relay (production remote access)
-new SecureConnection('wss://relay.agentline.com/ws', '<user>')
+new SecureConnection('wss://relay.oneceo.ai/ws', '<user>')
 ```
 
 **Connection modes:**

@@ -10,6 +10,7 @@
  * - Once connected, renders ConnectedAppContent + child routes via Outlet
  */
 
+import { DEFAULT_RELAY_WS_URL } from "@agentline/shared";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { ConnectedAppContent } from "../RemoteApp";
@@ -98,7 +99,7 @@ function parseRelayHashCredentials(): RelayHashCredentials | null {
     const params = new URLSearchParams(hash.slice(1));
     const relayUsername = params.get("u")?.trim().toLowerCase() ?? "";
     const accessPassword = params.get("p") ?? "";
-    const relayUrl = params.get("r")?.trim() || "wss://relay.agentline.com/ws";
+    const relayUrl = params.get("r")?.trim() || DEFAULT_RELAY_WS_URL;
     const clientGrant = params.get("cg")?.trim() || undefined;
 
     if (!relayUsername || !accessPassword) return null;
@@ -124,7 +125,7 @@ function consumeNativeRelayBootstrap(): RelayHashCredentials | null {
     const relay = payload?.relay;
     const relayUsername = relay?.relayUsername?.trim().toLowerCase() ?? "";
     const accessPassword = relay?.relayPassword ?? "";
-    const relayUrl = relay?.relayUrl?.trim() || "wss://relay.agentline.com/ws";
+    const relayUrl = relay?.relayUrl?.trim() || DEFAULT_RELAY_WS_URL;
     const clientGrant = relay?.relayClientGrant?.trim() || undefined;
 
     if (!relayUsername || !accessPassword) {

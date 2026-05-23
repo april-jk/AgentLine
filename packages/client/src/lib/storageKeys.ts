@@ -5,7 +5,7 @@
  * - UI_KEYS: Visual preferences that are global to the browser
  * - SERVER_SCOPED_KEYS: Settings that need to be scoped by server installId
  *
- * When accessing via agentline.com/remote, users may connect to different
+ * When accessing via relay.oneceo.ai/remote, users may connect to different
  * servers. Server-scoped settings ensure each server has independent config.
  */
 import { generateUUID } from "./uuid";

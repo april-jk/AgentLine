@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DEFAULT_RELAY_WS_URL } from "@agentline/shared";
 import { test as base } from "@playwright/test";
 
 // Session file stores the path to the unique temp directory for this test run
@@ -101,7 +102,7 @@ export interface RemoteAccessConfig {
   username: string;
   /** Password for SRP authentication */
   password: string;
-  /** Optional relay URL (defaults to wss://relay.agentline.com/ws) */
+  /** Optional relay URL (defaults to wss://relay.oneceo.ai/ws) */
   relayUrl?: string;
 }
 
@@ -117,7 +118,7 @@ export async function configureRemoteAccess(
       "X-AgentLine-Request": "true",
     },
     body: JSON.stringify({
-      url: config.relayUrl ?? "wss://relay.agentline.com/ws",
+      url: config.relayUrl ?? DEFAULT_RELAY_WS_URL,
       username: config.username,
     }),
   });

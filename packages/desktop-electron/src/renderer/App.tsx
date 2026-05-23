@@ -1,3 +1,4 @@
+import { DEFAULT_CONTROL_PLANE_URL } from "@agentline/shared";
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../common/desktopDiscovery";
 
@@ -55,7 +56,7 @@ const stateClass: Record<ServerState, string> = {
   error: "dot error",
 };
 
-const DEFAULT_CONTROL_PLANE_BASE_URL = "https://relay.agentline.com";
+const DEFAULT_CONTROL_PLANE_BASE_URL = DEFAULT_CONTROL_PLANE_URL;
 
 const CONTROL_PLANE_ERROR_LABELS: Record<string, string> = {
   control_plane_base_url_required: "请输入平台地址（Control Plane URL）。",
@@ -68,13 +69,10 @@ const CONTROL_PLANE_ERROR_LABELS: Record<string, string> = {
   control_plane_connection_reset: "连接被重置，请稍后重试。",
   control_plane_request_timeout:
     "连接平台超时（5 秒），请检查网络连通性或稍后重试。",
-  control_plane_tls_error:
-    "平台 TLS 证书校验失败，请检查 HTTPS 证书配置。",
+  control_plane_tls_error: "平台 TLS 证书校验失败，请检查 HTTPS 证书配置。",
   control_plane_network_unreachable: "网络不可达，请检查当前网络连接。",
-  control_plane_fetch_failed:
-    "请求平台失败，请检查平台地址、网络和证书配置。",
-  fetch_failed:
-    "请求失败，请检查平台地址、网络和证书配置。",
+  control_plane_fetch_failed: "请求平台失败，请检查平台地址、网络和证书配置。",
+  fetch_failed: "请求失败，请检查平台地址、网络和证书配置。",
 };
 
 function toDisplayError(error: unknown): string {

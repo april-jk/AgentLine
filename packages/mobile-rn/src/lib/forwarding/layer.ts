@@ -5,6 +5,8 @@ export type ForwardMode = "direct" | "relay";
 const DEFAULT_REMOTE_THEME: ThemeMode = "auto";
 const MOBILE_ENTRY_MARKER = "rn-shell-v1";
 
+import { DEFAULT_RELAY_WS_URL } from "../../../../shared/dist/relay-defaults.js";
+
 export type ForwardingInput =
   | {
       mode: "direct";
@@ -157,7 +159,7 @@ function normalizeDirectWsUrl(rawValue: string): string {
 function normalizeRelayWsUrl(rawValue: string): string {
   const trimmed = rawValue.trim();
   if (!trimmed) {
-    return "wss://relay.agentline.com/ws";
+    return DEFAULT_RELAY_WS_URL;
   }
 
   let value = trimmed;

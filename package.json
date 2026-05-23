@@ -5,6 +5,7 @@
   "scripts": {
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/sync-version.mjs --check",
+    "domain:check": "node scripts/check-relay-domain.mjs",
     "setup:core": "pnpm --filter agentline --filter @agentline/server... --filter @agentline/client... install",
     "setup-vapid": "tsx scripts/setup-vapid.ts",
     "codex:protocol:update": "node scripts/update-codex-protocol.mjs",

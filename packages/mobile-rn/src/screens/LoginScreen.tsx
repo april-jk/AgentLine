@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../../../shared/dist/desktop-discovery.js";
+import { DEFAULT_RELAY_WS_URL } from "../../../shared/dist/relay-defaults.js";
 import {
   ApiClient,
   ApiRequestError,
@@ -185,7 +186,7 @@ function deriveRelayWsUrl(controlPlaneUrl: string): string {
       .replace(/^https:\/\//, "wss://");
     return `${normalized}/ws`;
   } catch {
-    return "wss://relay.agentline.com/ws";
+    return DEFAULT_RELAY_WS_URL;
   }
 }
 

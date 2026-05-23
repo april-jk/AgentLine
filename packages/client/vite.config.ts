@@ -51,7 +51,13 @@ export default defineConfig({
     port: vitePort,
     strictPort: viteStrictPort,
     host: viteHost,
-    allowedHosts: ["localhost", "127.0.0.1", "10.0.2.2", ".agentline.com"],
+    allowedHosts: [
+      "localhost",
+      "127.0.0.1",
+      "10.0.2.2",
+      ".agentline.com",
+      ".oneceo.ai",
+    ],
     // HMR configuration for reverse proxy setup
     // When accessed through backend proxy (port 3400) or Tailscale, HMR needs to
     // connect back through the same proxy path, not directly to Vite's port

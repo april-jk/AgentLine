@@ -87,6 +87,9 @@ jobs:
       - name: Verify unified release versions
         run: pnpm version:check
 
+      - name: Verify relay domain defaults
+        run: pnpm domain:check
+
       - name: Build shared package
         run: pnpm --filter @agentline/shared build
 

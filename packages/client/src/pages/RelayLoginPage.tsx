@@ -5,6 +5,7 @@
  * server by username. After pairing, SRP authentication proceeds through the relay.
  */
 
+import { DEFAULT_RELAY_WS_URL } from "@agentline/shared";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { AgentLineLogo } from "../components/AgentLineLogo";
@@ -87,7 +88,7 @@ function parseNativeBootstrapCredentials(): {
 }
 
 /** Default relay URL */
-const DEFAULT_RELAY_URL = "wss://relay.agentline.com/ws";
+const DEFAULT_RELAY_URL = DEFAULT_RELAY_WS_URL;
 
 type ConnectionStatus =
   | "idle"
