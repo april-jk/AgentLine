@@ -1980,7 +1980,8 @@ footer a:hover {
   }
 
   .header-content {
-    padding: 12px 0;
+    padding-top: 12px;
+    padding-bottom: 12px;
     flex-direction: column;
     align-items: flex-start;
   }

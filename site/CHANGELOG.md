@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.39] - 2026-05-23
+
+### Fixed
+- Improve the News page layout on small screens with proper header spacing, tighter hero media, and mobile-friendly update cards.
+
 ## [site-v1.5.38] - 2026-05-23
 
 ### Changed
