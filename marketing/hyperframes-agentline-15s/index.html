@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AgentLine 15s Promo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: oklch(22% 0.045 250);
+        --muted: oklch(47% 0.035 250);
+        --paper: oklch(97% 0.009 215);
+        --paper-2: oklch(92% 0.019 212);
+        --teal: oklch(69% 0.145 181);
+        --mint: oklch(86% 0.1 165);
+        --blue: oklch(54% 0.14 249);
+        --violet: oklch(58% 0.15 288);
+        --line: oklch(84% 0.022 225);
+        --shadow: 0 42px 120px oklch(20% 0.05 250 / 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        background: var(--paper);
+      }
+
+      [data-width] {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 12% 10%, oklch(91% 0.095 176), transparent 30%),
+          radial-gradient(circle at 88% 18%, oklch(89% 0.09 285), transparent 27%),
+          linear-gradient(135deg, var(--paper), oklch(91% 0.018 224) 58%, oklch(86% 0.04 193));
+        color: var(--ink);
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(90deg, oklch(32% 0.04 240 / 0.045) 1px, transparent 1px),
+          linear-gradient(oklch(32% 0.04 240 / 0.035) 1px, transparent 1px);
+        background-size: 80px 80px;
+        mask-image: linear-gradient(to bottom, transparent, black 14%, black 86%, transparent);
+        opacity: 0.5;
+      }
+
+      .brand {
+        position: absolute;
+        top: 62px;
+        left: 74px;
+        z-index: 8;
+        width: 302px;
+        height: auto;
+        animation: brandIn 15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .timeline {
+        position: absolute;
+        top: 86px;
+        right: 78px;
+        z-index: 8;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--muted);
+        font-size: 23px;
+        font-weight: 650;
+      }
+
+      .progress {
+        width: 238px;
+        height: 7px;
+        border-radius: 999px;
+        background: oklch(77% 0.02 225);
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        display: block;
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--teal), var(--blue), var(--violet));
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 700px 1fr;
+        gap: 72px;
+        align-items: center;
+        padding: 150px 84px 96px;
+        opacity: 0;
+        transform: translate3d(0, 24px, 0);
+      }
+
+      .scene-inner {
+        display: contents;
+      }
+
+      .copy {
+        z-index: 2;
+        max-width: 680px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 30px;
+        color: oklch(35% 0.08 190);
+        font-size: 28px;
+        font-weight: 760;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 0 10px oklch(69% 0.145 181 / 0.16);
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        max-width: 690px;
+        font-size: 82px;
+        line-height: 0.96;
+        letter-spacing: 0;
+        font-weight: 820;
+      }
+
+      p {
+        margin: 34px 0 0;
+        max-width: 610px;
+        color: var(--muted);
+        font-size: 34px;
+        line-height: 1.24;
+        font-weight: 540;
+      }
+
+      .visual {
+        position: relative;
+        z-index: 1;
+        min-height: 680px;
+      }
+
+      .browser-frame,
+      .phone-frame,
+      .final-frame {
+        overflow: hidden;
+        background: oklch(98% 0.006 215);
+        border: 1px solid oklch(78% 0.022 225);
+        box-shadow: var(--shadow);
+      }
+
+      .browser-frame {
+        width: 980px;
+        border-radius: 28px;
+      }
+
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        height: 56px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+        background: oklch(94% 0.012 220);
+      }
+
+      .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+      }
+
+      .dot:nth-child(1) {
+        background: oklch(70% 0.17 28);
+      }
+
+      .dot:nth-child(2) {
+        background: oklch(78% 0.15 86);
+      }
+
+      .dot:nth-child(3) {
+        background: oklch(72% 0.16 154);
+      }
+
+      .browser-frame img,
+      .phone-frame img,
+      .final-frame img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .desktop-main {
+        transform: rotate(-2.6deg) translate3d(12px, 10px, 0);
+        animation: floatDesktop 15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .phone-frame {
+        position: absolute;
+        top: 28px;
+        left: 290px;
+        width: 510px;
+        border: 14px solid oklch(23% 0.04 250);
+        border-radius: 54px;
+        transform: rotate(2.2deg);
+      }
+
+      .phone-glow {
+        position: absolute;
+        top: 108px;
+        left: 180px;
+        width: 700px;
+        height: 480px;
+        border-radius: 46px;
+        background: linear-gradient(120deg, oklch(82% 0.12 174 / 0.62), oklch(75% 0.12 275 / 0.36));
+        filter: blur(28px);
+      }
+
+      .message {
+        position: absolute;
+        right: 54px;
+        bottom: 82px;
+        width: 390px;
+        padding: 26px 28px;
+        border: 1px solid oklch(76% 0.034 190);
+        border-radius: 28px;
+        background: oklch(99% 0.008 190 / 0.96);
+        box-shadow: 0 28px 70px oklch(20% 0.04 240 / 0.16);
+        color: var(--ink);
+        font-size: 27px;
+        line-height: 1.2;
+        font-weight: 720;
+      }
+
+      .overview {
+        width: 1020px;
+        transform: rotate(1.8deg) translate3d(-18px, 10px, 0);
+      }
+
+      .stack-card {
+        position: absolute;
+        width: 318px;
+        padding: 24px;
+        border-radius: 30px;
+        border: 1px solid oklch(76% 0.027 225);
+        background: oklch(98% 0.011 220 / 0.96);
+        box-shadow: 0 24px 68px oklch(22% 0.04 245 / 0.16);
+      }
+
+      .stack-card strong {
+        display: block;
+        font-size: 29px;
+        line-height: 1.05;
+      }
+
+      .stack-card span {
+        display: block;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 22px;
+        font-weight: 620;
+      }
+
+      .stack-card.one {
+        top: 82px;
+        right: 20px;
+      }
+
+      .stack-card.two {
+        right: 164px;
+        bottom: 42px;
+      }
+
+      .network {
+        position: relative;
+        width: 900px;
+        height: 640px;
+      }
+
+      .node {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        width: 238px;
+        height: 150px;
+        border: 1px solid oklch(74% 0.027 230);
+        border-radius: 36px;
+        background: oklch(98% 0.01 218 / 0.94);
+        box-shadow: var(--shadow);
+        text-align: center;
+        font-size: 28px;
+        line-height: 1.12;
+        font-weight: 770;
+      }
+
+      .node.machine {
+        top: 74px;
+        left: 52px;
+      }
+
+      .node.relay {
+        top: 246px;
+        left: 330px;
+        color: oklch(34% 0.1 198);
+      }
+
+      .node.phone {
+        right: 48px;
+        bottom: 70px;
+      }
+
+      .link {
+        position: absolute;
+        height: 5px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--teal), var(--blue));
+        transform-origin: left center;
+        box-shadow: 0 0 34px oklch(68% 0.13 205 / 0.44);
+      }
+
+      .link.one {
+        top: 210px;
+        left: 238px;
+        width: 250px;
+        transform: rotate(28deg);
+      }
+
+      .link.two {
+        top: 388px;
+        left: 524px;
+        width: 240px;
+        transform: rotate(26deg);
+      }
+
+      .lock {
+        position: absolute;
+        top: 72px;
+        right: 64px;
+        width: 168px;
+        height: 168px;
+        border-radius: 48px;
+        background: oklch(28% 0.05 244);
+        box-shadow: var(--shadow);
+      }
+
+      .lock::before {
+        content: "";
+        position: absolute;
+        top: 34px;
+        left: 48px;
+        width: 72px;
+        height: 62px;
+        border: 13px solid var(--mint);
+        border-bottom: 0;
+        border-radius: 40px 40px 0 0;
+      }
+
+      .lock::after {
+        content: "";
+        position: absolute;
+        left: 44px;
+        bottom: 36px;
+        width: 80px;
+        height: 70px;
+        border-radius: 20px;
+        background: var(--mint);
+      }
+
+      .final-wrap {
+        display: grid;
+        place-items: center;
+        padding-top: 28px;
+      }
+
+      .final-frame {
+        width: 1040px;
+        border-radius: 32px;
+        transform: rotate(-1.4deg);
+      }
+
+      .cta {
+        position: absolute;
+        left: 84px;
+        right: 84px;
+        bottom: 66px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 48px;
+        padding: 30px 38px 30px 34px;
+        border: 1px solid oklch(76% 0.027 220);
+        border-radius: 34px;
+        background: oklch(98% 0.012 220 / 0.92);
+        box-shadow: 0 22px 70px oklch(20% 0.04 240 / 0.14);
+      }
+
+      .cta-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        gap: 48px;
+      }
+
+      .cta img {
+        width: 308px;
+        height: auto;
+      }
+
+      .cta span {
+        color: var(--muted);
+        font-size: 31px;
+        line-height: 1.15;
+        font-weight: 680;
+      }
+
+      .scene-1 {
+      }
+
+      .scene-2 {
+      }
+
+      .scene-3 {
+      }
+
+      .scene-4 {
+      }
+
+      .scene-5 {
+        grid-template-columns: 1fr;
+        padding-top: 132px;
+      }
+
+      .scene-5 .copy {
+        max-width: 1040px;
+      }
+
+      .scene-5 h2 {
+        max-width: 1080px;
+        font-size: 94px;
+      }
+
+      @keyframes brandIn {
+        0% {
+          opacity: 0;
+          transform: translate3d(-14px, 0, 0);
+        }
+        4%,
+        100% {
+          opacity: 1;
+          transform: translate3d(0, 0, 0);
+        }
+      }
+
+      @keyframes floatDesktop {
+        0%,
+        100% {
+          transform: rotate(-2.6deg) translate3d(12px, 10px, 0);
+        }
+        18% {
+          transform: rotate(-1.2deg) translate3d(-6px, -8px, 0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="root" data-composition-id="root" data-start="0" data-width="1920" data-height="1080" data-fps="60" data-bg="#f2f6f7">
+      <div class="grain"></div>
+      <img class="brand" src="assets/agentline-lockup.svg" alt="AgentLine">
+      <div class="timeline"><span class="progress"><span class="progress-fill"></span></span>15s</div>
+
+      <section class="clip scene scene-1" id="hook" data-track="hook" data-start="0" data-duration="3" data-track-index="0" data-fade="both">
+        <div class="scene-inner">
+          <div class="copy">
+            <div class="eyebrow">远程监督本机 Agent</div>
+            <h1>Coding agents keep moving, even when you step away.</h1>
+            <p>任务在你的开发机上继续跑，手机只负责看见、批准、接管关键时刻。</p>
+          </div>
+          <div class="visual">
+            <div class="browser-frame desktop-main">
+              <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+              <img src="assets/session-running.png" alt="AgentLine running session">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="clip scene scene-2" id="mobile-approval" data-track="mobile approval" data-start="hook" data-duration="3" data-track-index="1" data-fade="both">
+        <div class="scene-inner">
+          <div class="copy">
+            <div class="eyebrow">秒级处理阻塞</div>
+            <h2>Approve, edit, and unblock from your phone.</h2>
+            <p>离开电脑也能处理权限、提示词和下一步，让长任务不断线。</p>
+          </div>
+          <div class="visual">
+            <div class="phone-glow"></div>
+            <div class="phone-frame">
+              <img src="assets/mobile-approve.png" alt="Mobile approval flow">
+            </div>
+            <div class="message">Approval needed<br>Tap, edit, continue.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="clip scene scene-3" id="multi-session" data-track="multi session" data-start="mobile-approval" data-duration="3" data-track-index="2" data-fade="both">
+        <div class="scene-inner">
+          <div class="copy">
+            <div class="eyebrow">多会话控制台</div>
+            <h2>One dashboard for every active repo.</h2>
+            <p>同时盯住多个项目、状态和结果，不再在窗口之间来回找。</p>
+          </div>
+          <div class="visual">
+            <div class="browser-frame overview">
+              <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+              <img src="assets/overview-projects.png" alt="Multi-session project overview">
+            </div>
+            <div class="stack-card one"><strong>3 sessions</strong><span>running across projects</span></div>
+            <div class="stack-card two"><strong>Live status</strong><span>approve, resume, finish</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="clip scene scene-4" id="security" data-track="security" data-start="multi-session" data-duration="3" data-track-index="3" data-fade="both">
+        <div class="scene-inner">
+          <div class="copy">
+            <div class="eyebrow">自托管工作流</div>
+            <h2>Runs on your machine. Connect direct or relay.</h2>
+            <p>代码留在本机；中继只传控制信令，端到端加密保护远程访问。</p>
+          </div>
+          <div data-data-hf-studio-original-inline-translate="" data-data-hf-studio-original-translate="" data-data-hf-studio-path-offset="true" style="--hf-studio-offset-x:3px;--hf-studio-offset-y:-8px;translate:var(--hf-studio-offset-x, 0px) var(--hf-studio-offset-y, 0px)" class="visual">
+            <div data-data-hf-studio-original-inline-translate="" data-data-hf-studio-original-translate="" data-data-hf-studio-path-offset="true" style="--hf-studio-offset-x:50px;--hf-studio-offset-y:-33px;translate:var(--hf-studio-offset-x, 0px) var(--hf-studio-offset-y, 0px)" class="network">
+              <div data-data-hf-studio-original-inline-translate="" data-data-hf-studio-original-translate="" data-data-hf-studio-path-offset="true" style="--hf-studio-offset-x:185px;--hf-studio-offset-y:507px;translate:var(--hf-studio-offset-x, 0px) var(--hf-studio-offset-y, 0px)" class="node machine">Your dev<br>machine</div>
+              <div class="link one"></div>
+              <div data-data-hf-studio-original-inline-translate="" data-data-hf-studio-original-translate="" data-data-hf-studio-path-offset="true" style="--hf-studio-offset-x:-96px;--hf-studio-offset-y:-56px;translate:var(--hf-studio-offset-x, 0px) var(--hf-studio-offset-y, 0px)" class="node relay">E2E relay<br>or LAN</div>
+              <div class="link two"></div>
+              <div data-data-hf-studio-original-inline-translate="" data-data-hf-studio-original-translate="" data-data-hf-studio-path-offset="true" style="--hf-studio-offset-x:-95px;--hf-studio-offset-y:-55px;translate:var(--hf-studio-offset-x, 0px) var(--hf-studio-offset-y, 0px)" class="node phone">Your<br>phone</div>
+              <div class="lock"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="clip scene scene-5" id="finish" data-track="finish" data-start="security" data-duration="3" data-track-index="4" data-fade="in">
+        <div class="scene-inner">
+          <div class="copy">
+            <div class="eyebrow">回来时，工作已经完成</div>
+            <h2>AgentLine. Supervise from anywhere.</h2>
+          </div>
+          <div class="final-wrap">
+            <div class="final-frame">
+              <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+              <img src="assets/session-complete.png" alt="Completed AgentLine session">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="clip cta" id="final-cta" data-track="cta" data-start="security + 0.2" data-duration="2.8" data-track-index="5" data-fade="in">
+        <div class="cta-inner">
+          <img src="assets/agentline-lockup-cta.svg" alt="AgentLine">
+          <span>Install locally. Keep agents running. Approve from your phone.</span>
+        </div>
+      </div>
+    </main>
+    <script src="assets/vendor/gsap.min.js"></script>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const reveal = (target, start, end = start + 3) => {
+        const inner = `${target} .scene-inner`;
+        tl.set(inner, { opacity: 0, y: 26 }, start);
+        tl.to(inner, { opacity: 1, y: 0, duration: 0.45, ease: "power4.out" }, start);
+        if (end < 15) {
+          tl.to(inner, { opacity: 0, y: -22, duration: 0.35, ease: "power2.in" }, end - 0.35);
+        }
+      };
+
+      tl.set(".scene", { opacity: 1 }, 0);
+      tl.set(".scene-inner, .cta-inner", { opacity: 0, y: 26 }, 0);
+      tl.fromTo(".brand", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.5, ease: "power4.out" }, 0);
+      tl.to(".progress-fill", { width: "100%", duration: 15, ease: "none" }, 0);
+      tl.fromTo(
+        ".desktop-main",
+        { rotation: -2.6, x: 12, y: 10 },
+        { rotation: -1.2, x: -6, y: -8, duration: 2.7, ease: "power2.out" },
+        0.2,
+      );
+      reveal("#hook", 0, 3);
+      reveal("#mobile-approval", 3, 6);
+      reveal("#multi-session", 6, 9);
+      reveal("#security", 9, 12);
+      reveal("#finish", 12, 15);
+      tl.to(".cta-inner", { opacity: 1, y: 0, duration: 0.45, ease: "power4.out" }, 12.2);
+      tl.set({}, {}, 15);
+      window.__timelines = window.__timelines || {};
+      window.__timelines.root = tl;
+    </script>
+  </body>
+</html>
