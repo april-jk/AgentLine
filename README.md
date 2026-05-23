@@ -7,110 +7,172 @@
 </p>
 
 <p align="center">
-  <em>Mobile-first. End-to-end encrypted. Open source.</em>
+  <em>Mobile supervisor for long-running coding agents.</em>
 </p>
 
 <p align="center">
-  <a href="https://agentline.com">agentline.com</a>
+  <a href="https://april-jk.github.io/AgentLine/">Website</a>
+  ·
+  <a href="https://github.com/april-jk/AgentLine/releases/latest">Latest release</a>
+  ·
+  <a href="https://relay.oneceo.ai/remote/login">Remote login</a>
 </p>
 
-A better remote interface for Claude Code and Codex. Self-hosted, no cloud accounts. Supervise your agents from your phone while they run on your dev machines.
+AgentLine keeps Claude Code, Codex, Gemini, and OpenCode-style agent sessions running on your own machine while you supervise them from desktop or phone. It is built for the moment when a task is still running, you have left the desk, and the agent needs approval, context, or a quick decision.
 
-## Features
+The core idea is simple: the agent process stays local; the control surface can move.
 
-- **Interop** — View and resume sessions started in CLI, VS Code, or other tools. No new database — piggybacks on CLI persistence
-- **File uploads** — Share screenshots, photos, PDFs, and code files directly from your phone's camera roll
-- **Push notifications** — Get alerted when approval is needed, respond from your lock screen
-- **E2E encrypted remote access** — Connect from anywhere via our free relay. We can't see your data (SRP-6a + TweetNaCl)
-- **Fork/clone conversations** — Branch from any message point to explore alternatives
-- **Tiered inbox** — Needs Attention → Active → Recent → Unread. Stop cycling through terminal tabs
-- **Global activity stream** — See what all your agents are doing across sessions
-- **Remote device control** — Stream Android emulators and devices to your phone over WebRTC. Touch input, nav buttons, adaptive quality
-- **Server-owned processes** — Client disconnects don't interrupt work
-- **Voice input** — Talk to your agents via browser speech API
-- **Fast on mobile** — Syntax highlighting and markdown rendering happen server-side
+## Current Status
 
-No database, no cloud, no accounts. 100% open source (MIT).
+- Latest public release: [v1.0.1](https://github.com/april-jk/AgentLine/releases/tag/v1.0.1)
+- Desktop downloads: macOS DMG, Windows installer/portable executable, Linux AppImage and DEB
+- Mobile downloads: Android APK in the GitHub Release; iOS is currently distributed through TestFlight collection on the website
+- Remote access: optional public relay at `relay.oneceo.ai`, with end-to-end encrypted traffic
+- Source build: available with Node.js 20 and pnpm 9.15.1
+
+The npm package tarball exists for release bookkeeping, but the recommended install path today is the GitHub Release desktop/mobile builds or running from source.
+
+## What It Does
+
+- **Server-owned sessions**: agent processes run on your development machine, so closing a browser or switching devices does not stop the work.
+- **Multi-session overview**: see projects, active sessions, recent runs, and attention states without cycling through terminal windows.
+- **Mobile supervision**: review progress, answer prompts, approve actions, inspect diffs, and send follow-up messages from a phone.
+- **Provider-aware session handling**: read and normalize sessions from Claude, Codex, Gemini, and OpenCode storage/event formats.
+- **Remote access options**: use local/LAN access, Tailscale, a reverse proxy, a self-hosted relay, or the public relay.
+- **End-to-end encrypted relay mode**: SRP-6a handles password proof, and TweetNaCl encrypts the relay traffic so the relay moves opaque ciphertext.
+- **Remote device control**: stream Android devices, Android emulators, and iOS Simulators for mobile development checks.
+- **File and media workflow**: upload screenshots, photos, PDFs, and code files into sessions from mobile or desktop.
+- **Push-oriented triage**: surface the sessions that need attention before the ones that are merely recent.
 
 ## Supported Providers
 
-| Provider | Diffs | Approvals | Streaming | Notes |
-|----------|-------|-----------|-----------|-------|
-| Claude Code | Full | Yes | Yes | Primary provider, full feature support |
-| Codex | Full | Yes | Yes | Full support including diffs and approvals |
+| Provider | Status | Notes |
+| --- | --- | --- |
+| Claude Code | Primary | Uses the official Anthropic Agent SDK and the user's own Claude credentials. |
+| Claude Ollama | Optional | Local-model path for Claude-style workflows through Ollama. |
+| Codex | Primary | Uses the Codex integration for cloud-backed coding sessions. |
+| Codex OSS | Optional | Uses Codex with local models via Ollama. |
+| Gemini ACP | Experimental | Uses Gemini CLI ACP support for interactive agent sessions. |
+| OpenCode | Experimental | Uses OpenCode server/session surfaces for multi-provider workflows. |
+
+Provider availability is detected from the installed CLIs and local configuration. You can restrict visible providers with `ENABLED_PROVIDERS`, for example:
+
+```bash
+ENABLED_PROVIDERS=claude,codex pnpm dev
+```
 
 ## Screenshots
 
 <p align="center">
-  <img src="site/public/screenshots/session-view.png" width="250" alt="Session view">
-  <img src="site/public/screenshots/conversation.png" width="250" alt="Conversation">
-  <img src="site/public/screenshots/approval.png" width="250" alt="Approval flow">
+  <img src="site/public/screenshots/overview-projects-real.png" width="420" alt="Project overview with multiple AgentLine sessions">
+  <img src="site/public/screenshots/session-running-real.png" width="420" alt="Running AgentLine desktop session">
 </p>
-<p align="center">
-  <img src="site/public/screenshots/navigation.png" width="250" alt="Navigation">
-  <img src="site/public/screenshots/new-session.png" width="250" alt="New session">
-  <img src="site/public/screenshots/mobile-diff.png" width="250" alt="Mobile diff view">
-  <img src="site/public/screenshots/device-stream.png" width="250" alt="Remote device control">
-</p>
-
-**Works great on desktop too!**
 
 <p align="center">
-  <img src="site/public/screenshots/desktop.png" width="400" alt="Desktop view">
-  <img src="site/public/screenshots/desktop-diff.png" width="400" alt="Desktop diff view">
+  <img src="site/public/screenshots/session-mobile-real.png" width="240" alt="AgentLine mobile session view">
+  <img src="site/public/screenshots/sessions-list-mobile-real.png" width="240" alt="AgentLine mobile sessions list">
+  <img src="site/public/screenshots/device-stream.png" width="240" alt="Remote device control stream">
 </p>
 
-## Getting Started
+## Install
 
-If you can install Claude Code or Codex, you can install this. Minimal dependencies.
+For most users, start from the [latest GitHub Release](https://github.com/april-jk/AgentLine/releases/latest):
 
-```
-npm i -g agentline
-agentline
-```
+| Platform | Current release assets |
+| --- | --- |
+| macOS | Apple Silicon DMG |
+| Windows | Installer and portable executable |
+| Linux | x86_64 AppImage and amd64 DEB |
+| Android | APK |
+| iOS | TestFlight collection flow on the [website](https://april-jk.github.io/AgentLine/#install) |
 
-Or, from source:
+After installing the desktop app, keep it running on the machine that should own the agent sessions. Use the Android app, mobile browser, or remote login page to supervise from another device.
+
+## Run From Source
+
 ```bash
 git clone https://github.com/april-jk/AgentLine.git
-cd agentline
+cd AgentLine
+corepack enable
 pnpm install
-pnpm build
-pnpm start
+pnpm dev
 ```
 
-Open http://localhost:3400 in your browser. The app auto-detects installed CLI agents.
+Open [http://localhost:3400](http://localhost:3400). By default, ports are derived from `PORT`:
+
+| Port | Purpose |
+| --- | --- |
+| `PORT` | Main server, default `3400` |
+| `PORT + 1` | Maintenance server |
+| `PORT + 2` | Vite dev server |
+
+To run a separate development profile:
+
+```bash
+PORT=4000 AGENTLINE_PROFILE=dev pnpm dev
+```
 
 ## Remote Access
 
-**Easiest:** Use our free public relay — configure it in Settings, or via CLI for headless setups:
+AgentLine is local-first. Remote access is optional.
+
+The easiest remote path is the public relay. In the desktop app, configure it from Settings. In a headless or source-based install with the CLI available, you can also run:
 
 ```bash
 agentline --setup-remote-access --username myserver --password "secretpass123"
 ```
 
-Then connect from anywhere at [relay.oneceo.ai/remote](https://relay.oneceo.ai/remote).
+Then connect at [relay.oneceo.ai/remote/login](https://relay.oneceo.ai/remote/login).
 
-All traffic is end-to-end encrypted and we can't see your data. No accounts required.
+Relay mode is designed so the relay does not learn your password or session contents. The host and client authenticate using SRP-6a, then exchange encrypted traffic through the relay. For self-hosting or alternative setups, see [docs/project/remote-access.md](docs/project/remote-access.md).
 
-**Self-hosted:** Prefer to run your own infrastructure? You can deploy the relay service from `packages/relay/`, or use Tailscale, Caddy, or another reverse proxy path. See the [remote access docs](docs/project/remote-access.md) for details.
+## Build And Verify
 
-## Why not just use the terminal?
+Common checks:
 
-You *can* use the terminal on your phone — but monospace text is painful on a small screen, there's no file upload, no push notifications, and no way to see all your sessions at once. This gives you a proper UI while keeping everything self-hosted and running your code locally.
+```bash
+pnpm version:check
+pnpm lint
+pnpm typecheck
+pnpm test
+```
 
-## Comparison to Other Tools
+Useful build commands:
 
-There are a lot of projects in this space. We track them all: **[docs/competitive/all-projects.md](docs/competitive/all-projects.md)**
+```bash
+pnpm build:desktop-electron
+pnpm typecheck:mobile-rn
+pnpm --filter @agentline/client build
+pnpm --filter @agentline/client build:remote
+```
+
+Packaging commands and artifact locations for the current release are documented in [docs/releases/1.0.1.md](docs/releases/1.0.1.md).
+
+## Architecture
+
+- `packages/server`: Hono server, provider adapters, session readers, remote-access setup, push and file APIs
+- `packages/client`: React web app and remote client bundle
+- `packages/desktop-electron`: Electron desktop shell and release packaging
+- `packages/mobile-rn`: React Native mobile app
+- `packages/relay`: optional relay service for remote access
+- `packages/shared`: shared protocol, schema, provider, and relay constants
+- `site`: Astro marketing site and GitHub Pages deployment
+
+Server state defaults to `~/.agentline/`, including logs, upload storage, session indexes, metadata, auth, and remote-access configuration. Use `AGENTLINE_DATA_DIR` or `AGENTLINE_PROFILE` to isolate environments.
+
+## Trust Boundary
+
+AgentLine is a supervisor for agent sessions running on your machine, not a hosted coding service. Authentication with model providers stays with the provider's official CLI or SDK flow. AgentLine does not spoof provider clients, extract consumer OAuth tokens, or proxy model traffic through its own backend.
+
+Read more:
+
+- [How we use the Claude SDK](https://april-jk.github.io/AgentLine/tos-compliance.html)
+- [Subscription access approaches](https://april-jk.github.io/AgentLine/subscription-access-approaches.html)
+- [Remote access design](docs/project/remote-access.md)
 
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, configuration options, and more.
-
-## TOS Compliance
-
-AgentLine uses the official [`@anthropic-ai/claude-agent-sdk`](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) published by Anthropic. We don't handle authentication, spoof headers, or manipulate OAuth tokens. You authenticate via your own Claude CLI — we're just a remote interface to your sessions.
-
-Read more: [How we use the SDK](https://agentline.com/tos-compliance.html) | [Feb 2026 auth clarification](https://agentline.com/sdk-auth-clarification.html)
+See [DEVELOPMENT.md](DEVELOPMENT.md) for local development notes, logging, profile setup, and test commands.
 
 ## Star History
 
