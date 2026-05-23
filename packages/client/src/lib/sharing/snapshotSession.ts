@@ -90,7 +90,7 @@ main.session-messages {
 <body class="${escapeHtml(bodyClasses)}">
 ${clone.outerHTML}
 <footer style="text-align:center;padding:2rem 0 1rem;opacity:0.5;font-size:12px;pointer-events:auto;user-select:auto;">
-Shared from <a href="https://agentline.com" style="pointer-events:auto">AgentLine</a>
+Shared from <a href="https://april-jk.github.io/AgentLine/" style="pointer-events:auto">AgentLine</a>
 </footer>
 </body>
 </html>`;

@@ -49,7 +49,7 @@ async function getCurrentVersion(): Promise<string> {
   }
 }
 
-const UPDATE_SERVER_URL = "https://updates.agentline.com/version";
+const UPDATE_SERVER_URL = "https://relay.oneceo.ai/version";
 
 // Cache for update server check (24 hour TTL for routine app traffic)
 let cachedLatestVersion: { version: string; timestamp: number } | null = null;

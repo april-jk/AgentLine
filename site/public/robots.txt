@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://agentline.com/sitemap-index.xml
+Sitemap: https://april-jk.github.io/AgentLine/sitemap-index.xml

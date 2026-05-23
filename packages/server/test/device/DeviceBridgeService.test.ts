@@ -192,7 +192,7 @@ describe("DeviceBridgeService", () => {
     shim.getInstalledBinaryVersion = vi.fn().mockResolvedValue("0.1.0");
 
     global.fetch = vi.fn((url) => {
-      if (String(url) === "https://updates.agentline.com/bridge/version") {
+      if (String(url) === "https://relay.oneceo.ai/bridge/version") {
         return Promise.resolve(
           new Response(JSON.stringify({ version: "0.2.0" }), { status: 200 }),
         );
@@ -226,7 +226,7 @@ describe("DeviceBridgeService", () => {
     shim.getInstalledBinaryVersion = vi.fn().mockResolvedValue(null);
 
     global.fetch = vi.fn((url) => {
-      if (String(url) === "https://updates.agentline.com/bridge/version") {
+      if (String(url) === "https://relay.oneceo.ai/bridge/version") {
         return Promise.resolve(
           new Response(JSON.stringify({ version: "0.2.0" }), { status: 200 }),
         );

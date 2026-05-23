@@ -34,14 +34,14 @@ A relay service that enables phone clients to connect to agentline servers behin
                               ▼
                         ┌─────────────────┐
                         │ Config Endpoint │
-                        │ (agentline.com│
+                        │ (managed relay) │
                         │  /api/config)   │
                         └─────────────────┘
 ```
 
 ## Components
 
-### 1. Config Endpoint (agentline.com)
+### 1. Config Endpoint
 
 Returns relay URLs and version requirements. Allows migration without client updates.
 
@@ -99,7 +99,7 @@ Lightweight WebSocket router. Responsibilities:
 
 ### Connecting from Phone
 
-1. User visits `agentline.com/c/<user>`
+1. User visits `relay.oneceo.ai/remote`
 2. Enters password
 3. SRP handshake via relay (proves both sides know password)
 4. Session key established
@@ -205,7 +205,7 @@ For load balancing across multiple relays:
 3. **Routing** - Phone connects to correct relay
 
 ```
-Phone ──▶ /api/relay/locate/<user> ──▶ { "relay": "wss://relay2.agentline.com" }
+Phone ──▶ /api/relay/locate/<user> ──▶ { "relay": "wss://relay-us-2.example.com" }
       │
       └──▶ connect to relay2
 ```
@@ -883,7 +883,7 @@ Client                           Server
 
 ### Phase 5: Production
 - [ ] Relay client in agentline server (connect to relay on startup)
-- [ ] Config endpoint on agentline.com
+- [ ] Config endpoint on the managed relay/control-plane service
 - [ ] Deploy relay
 - [ ] Multi-relay support (if needed)
 - [ ] Monitoring/alerting

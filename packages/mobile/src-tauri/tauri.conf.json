@@ -24,7 +24,7 @@
   },
   "plugins": {
     "deep-link": {
-      "mobile": [{ "host": "agentline.com", "pathPrefix": ["/open"] }]
+      "mobile": [{ "host": "relay.oneceo.ai", "pathPrefix": ["/open"] }]
     }
   }
 }

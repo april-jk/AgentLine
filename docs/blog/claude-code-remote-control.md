@@ -2,7 +2,7 @@
 
 Anthropic just [announced Remote Control](https://x.com/noahzweben/status/2026371260805271615) — a new Claude Code feature that lets you continue terminal sessions from your phone. We're thrilled. This is exactly the workflow we've been building for, and having Anthropic validate it with a first-party feature is a good sign for the category.
 
-If you like what Remote Control offers and want to take it further, [try AgentLine](https://agentline.com).
+If you like what Remote Control offers and want to take it further, [try AgentLine](https://april-jk.github.io/AgentLine/).
 
 ## What Remote Control does
 
@@ -42,4 +42,4 @@ We genuinely welcome this. The hardest part of building AgentLine has been expla
 
 Remote Control is a great starting point. If you try it and find yourself wanting multi-session oversight, push notifications, or always-on agent processes — that's what we built.
 
-[Get started with AgentLine](https://agentline.com)
+[Get started with AgentLine](https://april-jk.github.io/AgentLine/)

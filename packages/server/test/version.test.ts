@@ -129,7 +129,7 @@ describe("GET /version", () => {
     await routes.request("/");
 
     expect(capturedUrl).toMatch(
-      /https:\/\/updates\.agentline\.com\/version\/.+/,
+      /https:\/\/relay\.oneceo\.ai\/version\/.+/,
     );
   });
 

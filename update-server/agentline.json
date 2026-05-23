@@ -2,7 +2,7 @@
   {
     "id": "agentline",
     "displayName": "AgentLine",
-    "hostnames": ["updates.agentline.com"],
+    "hostnames": ["relay.oneceo.ai"],
     "githubRepo": "april-jk/AgentLine",
     "tagPrefix": "v",
     "tauriUpdates": false
@@ -10,7 +10,7 @@
   {
     "id": "agentline-bridge",
     "displayName": "AgentLine Bridge",
-    "hostnames": ["updates.agentline.com"],
+    "hostnames": ["relay.oneceo.ai"],
     "githubRepo": "april-jk/AgentLine",
     "tagPrefix": "bridge-v",
     "tauriUpdates": false,

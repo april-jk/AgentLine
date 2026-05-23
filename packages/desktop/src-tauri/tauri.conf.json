@@ -48,7 +48,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://updates.agentline.com/tauri/{{target}}/{{arch}}/{{current_version}}"
+        "https://relay.oneceo.ai/tauri/{{target}}/{{arch}}/{{current_version}}"
       ],
       "pubkey": "RWTMbSc7oMFk712l6aKLo0y9iO3kwoYE95lYs38lSkkhch3/QnkLg7zf"
     }

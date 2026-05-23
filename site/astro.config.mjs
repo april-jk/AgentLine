@@ -4,7 +4,7 @@ import { defineConfig } from "astro/config";
 const base = process.env.SITE_BASE || "/";
 
 export default defineConfig({
-  site: "https://agentline.com",
+  site: "https://april-jk.github.io/AgentLine/",
   base,
   integrations: [sitemap()],
   devToolbar: {

@@ -23,7 +23,7 @@ import { isNewerSemver } from "../utils/semver.js";
 const BRIDGE_VERSION_FALLBACK = "1.0.1";
 
 /** Update server endpoint for bridge version. */
-const BRIDGE_VERSION_URL = "https://updates.agentline.com/bridge/version";
+const BRIDGE_VERSION_URL = "https://relay.oneceo.ai/bridge/version";
 
 /** GitHub repo for downloading bridge binaries. */
 const BRIDGE_REPO = "april-jk/AgentLine";

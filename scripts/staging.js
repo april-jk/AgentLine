@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Staging server for agentline.com
+ * Staging server for the AgentLine website
  *
  * Serves:
  * - / → Astro dev server (site/)

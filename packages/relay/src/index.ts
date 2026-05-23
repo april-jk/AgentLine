@@ -1,7 +1,8 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { access, readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve } from "node:path";
+import { dirname, extname, join, normalize, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { getRequestListener } from "@hono/node-server";
 import type Database from "better-sqlite3";
 import { type Context, Hono } from "hono";
@@ -71,6 +72,23 @@ telemetry.startSampling(() => ({
 const app = new Hono();
 
 const REMOTE_ENTRY_FILE = "remote.html";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function readPackageVersion(): string {
+  try {
+    const packageJsonPath = resolve(__dirname, "../package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+      version?: string;
+    };
+    return packageJson.version || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+const APP_VERSION = readPackageVersion();
+const BRIDGE_VERSION = APP_VERSION;
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -459,6 +477,44 @@ app.get("/stats", (c) => {
   return c.html(generateRelayStatsHtml(telemetryStatus.eventsDir), 200, {
     "Cache-Control": "no-cache, no-store, must-revalidate",
   });
+});
+
+app.get("/version/:currentVersion", (c) => {
+  const currentVersion = c.req.param("currentVersion").replace(/^v/, "");
+  if (currentVersion === APP_VERSION) {
+    return c.body(null, 204);
+  }
+
+  return c.json(
+    {
+      version: APP_VERSION,
+    },
+    200,
+    {
+      "Cache-Control": "no-cache",
+    },
+  );
+});
+
+app.get("/bridge/version", (c) => {
+  return c.json(
+    {
+      version: BRIDGE_VERSION,
+    },
+    200,
+    {
+      "Cache-Control": "no-cache",
+    },
+  );
+});
+
+app.get("/tauri/:target/:arch/:currentVersion", (c) => {
+  const currentVersion = c.req.param("currentVersion").replace(/^v/, "");
+  if (currentVersion === APP_VERSION) {
+    return c.body(null, 204);
+  }
+
+  return c.body(null, 204);
 });
 
 app.post("/api/v1/auth/register", async (c) => {
