@@ -15,6 +15,7 @@ import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../../../shared/dist/desktop-dis
 import {
   ApiClient,
   ApiRequestError,
+  DEFAULT_CONTROL_PLANE_URL,
   DirectServerClient,
   type HostItem,
   isDirectServerInfo,
@@ -37,7 +38,6 @@ import { useAppTheme } from "../styles/theme";
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 type AccountMode = "login" | "register";
 type HostAccessPasswordMap = Record<string, string>;
-const DEFAULT_CONTROL_PLANE_URL = "https://relay.agentline.com";
 const LEGACY_DIRECT_USERNAME_PLACEHOLDER = "mobiletest";
 
 function normalizeAccessPassword(value: string | null | undefined): string {

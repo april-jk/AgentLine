@@ -80,6 +80,18 @@ type ControlPlaneDevice = {
 };
 
 const RELAY_HEARTBEAT_STALE_MS = 60 * 1000;
+const PUBLIC_CONTROL_PLANE_URL = "https://relay.agentline.com";
+
+const maybeEnv = (
+  globalThis as {
+    process?: {
+      env?: Record<string, string | undefined>;
+    };
+  }
+).process?.env;
+
+export const DEFAULT_CONTROL_PLANE_URL =
+  maybeEnv?.EXPO_PUBLIC_CONTROL_PLANE_URL?.trim() || PUBLIC_CONTROL_PLANE_URL;
 
 function resolveHeartbeatAgeMs(lastSeenAt?: string): number | undefined {
   if (!lastSeenAt) return undefined;
@@ -159,10 +171,19 @@ export class ApiClient {
       headers.set("Authorization", `Bearer ${accessToken}`);
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      headers,
-    });
+    const requestUrl = `${this.baseUrl}${path}`;
+    let response: Response;
+    try {
+      response = await fetch(requestUrl, {
+        ...init,
+        headers,
+      });
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `无法连接平台服务 ${this.baseUrl}。请检查网络连接或稍后重试。${details ? ` (${details})` : ""}`,
+      );
+    }
     if (!response.ok) {
       let message = `Request failed (${response.status})`;
       let code = `request_failed_${response.status}`;
@@ -508,15 +529,4 @@ export class DirectServerClient {
   }
 }
 
-const maybeEnv = (
-  globalThis as {
-    process?: {
-      env?: Record<string, string | undefined>;
-    };
-  }
-).process?.env;
-
-const defaultControlPlaneUrl =
-  maybeEnv?.EXPO_PUBLIC_CONTROL_PLANE_URL ?? "http://10.0.2.2:4400";
-
-export const apiClient = new ApiClient(defaultControlPlaneUrl);
+export const apiClient = new ApiClient(DEFAULT_CONTROL_PLANE_URL);
