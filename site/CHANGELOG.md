@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.40] - 2026-05-24
+
+### Changed
+- Remove ZIP and AAB download calls-to-action from the homepage download center.
+- Let homepage download buttons resolve matching assets from the latest GitHub Release when available.
+- Clarify Linux download choices with direct AppImage and DEB buttons plus a latest Release fallback for other assets.
+
 ## [site-v1.5.39] - 2026-05-23
 
 ### Fixed
