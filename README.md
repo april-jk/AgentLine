@@ -1,94 +1,99 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="site/public/branding/lockup-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="site/public/branding/lockup-light.svg">
-    <img src="site/public/branding/lockup-light.svg" alt="AgentLine" height="60">
-  </picture>
+  <img src="site/public/icon-512.png" alt="AgentLine 应用图标" width="96" height="96">
+</p>
+
+<h1 align="center">AgentLine</h1>
+
+<p align="center">
+  <strong>面向长时间运行 Coding Agent 的移动监督中枢。</strong>
 </p>
 
 <p align="center">
-  <em>Mobile supervisor for long-running coding agents.</em>
+  <a href="README.md">简体中文</a>
+  ·
+  <a href="README.en.md">English</a>
+  ·
+  <a href="README.ja.md">日本語</a>
 </p>
 
 <p align="center">
-  <a href="https://april-jk.github.io/AgentLine/">Website</a>
-  ·
-  <a href="https://github.com/april-jk/AgentLine/releases/latest">Latest release</a>
-  ·
-  <a href="https://relay.oneceo.ai/remote/login">Remote login</a>
+  <a href="https://april-jk.github.io/AgentLine/"><img alt="官网" src="https://img.shields.io/badge/Website-GitHub%20Pages-111827?style=for-the-badge"></a>
+  <a href="https://github.com/april-jk/AgentLine/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/april-jk/AgentLine?style=for-the-badge&label=Release&color=2563eb"></a>
+  <a href="https://relay.oneceo.ai/remote/login"><img alt="远程登录" src="https://img.shields.io/badge/Remote%20Login-relay.oneceo.ai-0f766e?style=for-the-badge"></a>
+  <a href="#license"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-7c3aed?style=for-the-badge"></a>
 </p>
 
-AgentLine keeps Claude Code, Codex, Gemini, and OpenCode-style agent sessions running on your own machine while you supervise them from desktop or phone. It is built for the moment when a task is still running, you have left the desk, and the agent needs approval, context, or a quick decision.
+AgentLine 让 Claude Code、Codex、Gemini、OpenCode 这类 Agent 会话继续运行在你自己的机器上，同时把监督界面带到桌面和手机上。它适合这样的场景：任务还在跑，你已经离开工位，但 Agent 需要你审批、补充上下文、查看进度或做一个快速决定。
 
-The core idea is simple: the agent process stays local; the control surface can move.
+核心原则很简单：Agent 进程留在本机，控制界面可以移动。
 
-## Current Status
+## 当前状态
 
-- Latest public release: [v1.0.1](https://github.com/april-jk/AgentLine/releases/tag/v1.0.1)
-- Desktop downloads: macOS DMG, Windows installer/portable executable, Linux AppImage and DEB
-- Mobile downloads: Android APK in the GitHub Release; iOS is currently distributed through TestFlight collection on the website
-- Remote access: optional public relay at `relay.oneceo.ai`, with end-to-end encrypted traffic
-- Source build: available with Node.js 20 and pnpm 9.15.1
+- 最新公开版本：[v1.0.1](https://github.com/april-jk/AgentLine/releases/tag/v1.0.1)
+- 桌面端下载：macOS DMG、Windows 安装版/便携版、Linux AppImage 和 DEB
+- 移动端下载：GitHub Release 提供 Android APK；iOS 当前通过官网收集 TestFlight 内测信息
+- 远程接入：可选公共中继 `relay.oneceo.ai`，链路端到端加密
+- 源码运行：Node.js 20 和 pnpm 9.15.1
 
-The npm package tarball exists for release bookkeeping, but the recommended install path today is the GitHub Release desktop/mobile builds or running from source.
+当前 npm tarball 主要用于发布记录。推荐安装方式是下载 GitHub Release 里的桌面端/移动端产物，或从源码运行。
 
-## What It Does
+## 能做什么
 
-- **Server-owned sessions**: agent processes run on your development machine, so closing a browser or switching devices does not stop the work.
-- **Multi-session overview**: see projects, active sessions, recent runs, and attention states without cycling through terminal windows.
-- **Mobile supervision**: review progress, answer prompts, approve actions, inspect diffs, and send follow-up messages from a phone.
-- **Provider-aware session handling**: read and normalize sessions from Claude, Codex, Gemini, and OpenCode storage/event formats.
-- **Remote access options**: use local/LAN access, Tailscale, a reverse proxy, a self-hosted relay, or the public relay.
-- **End-to-end encrypted relay mode**: SRP-6a handles password proof, and TweetNaCl encrypts the relay traffic so the relay moves opaque ciphertext.
-- **Remote device control**: stream Android devices, Android emulators, and iOS Simulators for mobile development checks.
-- **File and media workflow**: upload screenshots, photos, PDFs, and code files into sessions from mobile or desktop.
-- **Push-oriented triage**: surface the sessions that need attention before the ones that are merely recent.
+- **会话由本机托管**：Agent 进程运行在你的开发机上，关闭浏览器或切换设备不会打断任务。
+- **多会话总览**：集中查看项目、活跃会话、最近运行和需要注意的任务，不必在终端窗口之间来回切。
+- **手机监督**：在手机上看进度、回复提示、审批操作、检查 diff、继续追问。
+- **Provider 感知的会话处理**：读取并归一化 Claude、Codex、Gemini、OpenCode 的存储和事件格式。
+- **多种远程接入方式**：本地/LAN、Tailscale、反向代理、自托管 relay 或公共 relay。
+- **端到端加密的 relay 模式**：SRP-6a 负责密码证明，TweetNaCl 加密 relay 流量，中继只转发密文。
+- **远程设备控制**：把 Android 设备、Android 模拟器、iOS Simulator 串流到手机上，用于移动开发检查。
+- **文件和媒体工作流**：从桌面或手机上传截图、照片、PDF 和代码文件到会话。
+- **按注意力排序的处理流**：优先显示真正需要你处理的会话，而不只是最近打开的会话。
 
-## Supported Providers
+## 支持的 Provider
 
-| Provider | Status | Notes |
+| Provider | 状态 | 说明 |
 | --- | --- | --- |
-| Claude Code | Primary | Uses the official Anthropic Agent SDK and the user's own Claude credentials. |
-| Claude Ollama | Optional | Local-model path for Claude-style workflows through Ollama. |
-| Codex | Primary | Uses the Codex integration for cloud-backed coding sessions. |
-| Codex OSS | Optional | Uses Codex with local models via Ollama. |
-| Gemini ACP | Experimental | Uses Gemini CLI ACP support for interactive agent sessions. |
-| OpenCode | Experimental | Uses OpenCode server/session surfaces for multi-provider workflows. |
+| Claude Code | 主线支持 | 使用 Anthropic 官方 Agent SDK 和用户自己的 Claude 凭证。 |
+| Claude Ollama | 可选 | 面向本地模型的 Claude 风格工作流，需要 Ollama。 |
+| Codex | 主线支持 | 用于云端模型支持的 Codex Coding 会话。 |
+| Codex OSS | 可选 | 通过 Ollama 使用本地模型的 Codex 路径。 |
+| Gemini ACP | 实验性 | 使用 Gemini CLI 的 ACP 能力处理交互式 Agent 会话。 |
+| OpenCode | 实验性 | 使用 OpenCode server/session 能力接入多 Provider 工作流。 |
 
-Provider availability is detected from the installed CLIs and local configuration. You can restrict visible providers with `ENABLED_PROVIDERS`, for example:
+Provider 会根据本机已安装的 CLI 和配置自动检测。也可以用 `ENABLED_PROVIDERS` 限制可见入口：
 
 ```bash
 ENABLED_PROVIDERS=claude,codex pnpm dev
 ```
 
-## Screenshots
+## 截图
 
 <p align="center">
-  <img src="site/public/screenshots/overview-projects-real.png" width="420" alt="Project overview with multiple AgentLine sessions">
-  <img src="site/public/screenshots/session-running-real.png" width="420" alt="Running AgentLine desktop session">
+  <img src="site/public/screenshots/overview-projects-real.png" width="420" alt="AgentLine 多项目总览">
+  <img src="site/public/screenshots/session-running-real.png" width="420" alt="AgentLine 桌面端运行中的会话">
 </p>
 
 <p align="center">
-  <img src="site/public/screenshots/session-mobile-real.png" width="240" alt="AgentLine mobile session view">
-  <img src="site/public/screenshots/sessions-list-mobile-real.png" width="240" alt="AgentLine mobile sessions list">
-  <img src="site/public/screenshots/device-stream.png" width="240" alt="Remote device control stream">
+  <img src="site/public/screenshots/session-mobile-real.png" width="240" alt="AgentLine 手机会话视图">
+  <img src="site/public/screenshots/sessions-list-mobile-real.png" width="240" alt="AgentLine 手机会话列表">
+  <img src="site/public/screenshots/device-stream.png" width="240" alt="AgentLine 远程设备控制">
 </p>
 
-## Install
+## 安装
 
-For most users, start from the [latest GitHub Release](https://github.com/april-jk/AgentLine/releases/latest):
+大多数用户直接从 [最新 GitHub Release](https://github.com/april-jk/AgentLine/releases/latest) 开始：
 
-| Platform | Current release assets |
+| 平台 | 当前发布产物 |
 | --- | --- |
 | macOS | Apple Silicon DMG |
-| Windows | Installer and portable executable |
-| Linux | x86_64 AppImage and amd64 DEB |
+| Windows | 安装版和便携版 executable |
+| Linux | x86_64 AppImage 和 amd64 DEB |
 | Android | APK |
-| iOS | TestFlight collection flow on the [website](https://april-jk.github.io/AgentLine/#install) |
+| iOS | 官网的 [TestFlight 收集流程](https://april-jk.github.io/AgentLine/#install) |
 
-After installing the desktop app, keep it running on the machine that should own the agent sessions. Use the Android app, mobile browser, or remote login page to supervise from another device.
+安装桌面端后，让它运行在真正承载 Agent 会话的机器上。之后可以用 Android App、手机浏览器或远程登录页从其它设备接手监督。
 
-## Run From Source
+## 从源码运行
 
 ```bash
 git clone https://github.com/april-jk/AgentLine.git
@@ -98,37 +103,37 @@ pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3400](http://localhost:3400). By default, ports are derived from `PORT`:
+打开 [http://localhost:3400](http://localhost:3400)。默认端口由 `PORT` 推导：
 
-| Port | Purpose |
+| 端口 | 用途 |
 | --- | --- |
-| `PORT` | Main server, default `3400` |
+| `PORT` | 主服务，默认 `3400` |
 | `PORT + 1` | Maintenance server |
 | `PORT + 2` | Vite dev server |
 
-To run a separate development profile:
+如果要隔离开发环境：
 
 ```bash
 PORT=4000 AGENTLINE_PROFILE=dev pnpm dev
 ```
 
-## Remote Access
+## 远程接入
 
-AgentLine is local-first. Remote access is optional.
+AgentLine 是 local-first 的。远程接入是可选能力。
 
-The easiest remote path is the public relay. In the desktop app, configure it from Settings. In a headless or source-based install with the CLI available, you can also run:
+最简单的远程路径是公共 relay。桌面端可以在 Settings 里配置；如果是 headless 或源码安装，并且本机有 CLI，也可以运行：
 
 ```bash
 agentline --setup-remote-access --username myserver --password "secretpass123"
 ```
 
-Then connect at [relay.oneceo.ai/remote/login](https://relay.oneceo.ai/remote/login).
+然后从 [relay.oneceo.ai/remote/login](https://relay.oneceo.ai/remote/login) 登录。
 
-Relay mode is designed so the relay does not learn your password or session contents. The host and client authenticate using SRP-6a, then exchange encrypted traffic through the relay. For self-hosting or alternative setups, see [docs/project/remote-access.md](docs/project/remote-access.md).
+Relay 模式的设计目标是让中继看不到你的密码和会话内容。Host 和 Client 使用 SRP-6a 完成认证，再通过 relay 交换加密后的流量。自托管和其它接入方式见 [docs/project/remote-access.md](docs/project/remote-access.md)。
 
-## Build And Verify
+## 构建和验证
 
-Common checks:
+常用检查：
 
 ```bash
 pnpm version:check
@@ -137,7 +142,7 @@ pnpm typecheck
 pnpm test
 ```
 
-Useful build commands:
+常用构建：
 
 ```bash
 pnpm build:desktop-electron
@@ -146,33 +151,33 @@ pnpm --filter @agentline/client build
 pnpm --filter @agentline/client build:remote
 ```
 
-Packaging commands and artifact locations for the current release are documented in [docs/releases/1.0.1.md](docs/releases/1.0.1.md).
+当前版本的打包命令和产物位置见 [docs/releases/1.0.1.md](docs/releases/1.0.1.md)。
 
-## Architecture
+## 架构
 
-- `packages/server`: Hono server, provider adapters, session readers, remote-access setup, push and file APIs
-- `packages/client`: React web app and remote client bundle
-- `packages/desktop-electron`: Electron desktop shell and release packaging
-- `packages/mobile-rn`: React Native mobile app
-- `packages/relay`: optional relay service for remote access
-- `packages/shared`: shared protocol, schema, provider, and relay constants
-- `site`: Astro marketing site and GitHub Pages deployment
+- `packages/server`：Hono server、provider adapters、session readers、remote-access setup、push 和 file APIs
+- `packages/client`：React Web App 和 remote client bundle
+- `packages/desktop-electron`：Electron 桌面壳和发布打包
+- `packages/mobile-rn`：React Native 移动端
+- `packages/relay`：可选的远程接入 relay 服务
+- `packages/shared`：共享协议、schema、provider 和 relay 常量
+- `site`：Astro 官网和 GitHub Pages 部署
 
-Server state defaults to `~/.agentline/`, including logs, upload storage, session indexes, metadata, auth, and remote-access configuration. Use `AGENTLINE_DATA_DIR` or `AGENTLINE_PROFILE` to isolate environments.
+服务端状态默认保存在 `~/.agentline/`，包含日志、上传文件、会话索引、metadata、auth 和远程接入配置。可以用 `AGENTLINE_DATA_DIR` 或 `AGENTLINE_PROFILE` 隔离环境。
 
-## Trust Boundary
+## 信任边界
 
-AgentLine is a supervisor for agent sessions running on your machine, not a hosted coding service. Authentication with model providers stays with the provider's official CLI or SDK flow. AgentLine does not spoof provider clients, extract consumer OAuth tokens, or proxy model traffic through its own backend.
+AgentLine 是运行在你机器上的 Agent 会话监督层，不是托管式 Coding 服务。模型 Provider 的认证仍然交给官方 CLI 或 SDK 流程。AgentLine 不伪装 Provider 客户端，不抽取用户 OAuth token，也不把模型流量代理到自己的后端。
 
-Read more:
+更多说明：
 
 - [How we use the Claude SDK](https://april-jk.github.io/AgentLine/tos-compliance.html)
 - [Subscription access approaches](https://april-jk.github.io/AgentLine/subscription-access-approaches.html)
 - [Remote access design](docs/project/remote-access.md)
 
-## Development
+## 开发
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for local development notes, logging, profile setup, and test commands.
+本地开发、日志、profile 和测试命令见 [DEVELOPMENT.md](DEVELOPMENT.md)。
 
 ## Star History
 
