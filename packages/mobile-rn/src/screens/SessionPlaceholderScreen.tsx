@@ -5,12 +5,14 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Platform,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewNavigation } from "react-native-webview";
+import { getNativeUpdateUrl } from "../lib/updateDownloads";
 import type { RootStackParamList } from "../navigation/types";
 import { useThemePreference } from "../styles/ThemePreferenceContext";
 import type { AppTheme } from "../styles/theme";
@@ -180,13 +182,12 @@ function resolveLoginRecoveryCopy(
 }
 
 async function openNativeUpdate(update: UpdateManifest | null): Promise<void> {
-  if (!update) return;
-  const androidDownload =
-    update.downloads.find(
-      (download) => download.platform === "android" && download.kind === "apk",
-    ) ??
-    update.downloads.find((download) => download.platform === "android");
-  await Linking.openURL(androidDownload?.url ?? update.releaseUrl);
+  const url = getNativeUpdateUrl(
+    update,
+    Platform.OS === "ios" ? "ios" : "android",
+  );
+  if (!url) return;
+  await Linking.openURL(url);
 }
 
 export function SessionPlaceholderScreen({ navigation, route }: Props) {

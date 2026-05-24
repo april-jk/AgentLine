@@ -127,9 +127,64 @@ button {
   font-weight: 600;
 }
 
+button.secondary {
+  background: #dbe2ea;
+  color: #1f2937;
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.update-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(15 23 42 / 45%);
+}
+
+.update-dialog {
+  width: min(520px, 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 28px 90px rgb(15 23 42 / 30%);
+  padding: 18px;
+}
+
+.update-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.update-dialog-header h2 {
+  margin: 0;
+}
+
+.icon-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #111827;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.update-dialog-download {
+  border-radius: 8px;
+  background: #f1f5f9;
+  padding: 10px 12px;
+  color: #475569;
+  word-break: break-word;
 }
 
 .error {

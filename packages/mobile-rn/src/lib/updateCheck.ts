@@ -1,4 +1,4 @@
-import type { ReleaseDownload, UpdateManifest } from "@agentline/shared";
+import type { UpdateManifest } from "@agentline/shared";
 import { Alert, Linking, Platform } from "react-native";
 import packageJson from "../../package.json";
 import {
@@ -6,24 +6,16 @@ import {
   secureStorageKeys,
   setSecureItem,
 } from "./storage/secureStorage";
+import { getNativeUpdateUrl } from "./updateDownloads";
 
 const UPDATE_URL = "https://relay.oneceo.ai/version";
 
-function selectDownload(update: UpdateManifest): ReleaseDownload | null {
-  const platform = Platform.OS === "android" ? "android" : "ios";
-  const platformDownloads = update.downloads.filter(
-    (download) => download.platform === platform,
-  );
-  const preferred =
-    platformDownloads.find((download) => download.kind === "apk") ??
-    platformDownloads.find((download) => download.kind !== "aab") ??
-    platformDownloads[0];
-  return preferred ?? null;
-}
-
 async function openUpdateUrl(update: UpdateManifest): Promise<void> {
-  const download = selectDownload(update);
-  const url = download?.url ?? update.releaseUrl;
+  const url = getNativeUpdateUrl(
+    update,
+    Platform.OS === "ios" ? "ios" : "android",
+  );
+  if (!url) return;
   await Linking.openURL(url);
 }
 

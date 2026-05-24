@@ -3,15 +3,14 @@ import { access, readFile, stat } from "node:fs/promises";
 import { createServer } from "node:http";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getRequestListener } from "@hono/node-server";
 import {
-  compareSemver,
-  isNewerSemver,
   type ReleaseAssetPlatform,
   type ReleaseDownload,
   type UpdateManifest,
+  compareSemver,
   normalizeReleaseVersion,
 } from "@agentline/shared";
+import { getRequestListener } from "@hono/node-server";
 import type Database from "better-sqlite3";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
@@ -28,6 +27,10 @@ import { createLogger } from "./logger.js";
 import { UsernameRegistry } from "./registry.js";
 import { generateRelayStatsHtml } from "./stats.js";
 import { createRelayTelemetryRecorder } from "./telemetry.js";
+import {
+  isValidReleaseVersion,
+  registerRelayVersionRoutes,
+} from "./update-routes.js";
 import { createWsHandler } from "./ws-handler.js";
 
 const config = loadConfig();
@@ -141,10 +144,10 @@ function inferReleaseAsset(name: string): {
 function toUpdateManifest(release: GitHubRelease): UpdateManifest | null {
   const version = normalizeReleaseVersion(release.tag_name ?? "");
   const releaseUrl = release.html_url;
-  if (!version || !releaseUrl) return null;
+  if (!isValidReleaseVersion(version) || !releaseUrl) return null;
 
-  const downloads = (release.assets ?? [])
-    .flatMap((asset): ReleaseDownload[] => {
+  const downloads = (release.assets ?? []).flatMap(
+    (asset): ReleaseDownload[] => {
       if (!asset.name || !asset.browser_download_url) return [];
       const inferred = inferReleaseAsset(asset.name);
       return [
@@ -156,7 +159,8 @@ function toUpdateManifest(release: GitHubRelease): UpdateManifest | null {
           digest: asset.digest,
         } satisfies ReleaseDownload,
       ];
-    });
+    },
+  );
 
   return {
     version,
@@ -167,9 +171,9 @@ function toUpdateManifest(release: GitHubRelease): UpdateManifest | null {
   };
 }
 
-async function fetchLatestReleaseManifest(
-  options?: { forceRefresh?: boolean },
-): Promise<UpdateManifest | null> {
+async function fetchLatestReleaseManifest(options?: {
+  forceRefresh?: boolean;
+}): Promise<UpdateManifest | null> {
   if (
     !options?.forceRefresh &&
     cachedReleaseManifest &&
@@ -233,9 +237,10 @@ interface GitHubRelease {
   assets?: GitHubReleaseAsset[];
 }
 
-let cachedReleaseManifest:
-  | { manifest: UpdateManifest | null; timestamp: number }
-  | null = null;
+let cachedReleaseManifest: {
+  manifest: UpdateManifest | null;
+  timestamp: number;
+} | null = null;
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -626,49 +631,10 @@ app.get("/stats", (c) => {
   });
 });
 
-app.get("/version/:currentVersion", async (c) => {
-  const currentVersion = normalizeReleaseVersion(c.req.param("currentVersion"));
-  const manifest = await fetchLatestReleaseManifest({
-    forceRefresh: c.req.query("fresh") === "1",
-  });
-  const latestVersion = manifest?.version ?? APP_VERSION;
-
-  if (!isNewerSemver(currentVersion, latestVersion)) {
-    return c.body(null, 204);
-  }
-
-  return c.json(
-    manifest ?? {
-      version: latestVersion,
-      releaseUrl: `https://github.com/april-jk/AgentLine/releases/tag/v${latestVersion}`,
-      downloads: [],
-    },
-    200,
-    {
-      "Cache-Control": "no-cache",
-    },
-  );
-});
-
-app.get("/bridge/version", async (c) => {
-  const manifest = await fetchLatestReleaseManifest({
-    forceRefresh: c.req.query("fresh") === "1",
-  });
-  const bridgeVersion = manifest?.downloads.some(
-    (download) => download.platform === "bridge",
-  )
-    ? manifest.version
-    : BRIDGE_VERSION;
-
-  return c.json(
-    {
-      version: bridgeVersion,
-    },
-    200,
-    {
-      "Cache-Control": "no-cache",
-    },
-  );
+registerRelayVersionRoutes(app, {
+  appVersion: APP_VERSION,
+  bridgeVersion: BRIDGE_VERSION,
+  fetchLatestReleaseManifest,
 });
 
 app.get("/tauri/:target/:arch/:currentVersion", (c) => {

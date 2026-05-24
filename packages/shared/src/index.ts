@@ -19,14 +19,17 @@ export {
 } from "./relay-defaults.js";
 
 export type {
+  ClientUpdatePlatform,
   ReleaseAssetPlatform,
   ReleaseDownload,
   UpdateManifest,
 } from "./update.js";
 export {
   compareSemver,
+  detectUpdatePlatform,
   isNewerSemver,
   normalizeReleaseVersion,
+  selectBestUpdateDownload,
 } from "./update.js";
 
 // File path detection (shared between server and client)

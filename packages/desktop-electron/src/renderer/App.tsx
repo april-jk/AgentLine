@@ -1,10 +1,11 @@
 import {
   DEFAULT_CONTROL_PLANE_URL,
-  type ReleaseDownload,
   type UpdateManifest,
 } from "@agentline/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../common/desktopDiscovery";
+import { DesktopUpdatePrompt } from "./DesktopUpdatePrompt";
+import { selectDesktopDownload } from "./updateDownloads";
 
 type ServerState = "stopped" | "starting" | "running" | "stopping" | "error";
 type AccountMode = "login" | "register";
@@ -104,25 +105,6 @@ function toDisplayError(error: unknown): string {
   return code;
 }
 
-function selectDesktopDownload(update: UpdateManifest): ReleaseDownload | null {
-  const platform =
-    navigator.platform.toLowerCase().includes("mac")
-      ? "macos"
-      : navigator.platform.toLowerCase().includes("win")
-        ? "windows"
-        : "linux";
-  const platformDownloads = update.downloads.filter(
-    (download) => download.platform === platform,
-  );
-  return (
-    platformDownloads.find((download) => download.kind === "dmg") ??
-    platformDownloads.find((download) => download.kind === "installer") ??
-    platformDownloads.find((download) => download.kind === "appimage") ??
-    platformDownloads[0] ??
-    null
-  );
-}
-
 export function App() {
   const desktopApi = window.desktopApi;
   const [status, setStatus] = useState<ServerStatus | null>(null);
@@ -147,9 +129,13 @@ export function App() {
     update: null,
     error: null,
   });
+  const [dismissedUpdateVersion, setDismissedUpdateVersion] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
-    if (!desktopApi) {
+    const api = desktopApi;
+    if (!api) {
       setError(
         "Desktop bridge is unavailable (window.desktopApi is undefined). Please restart the app.",
       );
@@ -158,10 +144,10 @@ export function App() {
 
     let mounted = true;
     const loadControlPlane = async () => {
-      const config = await desktopApi.getControlPlaneConfig();
+      const config = await api.getControlPlaneConfig();
       const nextBridgeState =
-        (await desktopApi.getControlPlaneStatus()) as ControlPlaneBridgeState;
-      const nextRemoteAccess = await desktopApi.getRemoteAccessConfig();
+        (await api.getControlPlaneStatus()) as ControlPlaneBridgeState;
+      const nextRemoteAccess = await api.getRemoteAccessConfig();
       if (!mounted) return;
 
       setControlPlaneBaseUrl(config.baseUrl ?? DEFAULT_CONTROL_PLANE_BASE_URL);
@@ -173,8 +159,8 @@ export function App() {
 
     const load = async () => {
       try {
-        const currentStatus = await desktopApi.getServerStatus();
-        const currentRuntime = await desktopApi.getServerRuntimeState();
+        const currentStatus = await api.getServerStatus();
+        const currentRuntime = await api.getServerRuntimeState();
         await loadControlPlane();
         if (mounted) {
           setStatus(currentStatus);
@@ -193,9 +179,9 @@ export function App() {
         try {
           const [currentRuntime, currentBridgeState, currentRemoteAccess] =
             await Promise.all([
-              desktopApi.getServerRuntimeState(),
-              desktopApi.getControlPlaneStatus(),
-              desktopApi.getRemoteAccessConfig(),
+              api.getServerRuntimeState(),
+              api.getControlPlaneStatus(),
+              api.getRemoteAccessConfig(),
             ]);
           if (mounted) {
             setRuntime(currentRuntime);
@@ -208,7 +194,7 @@ export function App() {
       })();
     }, 3000);
 
-    const unsubscribe = desktopApi.onServerStatusChange((nextStatus) => {
+    const unsubscribe = api.onServerStatusChange((nextStatus) => {
       if (mounted) {
         setStatus(nextStatus);
       }
@@ -219,7 +205,7 @@ export function App() {
       clearInterval(runtimeTimer);
       unsubscribe();
     };
-  }, []);
+  }, [desktopApi]);
 
   const checkForUpdates = useCallback(async () => {
     setUpdateState((current) => ({ ...current, checking: true, error: null }));
@@ -263,6 +249,9 @@ export function App() {
     : null;
   const updateDownloadUrl =
     desktopDownload?.url ?? updateState.update?.releaseUrl ?? null;
+  const showUpdatePrompt = Boolean(
+    updateState.update && updateState.update.version !== dismissedUpdateVersion,
+  );
 
   const runAction = async (action: () => Promise<ServerStatus>) => {
     setBusy(true);
@@ -367,6 +356,23 @@ export function App() {
 
   return (
     <main className="container">
+      {updateState.update && showUpdatePrompt ? (
+        <DesktopUpdatePrompt
+          currentVersion={__APP_VERSION__}
+          update={updateState.update}
+          download={desktopDownload}
+          downloadUrl={updateDownloadUrl}
+          checking={updateState.checking}
+          onCheckAgain={() => void checkForUpdates()}
+          onDismiss={() => {
+            setDismissedUpdateVersion(updateState.update?.version ?? null);
+          }}
+          onDownload={(url) => {
+            setDismissedUpdateVersion(updateState.update?.version ?? null);
+            window.open(url, "_blank", "noopener");
+          }}
+        />
+      ) : null}
       <h1>AgentLine Server Control</h1>
       {updateState.update ? (
         <section className="card update-card">
