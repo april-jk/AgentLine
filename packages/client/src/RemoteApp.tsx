@@ -29,6 +29,7 @@ import { ConnectionBar } from "./components/ConnectionBar";
 import { FloatingActionButton } from "./components/FloatingActionButton";
 import { HostOfflineModal } from "./components/HostOfflineModal";
 import { ReloadBanner } from "./components/ReloadBanner";
+import { UpdateAvailableModal } from "./components/UpdateAvailableModal";
 import { Modal } from "./components/ui/Modal";
 import { InboxProvider } from "./contexts/InboxContext";
 import {
@@ -299,6 +300,7 @@ export function ConnectedAppContent({ children }: { children: ReactNode }) {
         />
       )}
       {children}
+      <UpdateAvailableModal />
       <FloatingActionButton />
     </>
   );

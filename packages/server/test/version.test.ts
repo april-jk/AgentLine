@@ -32,8 +32,17 @@ describe("GET /version", () => {
         new Response(
           JSON.stringify({
             version: "99.0.0",
+            releaseUrl: "https://github.com/april-jk/AgentLine/releases/tag/v99.0.0",
+            publishedAt: "2026-01-01T00:00:00Z",
             notes: "New release",
-            pub_date: "2026-01-01T00:00:00Z",
+            downloads: [
+              {
+                platform: "android",
+                kind: "apk",
+                name: "AgentLine-Mobile-RN-99.0.0-android.apk",
+                url: "https://github.com/april-jk/AgentLine/releases/download/v99.0.0/AgentLine-Mobile-RN-99.0.0-android.apk",
+              },
+            ],
           }),
         ),
     );
@@ -45,6 +54,8 @@ describe("GET /version", () => {
 
     expect(res.status).toBe(200);
     expect(json.latest).toBe("99.0.0");
+    expect(json.update.version).toBe("99.0.0");
+    expect(json.update.downloads[0].kind).toBe("apk");
     expect(json.current).toBeDefined();
   });
 

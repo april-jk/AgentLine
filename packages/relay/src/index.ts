@@ -4,6 +4,14 @@ import { createServer } from "node:http";
 import { dirname, extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getRequestListener } from "@hono/node-server";
+import {
+  compareSemver,
+  isNewerSemver,
+  type ReleaseAssetPlatform,
+  type ReleaseDownload,
+  type UpdateManifest,
+  normalizeReleaseVersion,
+} from "@agentline/shared";
 import type Database from "better-sqlite3";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
@@ -87,8 +95,147 @@ function readPackageVersion(): string {
   }
 }
 
+function inferReleaseAsset(name: string): {
+  platform: ReleaseAssetPlatform;
+  kind: string;
+} {
+  const normalizedName = name.toLowerCase();
+
+  if (normalizedName.includes("device-bridge")) {
+    return { platform: "bridge", kind: "bridge-runtime" };
+  }
+  if (normalizedName === "agentline-device-server.apk") {
+    return { platform: "bridge", kind: "android-device-server-apk" };
+  }
+  if (normalizedName.endsWith(".apk")) {
+    return { platform: "android", kind: "apk" };
+  }
+  if (normalizedName.endsWith(".aab")) {
+    return { platform: "android", kind: "aab" };
+  }
+  if (normalizedName.endsWith(".xcarchive.zip")) {
+    return { platform: "ios", kind: "xcarchive" };
+  }
+  if (normalizedName.endsWith(".dmg")) {
+    return { platform: "macos", kind: "dmg" };
+  }
+  if (normalizedName.includes("mac") && normalizedName.endsWith(".zip")) {
+    return { platform: "macos", kind: "zip" };
+  }
+  if (normalizedName.endsWith(".exe") || normalizedName.includes("setup")) {
+    return { platform: "windows", kind: "installer" };
+  }
+  if (normalizedName.endsWith(".appimage")) {
+    return { platform: "linux", kind: "appimage" };
+  }
+  if (normalizedName.endsWith(".deb")) {
+    return { platform: "linux", kind: "deb" };
+  }
+  if (normalizedName.endsWith(".tgz")) {
+    return { platform: "server", kind: "npm-tarball" };
+  }
+
+  return { platform: "unknown", kind: "asset" };
+}
+
+function toUpdateManifest(release: GitHubRelease): UpdateManifest | null {
+  const version = normalizeReleaseVersion(release.tag_name ?? "");
+  const releaseUrl = release.html_url;
+  if (!version || !releaseUrl) return null;
+
+  const downloads = (release.assets ?? [])
+    .flatMap((asset): ReleaseDownload[] => {
+      if (!asset.name || !asset.browser_download_url) return [];
+      const inferred = inferReleaseAsset(asset.name);
+      return [
+        {
+          ...inferred,
+          name: asset.name,
+          url: asset.browser_download_url,
+          size: asset.size,
+          digest: asset.digest,
+        } satisfies ReleaseDownload,
+      ];
+    });
+
+  return {
+    version,
+    releaseUrl,
+    publishedAt: release.published_at,
+    notes: release.body,
+    downloads,
+  };
+}
+
+async function fetchLatestReleaseManifest(
+  options?: { forceRefresh?: boolean },
+): Promise<UpdateManifest | null> {
+  if (
+    !options?.forceRefresh &&
+    cachedReleaseManifest &&
+    Date.now() - cachedReleaseManifest.timestamp < RELEASE_MANIFEST_CACHE_TTL_MS
+  ) {
+    return cachedReleaseManifest.manifest;
+  }
+
+  try {
+    const response = await fetch(GITHUB_RELEASES_API_URL, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "agentline-relay-update-service",
+      },
+    });
+    if (!response.ok) {
+      logger.warn(
+        { status: response.status },
+        "Failed to fetch GitHub releases for update manifest",
+      );
+      return cachedReleaseManifest?.manifest ?? null;
+    }
+
+    const releases = (await response.json()) as GitHubRelease[];
+    const candidates = releases
+      .filter((release) => !release.draft && !release.prerelease)
+      .map(toUpdateManifest)
+      .filter((manifest): manifest is UpdateManifest => manifest !== null)
+      .sort((left, right) => compareSemver(right.version, left.version));
+    const manifest = candidates[0] ?? null;
+
+    cachedReleaseManifest = { manifest, timestamp: Date.now() };
+    return manifest;
+  } catch (error) {
+    logger.warn({ error }, "Update manifest fetch failed");
+    return cachedReleaseManifest?.manifest ?? null;
+  }
+}
+
 const APP_VERSION = readPackageVersion();
 const BRIDGE_VERSION = APP_VERSION;
+const GITHUB_RELEASES_API_URL =
+  "https://api.github.com/repos/april-jk/AgentLine/releases";
+const RELEASE_MANIFEST_CACHE_TTL_MS = 10 * 60 * 1000;
+
+interface GitHubReleaseAsset {
+  name?: string;
+  browser_download_url?: string;
+  size?: number;
+  digest?: string;
+}
+
+interface GitHubRelease {
+  tag_name?: string;
+  name?: string;
+  html_url?: string;
+  published_at?: string;
+  body?: string;
+  draft?: boolean;
+  prerelease?: boolean;
+  assets?: GitHubReleaseAsset[];
+}
+
+let cachedReleaseManifest:
+  | { manifest: UpdateManifest | null; timestamp: number }
+  | null = null;
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -479,15 +626,22 @@ app.get("/stats", (c) => {
   });
 });
 
-app.get("/version/:currentVersion", (c) => {
-  const currentVersion = c.req.param("currentVersion").replace(/^v/, "");
-  if (currentVersion === APP_VERSION) {
+app.get("/version/:currentVersion", async (c) => {
+  const currentVersion = normalizeReleaseVersion(c.req.param("currentVersion"));
+  const manifest = await fetchLatestReleaseManifest({
+    forceRefresh: c.req.query("fresh") === "1",
+  });
+  const latestVersion = manifest?.version ?? APP_VERSION;
+
+  if (!isNewerSemver(currentVersion, latestVersion)) {
     return c.body(null, 204);
   }
 
   return c.json(
-    {
-      version: APP_VERSION,
+    manifest ?? {
+      version: latestVersion,
+      releaseUrl: `https://github.com/april-jk/AgentLine/releases/tag/v${latestVersion}`,
+      downloads: [],
     },
     200,
     {
@@ -496,10 +650,19 @@ app.get("/version/:currentVersion", (c) => {
   );
 });
 
-app.get("/bridge/version", (c) => {
+app.get("/bridge/version", async (c) => {
+  const manifest = await fetchLatestReleaseManifest({
+    forceRefresh: c.req.query("fresh") === "1",
+  });
+  const bridgeVersion = manifest?.downloads.some(
+    (download) => download.platform === "bridge",
+  )
+    ? manifest.version
+    : BRIDGE_VERSION;
+
   return c.json(
     {
-      version: BRIDGE_VERSION,
+      version: bridgeVersion,
     },
     200,
     {

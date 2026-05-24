@@ -37,6 +37,21 @@ h2 {
   margin: 8px 0;
 }
 
+.update-card {
+  border-color: #0f766e;
+}
+
+.update-card.compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.update-card.compact p {
+  margin: 0;
+}
+
 input {
   width: 100%;
   box-sizing: border-box;

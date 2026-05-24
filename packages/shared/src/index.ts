@@ -18,6 +18,17 @@ export {
   DEFAULT_REMOTE_LOGIN_URL,
 } from "./relay-defaults.js";
 
+export type {
+  ReleaseAssetPlatform,
+  ReleaseDownload,
+  UpdateManifest,
+} from "./update.js";
+export {
+  compareSemver,
+  isNewerSemver,
+  normalizeReleaseVersion,
+} from "./update.js";
+
 // File path detection (shared between server and client)
 export type { DetectedFilePath, TextSegment } from "./filePathDetection.js";
 export {

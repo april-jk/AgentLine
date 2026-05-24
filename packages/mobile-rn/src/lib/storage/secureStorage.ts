@@ -29,4 +29,5 @@ export const secureStorageKeys = {
   directPassword: "agentline.direct_password",
   recentDirectServers: "agentline.recent_direct_servers",
   connectionMode: "agentline.connection_mode",
+  dismissedUpdateVersion: "agentline.dismissed_update_version",
 } as const;

@@ -10,6 +10,7 @@ const REQUIRED_RELAY_URLS = [
   "wss://relay.oneceo.ai/ws",
   "https://relay.oneceo.ai/remote/login",
   "https://relay.oneceo.ai/version",
+  "https://relay.oneceo.ai/version/{{current_version}}",
   "https://relay.oneceo.ai/bridge/version",
   "https://relay.oneceo.ai/tauri/{{target}}/{{arch}}/{{current_version}}",
 ];
@@ -21,7 +22,17 @@ const REQUIRED_FILES_BY_URL = new Map([
     "https://relay.oneceo.ai/remote/login",
     ["packages/shared/src/relay-defaults.ts"],
   ],
-  ["https://relay.oneceo.ai/version", ["packages/server/src/routes/version.ts"]],
+  [
+    "https://relay.oneceo.ai/version",
+    ["packages/server/src/routes/version.ts"],
+  ],
+  [
+    "https://relay.oneceo.ai/version/{{current_version}}",
+    [
+      "packages/mobile-rn/src/lib/updateCheck.ts",
+      "packages/desktop-electron/src/renderer/App.tsx",
+    ],
+  ],
   [
     "https://relay.oneceo.ai/bridge/version",
     ["packages/server/src/device/DeviceBridgeService.ts"],
@@ -37,12 +48,12 @@ const APPROVED_FIRST_PARTY_DOMAINS = new Set(["relay.oneceo.ai"]);
 const forbiddenLiterals = [
   AGENTLINE_DOMAIN,
   `.${AGENTLINE_DOMAIN}`,
-  "updates" + `.${AGENTLINE_DOMAIN}`,
-  "relay" + `.${AGENTLINE_DOMAIN}`,
-  "remote" + `.${AGENTLINE_DOMAIN}`,
-  "staging" + `.${AGENTLINE_DOMAIN}`,
-  "direct" + `.${AGENTLINE_DOMAIN}`,
-  "relay2" + `.${AGENTLINE_DOMAIN}`,
+  `updates.${AGENTLINE_DOMAIN}`,
+  `relay.${AGENTLINE_DOMAIN}`,
+  `remote.${AGENTLINE_DOMAIN}`,
+  `staging.${AGENTLINE_DOMAIN}`,
+  `direct.${AGENTLINE_DOMAIN}`,
+  `relay2.${AGENTLINE_DOMAIN}`,
   `${AGENTLINE_DOMAIN}/remote`,
   `${AGENTLINE_DOMAIN}/c/`,
 ];
@@ -126,7 +137,8 @@ for (const file of trackedFiles) {
 for (const url of REQUIRED_RELAY_URLS) {
   const expectedFiles = REQUIRED_FILES_BY_URL.get(url) ?? [];
   for (const file of expectedFiles) {
-    if (!readTrackedFile(file).includes(url)) {
+    const expectedText = url.replace("/{{current_version}}", "");
+    if (!readTrackedFile(file).includes(expectedText)) {
       violations.push(`${file}: missing required relay URL "${url}"`);
     }
   }

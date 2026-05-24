@@ -12,6 +12,7 @@ import type {
   ProviderName,
   SlashCommand,
   ThinkingOption,
+  UpdateManifest,
   UploadedFile,
 } from "@agentline/shared";
 import { authEvents } from "../lib/authEvents";
@@ -437,6 +438,8 @@ export interface VersionInfo {
   current: string;
   latest: string | null;
   updateAvailable: boolean;
+  /** Release manifest from the relay update service when an update is available. */
+  update?: UpdateManifest | null;
   /** Session resume protocol version supported by server (undefined on older servers). */
   resumeProtocolVersion?: number;
   /** Feature capabilities supported by the server. Undefined on older servers. */

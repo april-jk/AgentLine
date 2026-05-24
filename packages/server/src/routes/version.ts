@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import type { UpdateManifest } from "@agentline/shared";
 import { Hono } from "hono";
 import { isNewerSemver } from "../utils/semver.js";
 
@@ -52,7 +53,9 @@ async function getCurrentVersion(): Promise<string> {
 const UPDATE_SERVER_URL = "https://relay.oneceo.ai/version";
 
 // Cache for update server check (24 hour TTL for routine app traffic)
-let cachedLatestVersion: { version: string; timestamp: number } | null = null;
+let cachedLatestVersion:
+  | { version: string; update: UpdateManifest | null; timestamp: number }
+  | null = null;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
@@ -63,14 +66,17 @@ async function getLatestVersion(
   currentVersion: string,
   installId?: string,
   options?: { forceRefresh?: boolean },
-): Promise<string | null> {
+): Promise<{ version: string; update: UpdateManifest | null } | null> {
   // Return cached value if fresh
   if (
     !options?.forceRefresh &&
     cachedLatestVersion &&
     Date.now() - cachedLatestVersion.timestamp < CACHE_TTL_MS
   ) {
-    return cachedLatestVersion.version;
+    return {
+      version: cachedLatestVersion.version,
+      update: cachedLatestVersion.update,
+    };
   }
 
   try {
@@ -93,22 +99,38 @@ async function getLatestVersion(
 
     // 204 = no update available (current version is latest)
     if (response.status === 204) {
-      cachedLatestVersion = { version: currentVersion, timestamp: Date.now() };
-      return currentVersion;
+      cachedLatestVersion = {
+        version: currentVersion,
+        update: null,
+        timestamp: Date.now(),
+      };
+      return { version: currentVersion, update: null };
     }
 
     if (!response.ok) {
       return null;
     }
 
-    const data = (await response.json()) as { version?: string };
+    const data = (await response.json()) as Partial<UpdateManifest> & {
+      version?: string;
+    };
     const version = data.version || null;
 
     if (version) {
-      cachedLatestVersion = { version, timestamp: Date.now() };
+      const update: UpdateManifest | null = data.releaseUrl
+        ? {
+            version,
+            releaseUrl: data.releaseUrl,
+            publishedAt: data.publishedAt,
+            notes: data.notes,
+            downloads: Array.isArray(data.downloads) ? data.downloads : [],
+          }
+        : null;
+      cachedLatestVersion = { version, update, timestamp: Date.now() };
+      return { version, update };
     }
 
-    return version;
+    return null;
   } catch {
     // Network error, timeout, etc. - fail silently
     return null;
@@ -119,6 +141,8 @@ export interface VersionInfo {
   current: string;
   latest: string | null;
   updateAvailable: boolean;
+  /** Full release manifest from the relay update service when an update is available. */
+  update?: UpdateManifest | null;
   /** Session resume protocol version supported by this server. */
   resumeProtocolVersion: number;
   /** Feature capabilities supported by this server. Used by clients to show/hide UI. */
@@ -239,15 +263,17 @@ export function createVersionRoutes(options?: VersionRouteOptions): Hono {
     // For dev versions like "v0.1.7-3-g050bfd2", extract base version "v0.1.7"
     // to compare against the update server.
     const baseVersion = current.split("-")[0] || current;
-    const latest = await getLatestVersion(baseVersion, options?.installId, {
+    const latestInfo = await getLatestVersion(baseVersion, options?.installId, {
       forceRefresh: fresh,
     });
+    const latest = latestInfo?.version ?? null;
     const updateAvailable = latest ? isNewerSemver(baseVersion, latest) : false;
 
     const info: VersionInfo = {
       current,
       latest,
       updateAvailable,
+      update: updateAvailable ? latestInfo?.update ?? null : null,
       resumeProtocolVersion: RESUME_PROTOCOL_VERSION,
       capabilities,
       deviceBridgeState: deviceBridgeStatus.state,

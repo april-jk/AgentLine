@@ -1,6 +1,14 @@
+import type { UpdateManifest } from "@agentline/shared";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewNavigation } from "react-native-webview";
 import type { RootStackParamList } from "../navigation/types";
@@ -171,6 +179,16 @@ function resolveLoginRecoveryCopy(
   };
 }
 
+async function openNativeUpdate(update: UpdateManifest | null): Promise<void> {
+  if (!update) return;
+  const androidDownload =
+    update.downloads.find(
+      (download) => download.platform === "android" && download.kind === "apk",
+    ) ??
+    update.downloads.find((download) => download.platform === "android");
+  await Linking.openURL(androidDownload?.url ?? update.releaseUrl);
+}
+
 export function SessionPlaceholderScreen({ navigation, route }: Props) {
   const { themeMode } = useThemePreference();
   const theme = useAppTheme(themeMode);
@@ -190,6 +208,7 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
   const loginRecoveryTriggeredRef = useRef(false);
   const transientLoginBlockRetryRef = useRef(0);
   const webSessionConnectedRef = useRef(false);
+  const promptedUpdateVersionRef = useRef<string | null>(null);
   const fallbackMode = route.params.mode === "direct" ? "direct" : "relay";
 
   const showStatusToast = useCallback((nextStatus: string) => {
@@ -373,6 +392,9 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
                   status?: string;
                   reason?: string;
                   pathname?: string;
+                  current?: string;
+                  latest?: string;
+                  update?: UpdateManifest | null;
                 }
               | undefined;
             if (payload?.type) {
@@ -397,6 +419,25 @@ export function SessionPlaceholderScreen({ navigation, route }: Props) {
               requestRecoverToNativeLogin(
                 reason,
                 inferModeFromLoginPath(reportedPathname, fallbackMode),
+              );
+              return;
+            }
+            if (payload?.type === "agentline-update-available") {
+              if (!payload.latest) return;
+              if (promptedUpdateVersionRef.current === payload.latest) return;
+              promptedUpdateVersionRef.current = payload.latest;
+              Alert.alert(
+                "发现新版本",
+                `AgentLine v${payload.latest} 已可用，当前版本是 v${payload.current ?? "unknown"}。`,
+                [
+                  { text: "稍后", style: "cancel" },
+                  {
+                    text: "下载更新",
+                    onPress: () => {
+                      void openNativeUpdate(payload.update ?? null);
+                    },
+                  },
+                ],
               );
               return;
             }

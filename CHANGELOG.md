@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-05-24
+
+### Added
+- Add a relay-backed update manifest so downloaded clients can detect, prompt for, and open the latest official release assets from `relay.oneceo.ai`.
+
+### Fixed
+- Keep client update checks on the approved `relay.oneceo.ai` domain instead of introducing a separate update host.
+
 ## [1.0.1] - 2026-05-21
 
 ### Changed

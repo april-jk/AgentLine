@@ -20,7 +20,7 @@ import { WebSocket } from "ws";
 import { isNewerSemver } from "../utils/semver.js";
 
 /** Fallback bridge version if update server is unreachable. */
-const BRIDGE_VERSION_FALLBACK = "1.0.1";
+const BRIDGE_VERSION_FALLBACK = "1.0.2";
 
 /** Update server endpoint for bridge version. */
 const BRIDGE_VERSION_URL = "https://relay.oneceo.ai/bridge/version";

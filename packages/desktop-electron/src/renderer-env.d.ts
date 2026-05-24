@@ -1,5 +1,10 @@
 export {};
 
+/** Build-time version from package.json (injected by Vite define). */
+declare global {
+  const __APP_VERSION__: string;
+}
+
 type ServerState = "stopped" | "starting" | "running" | "stopping" | "error";
 
 interface ServerStatus {

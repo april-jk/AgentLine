@@ -2,6 +2,7 @@ import { type ReactNode, useEffect } from "react";
 import { ConnectionBar } from "./components/ConnectionBar";
 import { FloatingActionButton } from "./components/FloatingActionButton";
 import { ReloadBanner } from "./components/ReloadBanner";
+import { UpdateAvailableModal } from "./components/UpdateAvailableModal";
 import { OnboardingWizard } from "./components/onboarding";
 import { AuthProvider } from "./contexts/AuthContext";
 import { InboxProvider } from "./contexts/InboxContext";
@@ -65,6 +66,7 @@ function AppContent({ children }: Props) {
         />
       )}
       {children}
+      <UpdateAvailableModal />
       <FloatingActionButton />
     </>
   );

@@ -1,5 +1,9 @@
-import { DEFAULT_CONTROL_PLANE_URL } from "@agentline/shared";
-import { useEffect, useMemo, useState } from "react";
+import {
+  DEFAULT_CONTROL_PLANE_URL,
+  type ReleaseDownload,
+  type UpdateManifest,
+} from "@agentline/shared";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../common/desktopDiscovery";
 
 type ServerState = "stopped" | "starting" | "running" | "stopping" | "error";
@@ -40,6 +44,12 @@ interface RemoteAccessConfig {
   hostAccessConfigured: boolean;
 }
 
+interface UpdateState {
+  checking: boolean;
+  update: UpdateManifest | null;
+  error: string | null;
+}
+
 const stateLabel: Record<ServerState, string> = {
   stopped: "Stopped",
   starting: "Starting",
@@ -57,6 +67,7 @@ const stateClass: Record<ServerState, string> = {
 };
 
 const DEFAULT_CONTROL_PLANE_BASE_URL = DEFAULT_CONTROL_PLANE_URL;
+const UPDATE_URL = "https://relay.oneceo.ai/version";
 
 const CONTROL_PLANE_ERROR_LABELS: Record<string, string> = {
   control_plane_base_url_required: "请输入平台地址（Control Plane URL）。",
@@ -93,6 +104,25 @@ function toDisplayError(error: unknown): string {
   return code;
 }
 
+function selectDesktopDownload(update: UpdateManifest): ReleaseDownload | null {
+  const platform =
+    navigator.platform.toLowerCase().includes("mac")
+      ? "macos"
+      : navigator.platform.toLowerCase().includes("win")
+        ? "windows"
+        : "linux";
+  const platformDownloads = update.downloads.filter(
+    (download) => download.platform === platform,
+  );
+  return (
+    platformDownloads.find((download) => download.kind === "dmg") ??
+    platformDownloads.find((download) => download.kind === "installer") ??
+    platformDownloads.find((download) => download.kind === "appimage") ??
+    platformDownloads[0] ??
+    null
+  );
+}
+
 export function App() {
   const desktopApi = window.desktopApi;
   const [status, setStatus] = useState<ServerStatus | null>(null);
@@ -112,6 +142,11 @@ export function App() {
   const [accessPasswordConfirm, setAccessPasswordConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [updateState, setUpdateState] = useState<UpdateState>({
+    checking: true,
+    update: null,
+    error: null,
+  });
 
   useEffect(() => {
     if (!desktopApi) {
@@ -186,12 +221,48 @@ export function App() {
     };
   }, []);
 
+  const checkForUpdates = useCallback(async () => {
+    setUpdateState((current) => ({ ...current, checking: true, error: null }));
+    try {
+      const response = await fetch(`${UPDATE_URL}/${__APP_VERSION__}`, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": `AgentLine-Desktop-Electron/${__APP_VERSION__}`,
+        },
+      });
+      if (response.status === 204) {
+        setUpdateState({ checking: false, update: null, error: null });
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(`Update check failed: ${response.status}`);
+      }
+      const update = (await response.json()) as UpdateManifest;
+      setUpdateState({ checking: false, update, error: null });
+    } catch (e) {
+      setUpdateState({
+        checking: false,
+        update: null,
+        error: e instanceof Error ? e.message : "Update check failed",
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    void checkForUpdates();
+  }, [checkForUpdates]);
+
   const statusText = useMemo(() => {
     if (!status) return "Loading";
     return stateLabel[status.state];
   }, [status]);
   const requiresAccessPasswordSetup =
     controlPlaneConfigured && !remoteAccessConfig?.hostAccessConfigured;
+  const desktopDownload = updateState.update
+    ? selectDesktopDownload(updateState.update)
+    : null;
+  const updateDownloadUrl =
+    desktopDownload?.url ?? updateState.update?.releaseUrl ?? null;
 
   const runAction = async (action: () => Promise<ServerStatus>) => {
     setBusy(true);
@@ -297,6 +368,60 @@ export function App() {
   return (
     <main className="container">
       <h1>AgentLine Server Control</h1>
+      {updateState.update ? (
+        <section className="card update-card">
+          <div>
+            <h2>Update Available</h2>
+            <p>
+              AgentLine v{updateState.update.version} is available. Current
+              version: v{__APP_VERSION__}.
+            </p>
+            {desktopDownload ? (
+              <p>Recommended download: {desktopDownload.name}</p>
+            ) : (
+              <p>Open the official release page to choose a download.</p>
+            )}
+          </div>
+          <div className="actions inline-actions">
+            {updateDownloadUrl ? (
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(updateDownloadUrl, "_blank", "noopener");
+                }}
+              >
+                Download Update
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={updateState.checking}
+              onClick={() => void checkForUpdates()}
+            >
+              Check Again
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="card update-card compact">
+          <p>
+            Desktop version: v{__APP_VERSION__}
+            {updateState.checking
+              ? " · Checking for updates..."
+              : " · Up to date"}
+          </p>
+          {updateState.error ? (
+            <p className="error">{updateState.error}</p>
+          ) : null}
+          <button
+            type="button"
+            disabled={updateState.checking}
+            onClick={() => void checkForUpdates()}
+          >
+            Check for Updates
+          </button>
+        </section>
+      )}
       <section className="card">
         <div className="status-row">
           <span

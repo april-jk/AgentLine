@@ -4,6 +4,7 @@ import { useOnboarding } from "../../hooks/useOnboarding";
 import { usePwaInstall } from "../../hooks/usePwaInstall";
 import { useVersion } from "../../hooks/useVersion";
 import { useI18n } from "../../i18n";
+import { selectBestDownload } from "../../lib/updateDownloads";
 import { DevelopmentSettings } from "./DevelopmentSettings";
 
 export function AboutSettings() {
@@ -24,6 +25,9 @@ export function AboutSettings() {
     (versionInfo?.resumeProtocolVersion ?? 1) >= 2;
   const showRelayResumeUpdateWarning =
     isRelayConnection && !!versionInfo && !hasResumeProtocolSupport;
+  const bestUpdateDownload = selectBestDownload(versionInfo?.update);
+  const updateDownloadHref =
+    bestUpdateDownload?.url ?? versionInfo?.update?.releaseUrl;
 
   return (
     <section className="settings-section">
@@ -91,7 +95,21 @@ export function AboutSettings() {
               <p className="settings-warning">{t("aboutRelayResumeWarning")}</p>
             )}
             {versionInfo?.updateAvailable && (
-              <p className="settings-update-hint">{t("aboutUpdateHint")}</p>
+              <div className="settings-update-hint">
+                <p>{t("aboutUpdateHint")}</p>
+                {updateDownloadHref && (
+                  <a
+                    href={updateDownloadHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="settings-inline-link"
+                  >
+                    {bestUpdateDownload
+                      ? t("aboutDownloadUpdate")
+                      : t("aboutOpenRelease")}
+                  </a>
+                )}
+              </div>
             )}
           </div>
           <button
