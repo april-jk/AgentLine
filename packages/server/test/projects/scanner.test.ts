@@ -197,7 +197,7 @@ describe("ProjectScanner cache", () => {
     expect(afterEvent?.id).toBe(encodeProjectId("/home/user/project-two"));
   });
 
-  it("marks claude projects that also have codex sessions", async () => {
+  it("marks claude projects that also have older codex sessions", async () => {
     const projectsDir = join(tmpdir(), `project-scanner-${randomUUID()}`);
     tempDirs.push(projectsDir);
 
@@ -217,7 +217,7 @@ describe("ProjectScanner cache", () => {
         sessionDir: "/codex/sessions",
         activeOwnedCount: 0,
         activeExternalCount: 0,
-        lastActivity: "2025-01-01T00:00:00.000Z",
+        lastActivity: "2000-01-01T00:00:00.000Z",
         provider: "codex",
       },
     ]);
@@ -234,6 +234,48 @@ describe("ProjectScanner cache", () => {
     expect(projects[0]?.provider).toBe("claude");
     expect(projects[0]).toMatchObject({
       path: "/home/user/project-one",
+      hasCodexSessions: true,
+      defaultSessionProvider: "claude",
+    });
+  });
+
+  it("uses the most recently active provider for mixed-provider project defaults", async () => {
+    const projectsDir = join(tmpdir(), `project-scanner-${randomUUID()}`);
+    tempDirs.push(projectsDir);
+
+    await createClaudeProject(
+      projectsDir,
+      "localhost",
+      "/home/user/project-one",
+      "sess-1",
+    );
+
+    vi.spyOn(CodexSessionScanner.prototype, "listProjects").mockResolvedValue([
+      {
+        id: encodeProjectId("/home/user/project-one"),
+        path: "/home/user/project-one",
+        name: "project-one",
+        sessionCount: 3,
+        sessionDir: "/codex/sessions",
+        activeOwnedCount: 0,
+        activeExternalCount: 0,
+        lastActivity: "2999-01-01T00:00:00.000Z",
+        provider: "codex",
+      },
+    ]);
+
+    const scanner = new ProjectScanner({
+      projectsDir,
+      enableCodex: true,
+      enableGemini: false,
+      cacheTtlMs: 60000,
+    });
+
+    const projects = await scanner.listProjects();
+    expect(projects[0]).toMatchObject({
+      path: "/home/user/project-one",
+      provider: "claude",
+      defaultSessionProvider: "codex",
       hasCodexSessions: true,
     });
   });

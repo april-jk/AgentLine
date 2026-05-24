@@ -397,6 +397,11 @@ function SessionPageContent({
           currentAttachments.length > 0 ? currentAttachments : undefined,
           tempId,
           thinking,
+          undefined,
+          {
+            provider: effectiveProvider,
+            executor: session?.executor,
+          },
         );
         // If process was restarted due to thinking mode change, reconnect stream
         if (result.restarted && result.processId) {
@@ -488,6 +493,10 @@ function SessionPageContent({
         tempId,
         thinking,
         true, // deferred
+        {
+          provider: effectiveProvider,
+          executor: session?.executor,
+        },
       );
       removePendingMessage(tempId);
       draftControlsRef.current?.clearDraft();

@@ -3,6 +3,7 @@ import type {
   AgentStatus as AgentStatusType,
   AppContentBlock,
   AppMessage,
+  ProviderName as SharedProviderName,
 } from "@agentline/shared";
 
 // Re-export shared types
@@ -160,4 +161,8 @@ export interface Project {
   activeOwnedCount: number;
   activeExternalCount: number;
   lastActivity: string | null;
+  provider: SharedProviderName;
+  defaultSessionProvider?: SharedProviderName;
+  hasCodexSessions?: boolean;
+  hasGeminiSessions?: boolean;
 }

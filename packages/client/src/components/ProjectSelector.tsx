@@ -55,9 +55,11 @@ export function ProjectSelector({
       if (onProjectChange) {
         onProjectChange(project);
       } else {
-        navigate(
-          `${basePath}/new-session?projectId=${encodeURIComponent(project.id)}`,
-        );
+        const params = new URLSearchParams({
+          projectId: project.id,
+          provider: project.defaultSessionProvider ?? project.provider,
+        });
+        navigate(`${basePath}/new-session?${params.toString()}`);
       }
     }
     setIsOpen(false);

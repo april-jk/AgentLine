@@ -11,10 +11,7 @@
  * - Server is killed when session is aborted or times out
  */
 
-import { type ChildProcess, exec, execFile, spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { type ChildProcess, execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type {
   ModelInfo,
@@ -25,7 +22,7 @@ import type {
 import { parseOpenCodeSSEEvent } from "@agentline/shared";
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { getLogger } from "../../logging/logger.js";
-import { whichCommand } from "../cli-detection.js";
+import { findAgentCliPath, verifyAgentCliIdentity } from "../cli-detection.js";
 import { MessageQueue } from "../messageQueue.js";
 import type { SDKMessage } from "../types.js";
 import type {
@@ -34,7 +31,6 @@ import type {
   AuthStatus,
   StartSessionOptions,
 } from "./types.js";
-const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 /**
@@ -721,37 +717,14 @@ export class OpenCodeProvider implements AgentProvider {
    */
   private async findOpenCodePath(): Promise<string | null> {
     // Use configured path if provided
-    if (this.opencodePath && existsSync(this.opencodePath)) {
+    if (
+      this.opencodePath &&
+      (await verifyAgentCliIdentity("opencode", this.opencodePath))
+    ) {
       return this.opencodePath;
     }
 
-    // Check common locations
-    const commonPaths = [
-      join(homedir(), ".local", "bin", "opencode"),
-      "/usr/local/bin/opencode",
-      join(homedir(), "bin", "opencode"),
-    ];
-
-    for (const path of commonPaths) {
-      if (existsSync(path)) {
-        return path;
-      }
-    }
-
-    // Try to find in PATH using which
-    try {
-      const { stdout } = await execAsync(whichCommand("opencode"), {
-        encoding: "utf-8",
-      });
-      const result = stdout.trim();
-      if (result && existsSync(result)) {
-        return result;
-      }
-    } catch {
-      // Not in PATH
-    }
-
-    return null;
+    return findAgentCliPath("opencode");
   }
 }
 

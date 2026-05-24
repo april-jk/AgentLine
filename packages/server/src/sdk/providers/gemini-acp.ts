@@ -7,12 +7,11 @@
  * agentline's InputRequest format and routing through the Process approval flow.
  */
 
-import { exec, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import type {
   RequestPermissionRequest,
   RequestPermissionResponse,
@@ -22,8 +21,7 @@ import type {
 } from "@agentclientprotocol/sdk";
 import type { ModelInfo } from "@agentline/shared";
 import { getLogger } from "../../logging/logger.js";
-import { whichCommand } from "../cli-detection.js";
-const execAsync = promisify(exec);
+import { findAgentCliPath, verifyAgentCliIdentity } from "../cli-detection.js";
 import { MessageQueue } from "../messageQueue.js";
 import type {
   CanUseTool,
@@ -903,38 +901,14 @@ export class GeminiACPProvider implements AgentProvider {
    */
   private async findGeminiPath(): Promise<string | null> {
     // Use configured path if provided
-    if (this.geminiPath && existsSync(this.geminiPath)) {
+    if (
+      this.geminiPath &&
+      (await verifyAgentCliIdentity("gemini", this.geminiPath))
+    ) {
       return this.geminiPath;
     }
 
-    // Check common locations
-    const commonPaths = [
-      join(homedir(), ".local", "bin", "gemini"),
-      "/usr/local/bin/gemini",
-      join(homedir(), ".gemini", "bin", "gemini"),
-      join(homedir(), "bin", "gemini"),
-    ];
-
-    for (const path of commonPaths) {
-      if (existsSync(path)) {
-        return path;
-      }
-    }
-
-    // Try to find in PATH using which
-    try {
-      const { stdout } = await execAsync(whichCommand("gemini"), {
-        encoding: "utf-8",
-      });
-      const result = stdout.trim();
-      if (result && existsSync(result)) {
-        return result;
-      }
-    } catch {
-      // Not in PATH
-    }
-
-    return null;
+    return findAgentCliPath("gemini");
   }
 }
 

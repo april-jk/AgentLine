@@ -12,7 +12,6 @@
  */
 
 import { type ChildProcess, exec, execFile, spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -24,7 +23,7 @@ import {
   normalizeCodexToolInvocation,
 } from "../../codex/normalization.js";
 import { getLogger } from "../../logging/logger.js";
-import { findCodexCliPath, whichCommand } from "../cli-detection.js";
+import { findCodexCliPath, verifyAgentCliIdentity } from "../cli-detection.js";
 import { MessageQueue } from "../messageQueue.js";
 import type { SDKMessage } from "../types.js";
 import type {
@@ -1023,7 +1022,10 @@ export class CodexOSSProvider implements AgentProvider {
    * Find codex binary path.
    */
   private async findCodexPath(): Promise<string | null> {
-    if (this.codexPath && existsSync(this.codexPath)) {
+    if (
+      this.codexPath &&
+      (await verifyAgentCliIdentity("codex", this.codexPath))
+    ) {
       return this.codexPath;
     }
     return findCodexCliPath();

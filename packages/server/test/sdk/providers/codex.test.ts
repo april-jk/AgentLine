@@ -5,10 +5,24 @@
  * without requiring actual Codex CLI installation.
  */
 
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  findAgentCliPath,
+  getAgentCliCommonPaths,
+  getCodexCommonPaths,
+  verifyAgentCliIdentity,
+  whichCommand,
+} from "../../../src/sdk/cli-detection.js";
 import {
   CodexProvider,
   type CodexProviderConfig,
@@ -114,6 +128,144 @@ describe("CodexProvider", () => {
         ),
       ).toBe(true);
     });
+  });
+});
+
+describe("Codex CLI detection paths", () => {
+  it("includes Homebrew installs used by desktop macOS apps with sparse PATH", () => {
+    expect(
+      getCodexCommonPaths({
+        platform: "darwin",
+        homeDir: "/Users/tester",
+        env: {},
+      }),
+    ).toContain("/opt/homebrew/bin/codex");
+  });
+
+  it("generates macOS Homebrew and user package-manager paths", () => {
+    const paths = getAgentCliCommonPaths("gemini", {
+      platform: "darwin",
+      homeDir: "/Users/tester",
+      env: {},
+    });
+
+    expect(paths).toContain("/opt/homebrew/bin/gemini");
+    expect(paths).toContain("/usr/local/bin/gemini");
+    expect(paths).toContain("/Users/tester/.gemini/bin/gemini");
+    expect(paths).toContain("/Users/tester/.local/bin/gemini");
+  });
+
+  it("generates Linux package-manager and system paths", () => {
+    const paths = getAgentCliCommonPaths("opencode", {
+      platform: "linux",
+      homeDir: "/home/tester",
+      env: {},
+    });
+
+    expect(paths).toContain("/home/tester/.opencode/bin/opencode");
+    expect(paths).toContain("/home/tester/.local/bin/opencode");
+    expect(paths).toContain("/home/linuxbrew/.linuxbrew/bin/opencode");
+    expect(paths).toContain("/usr/local/bin/opencode");
+    expect(paths).toContain("/snap/bin/opencode");
+  });
+
+  it("generates Windows executable variants and package-manager paths", () => {
+    const paths = getAgentCliCommonPaths("codex", {
+      platform: "win32",
+      homeDir: "C:\\Users\\tester",
+      env: {
+        APPDATA: "C:\\Users\\tester\\AppData\\Roaming",
+        LOCALAPPDATA: "C:\\Users\\tester\\AppData\\Local",
+        ProgramData: "C:\\ProgramData",
+        PATHEXT: ".COM;.EXE;.BAT;.CMD",
+      },
+    });
+
+    expect(paths).toContain(
+      "C:\\Users\\tester\\.codex\\.sandbox-bin\\codex.exe",
+    );
+    expect(paths).toContain(
+      "C:\\Users\\tester\\AppData\\Roaming\\npm\\codex.cmd",
+    );
+    expect(paths).toContain(
+      "C:\\Users\\tester\\AppData\\Local\\Microsoft\\WindowsApps\\codex.exe",
+    );
+    expect(paths).toContain("C:\\ProgramData\\chocolatey\\bin\\codex.exe");
+  });
+
+  it("uses the platform-specific PATH lookup command", () => {
+    expect(whichCommand("codex", "win32")).toBe("where codex");
+    expect(whichCommand("codex", "darwin")).toBe("which codex");
+    expect(whichCommand("codex", "linux")).toBe("which codex");
+  });
+
+  it("rejects a same-named executable that does not identify as Codex", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-cli-detection-"));
+    try {
+      const fakeCodex = join(tempDir, "codex");
+      writeFileSync(
+        fakeCodex,
+        "#!/bin/sh\necho 'not the agent you are looking for'\n",
+      );
+      chmodSync(fakeCodex, 0o755);
+
+      await expect(verifyAgentCliIdentity("codex", fakeCodex)).resolves.toBe(
+        false,
+      );
+      await expect(
+        findAgentCliPath("codex", {
+          platform: "linux",
+          homeDir: tempDir,
+          env: { PATH: tempDir },
+          probeTimeoutMs: 1000,
+        }),
+      ).resolves.toBe(null);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("skips a bad PATH candidate and accepts the next valid Codex candidate", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-cli-detection-"));
+    try {
+      const badBin = join(tempDir, "bad-bin");
+      const goodBin = join(tempDir, "good-bin");
+      mkdirSync(badBin);
+      mkdirSync(goodBin);
+
+      const fakeCodex = join(badBin, "codex");
+      writeFileSync(fakeCodex, "#!/bin/sh\necho 'unrelated codex wrapper'\n");
+      chmodSync(fakeCodex, 0o755);
+
+      const validCodex = join(goodBin, "codex");
+      writeFileSync(validCodex, "#!/bin/sh\necho 'codex-cli 9.9.9'\n");
+      chmodSync(validCodex, 0o755);
+
+      await expect(
+        findAgentCliPath("codex", {
+          platform: "linux",
+          homeDir: tempDir,
+          env: { PATH: `${badBin}:${goodBin}` },
+          probeTimeoutMs: 1000,
+        }),
+      ).resolves.toBe(validCodex);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("validates configured paths instead of trusting them blindly", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-cli-detection-"));
+    try {
+      const fakeCodex = join(tempDir, "codex");
+      writeFileSync(fakeCodex, "#!/bin/sh\necho 'totally different cli'\n");
+      chmodSync(fakeCodex, 0o755);
+
+      const provider = new CodexProvider({ codexPath: fakeCodex });
+      await expect(provider.isInstalled()).resolves.toBe(false);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });
 

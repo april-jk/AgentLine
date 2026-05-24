@@ -82,6 +82,8 @@ function getPreferredModelId(
 
 export interface NewSessionFormProps {
   projectId: string;
+  /** Provider inferred from the current project/session context. */
+  contextProvider?: ProviderName;
   /** Whether to focus the textarea on mount (default: true) */
   autoFocus?: boolean;
   /** Number of rows for the textarea (default: 6) */
@@ -94,6 +96,7 @@ export interface NewSessionFormProps {
 
 export function NewSessionForm({
   projectId,
+  contextProvider,
   autoFocus = true,
   rows = 6,
   placeholder,
@@ -122,7 +125,7 @@ export function NewSessionForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const voiceButtonRef = useRef<VoiceInputButtonRef>(null);
-  const hasInitializedDefaultsRef = useRef(false);
+  const initializedDefaultsKeyRef = useRef<string | null>(null);
 
   // Thinking toggle state
   const { thinkingMode, cycleThinkingMode, thinkingLevel } = useModelSettings();
@@ -172,15 +175,14 @@ export function NewSessionForm({
 
   // Initialize provider/model/mode from saved defaults once settings and providers load.
   useEffect(() => {
+    const defaultsKey = `${projectId}:${contextProvider ?? ""}`;
     if (
-      hasInitializedDefaultsRef.current ||
+      initializedDefaultsKeyRef.current === defaultsKey ||
       providersLoading ||
       settingsLoading
     ) {
       return;
     }
-
-    hasInitializedDefaultsRef.current = true;
 
     if (providers.length === 0) return;
 
@@ -188,17 +190,24 @@ export function NewSessionForm({
       availableProviders.map((p) => p.name),
     );
     const savedDefaults = settings?.newSessionDefaults;
+    const contextProviderName =
+      contextProvider && availableProviderNames.has(contextProvider)
+        ? contextProvider
+        : null;
     const savedProviderName =
+      !contextProviderName &&
       savedDefaults?.provider &&
       availableProviderNames.has(savedDefaults.provider)
         ? savedDefaults.provider
         : null;
     const initialProvider =
+      providers.find((p) => p.name === contextProviderName) ??
       providers.find((p) => p.name === savedProviderName) ??
       getDefaultProvider(providers);
 
     if (!initialProvider) return;
 
+    initializedDefaultsKeyRef.current = defaultsKey;
     setSelectedProvider(initialProvider.name);
     setSelectedModel(
       getPreferredModelId(initialProvider.models ?? [], savedDefaults?.model),
@@ -206,6 +215,8 @@ export function NewSessionForm({
     setMode(savedDefaults?.permissionMode ?? "default");
   }, [
     availableProviders,
+    contextProvider,
+    projectId,
     providers,
     providersLoading,
     settings,
@@ -427,6 +438,8 @@ export function NewSessionForm({
           uploadedFiles.length > 0 ? uploadedFiles : undefined,
           undefined, // tempId
           thinking, // Pass the captured thinking setting to avoid process restart
+          undefined, // deferred
+          sessionOptions,
         );
       } else {
         // No files - use single-step flow for efficiency

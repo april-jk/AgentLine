@@ -876,6 +876,7 @@ export const api = {
     tempId?: string,
     thinking?: ThinkingOption,
     deferred?: boolean,
+    options?: Pick<SessionOptions, "provider" | "executor">,
   ) =>
     fetchJSON<{
       queued: boolean;
@@ -891,6 +892,8 @@ export const api = {
         tempId,
         thinking,
         deferred,
+        provider: options?.provider,
+        executor: options?.executor,
       }),
     }),
 

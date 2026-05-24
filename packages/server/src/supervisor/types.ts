@@ -37,6 +37,7 @@ export interface Project {
   mergedSessionDirs?: string[]; // additional session dirs from cross-machine duplicates
   hasCodexSessions?: boolean; // whether this project also has Codex sessions
   hasGeminiSessions?: boolean; // whether this project also has Gemini sessions
+  defaultSessionProvider?: ProviderName; // provider to preselect when creating new sessions
   activeOwnedCount: number; // sessions owned by this server
   activeExternalCount: number; // sessions controlled by external processes
   lastActivity: string | null; // ISO timestamp of most recent session update

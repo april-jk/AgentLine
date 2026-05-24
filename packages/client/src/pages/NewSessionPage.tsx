@@ -1,3 +1,4 @@
+import { ALL_PROVIDERS, type ProviderName } from "@agentline/shared";
 import { useSearchParams } from "react-router-dom";
 import { NewSessionForm } from "../components/NewSessionForm";
 import { PageHeader } from "../components/PageHeader";
@@ -12,6 +13,10 @@ export function NewSessionPage() {
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const projectId = searchParams.get("projectId");
+  const providerParam = searchParams.get("provider");
+  const contextProvider = ALL_PROVIDERS.includes(providerParam as ProviderName)
+    ? (providerParam as ProviderName)
+    : undefined;
   const { openSidebar, isWideScreen, toggleSidebar, isSidebarCollapsed } =
     useNavigationLayout();
 
@@ -32,7 +37,19 @@ export function NewSessionPage() {
 
   // Callback to update projectId in URL without navigation
   const handleProjectChange = (newProjectId: string) => {
-    setSearchParams({ projectId: newProjectId }, { replace: true });
+    const nextProject = projects.find((p) => p.id === newProjectId);
+    setSearchParams(
+      {
+        projectId: newProjectId,
+        ...((nextProject?.defaultSessionProvider ?? nextProject?.provider)
+          ? {
+              provider:
+                nextProject.defaultSessionProvider ?? nextProject.provider,
+            }
+          : {}),
+      },
+      { replace: true },
+    );
   };
 
   const loading = projectLoading || projectsLoading;
@@ -111,7 +128,14 @@ export function NewSessionPage() {
         <main className="page-scroll-container">
           <div className="page-content-inner">
             {effectiveProjectId && (
-              <NewSessionForm projectId={effectiveProjectId} />
+              <NewSessionForm
+                projectId={effectiveProjectId}
+                contextProvider={
+                  contextProvider ??
+                  project?.defaultSessionProvider ??
+                  project?.provider
+                }
+              />
             )}
           </div>
         </main>

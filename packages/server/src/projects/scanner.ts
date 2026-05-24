@@ -187,6 +187,7 @@ export class ProjectScanner {
         : undefined,
       hasCodexSessions: project.hasCodexSessions,
       hasGeminiSessions: project.hasGeminiSessions,
+      defaultSessionProvider: project.defaultSessionProvider,
     };
   }
 
@@ -285,6 +286,7 @@ export class ProjectScanner {
           activeExternalCount: 0, // populated by route
           lastActivity,
           provider: "claude",
+          defaultSessionProvider: "claude",
         });
       }
     };
@@ -343,6 +345,14 @@ export class ProjectScanner {
         );
         if (existing) {
           existing.hasCodexSessions = true;
+          if (
+            codexProject.lastActivity &&
+            (!existing.lastActivity ||
+              codexProject.lastActivity > existing.lastActivity)
+          ) {
+            existing.lastActivity = codexProject.lastActivity;
+            existing.defaultSessionProvider = codexProject.provider;
+          }
           continue;
         }
         seenPaths.add(projectPath);
@@ -353,6 +363,7 @@ export class ProjectScanner {
           name: basename(projectPath),
           hasCodexSessions: true,
           hasGeminiSessions: false,
+          defaultSessionProvider: codexProject.provider,
         });
       }
     }
@@ -370,6 +381,14 @@ export class ProjectScanner {
         );
         if (existing) {
           existing.hasGeminiSessions = true;
+          if (
+            geminiProject.lastActivity &&
+            (!existing.lastActivity ||
+              geminiProject.lastActivity > existing.lastActivity)
+          ) {
+            existing.lastActivity = geminiProject.lastActivity;
+            existing.defaultSessionProvider = geminiProject.provider;
+          }
           continue;
         }
         seenPaths.add(projectPath);
@@ -380,6 +399,7 @@ export class ProjectScanner {
           name: basename(projectPath),
           hasCodexSessions: false,
           hasGeminiSessions: true,
+          defaultSessionProvider: geminiProject.provider,
         });
       }
     }
@@ -415,6 +435,7 @@ export class ProjectScanner {
           activeExternalCount: 0,
           lastActivity: metadata.addedAt,
           provider: "claude",
+          defaultSessionProvider: "claude",
         });
       }
     }
@@ -434,6 +455,7 @@ export class ProjectScanner {
         activeExternalCount: 0,
         lastActivity: null,
         provider: "claude",
+        defaultSessionProvider: "claude",
       });
     }
 
@@ -542,6 +564,7 @@ export class ProjectScanner {
       activeExternalCount: 0,
       lastActivity: null,
       provider,
+      defaultSessionProvider: provider,
     };
   }
 

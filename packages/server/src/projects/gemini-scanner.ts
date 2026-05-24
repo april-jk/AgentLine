@@ -138,6 +138,7 @@ export class GeminiSessionScanner {
         activeExternalCount: 0,
         lastActivity: new Date(data.lastActivity).toISOString(),
         provider: "gemini",
+        defaultSessionProvider: "gemini",
       });
     }
 

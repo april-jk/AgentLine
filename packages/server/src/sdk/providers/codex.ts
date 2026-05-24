@@ -5,8 +5,7 @@
  * server-initiated permission requests (command/file approval).
  */
 
-import { type ChildProcess, exec, spawn } from "node:child_process";
-import { promisify } from "node:util";
+import { type ChildProcess, spawn } from "node:child_process";
 import type { ModelInfo } from "@agentline/shared";
 import {
   isCodexCorrelationDebugEnabled,
@@ -19,7 +18,7 @@ import {
   normalizeCodexToolInvocation,
 } from "../../codex/normalization.js";
 import { getLogger } from "../../logging/logger.js";
-import { findCodexCliPath, whichCommand } from "../cli-detection.js";
+import { findCodexCliPath, verifyAgentCliIdentity } from "../cli-detection.js";
 import { logSDKMessage } from "../messageLogger.js";
 import { MessageQueue } from "../messageQueue.js";
 import type {
@@ -58,7 +57,6 @@ import type {
 } from "./types.js";
 
 const log = getLogger().child({ component: "codex-provider" });
-const execAsync = promisify(exec);
 
 function logSdkCorrelationDebug(
   sessionId: string,
@@ -649,7 +647,7 @@ export class CodexProvider implements AgentProvider {
    */
   private async isCodexCliInstalled(): Promise<boolean> {
     if (this.config.codexPath) {
-      return true;
+      return verifyAgentCliIdentity("codex", this.config.codexPath);
     }
     return (await findCodexCliPath()) !== null;
   }

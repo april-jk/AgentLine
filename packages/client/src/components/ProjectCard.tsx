@@ -48,7 +48,11 @@ export function ProjectCard({
   const handleNewSession = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`${basePath}/new-session?projectId=${project.id}`);
+    const params = new URLSearchParams({
+      projectId: project.id,
+      provider: project.defaultSessionProvider ?? project.provider,
+    });
+    navigate(`${basePath}/new-session?${params.toString()}`);
   };
 
   const handleOpenFiles = (e: React.MouseEvent) => {

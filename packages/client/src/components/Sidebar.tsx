@@ -241,10 +241,32 @@ export function Sidebar({
   // Global inbox count
   const inboxCount = useNeedsAttentionBadge();
   const { recentProjects, projects } = useRecentProjects();
-  const newSessionProjectId = resolvePreferredProjectId(
-    projects,
-    recentProjects[0]?.id,
+  const currentSession = useMemo(
+    () =>
+      [...starredSessions, ...globalSessions].find(
+        (session) => session.id === currentSessionId,
+      ),
+    [currentSessionId, globalSessions, starredSessions],
   );
+  const newSessionProjectId =
+    currentSession?.projectId ??
+    resolvePreferredProjectId(projects, recentProjects[0]?.id);
+  const newSessionProvider =
+    currentSession?.provider ??
+    (() => {
+      const project = projects.find(
+        (project) => project.id === newSessionProjectId,
+      );
+      return project?.defaultSessionProvider ?? project?.provider;
+    })();
+  const newSessionLink = useMemo(() => {
+    if (!newSessionProjectId) return "/new-session";
+    const params = new URLSearchParams({ projectId: newSessionProjectId });
+    if (newSessionProvider) {
+      params.set("provider", newSessionProvider);
+    }
+    return `/new-session?${params.toString()}`;
+  }, [newSessionProjectId, newSessionProvider]);
 
   const sidebarRef = useRef<HTMLElement>(null);
   const touchStartX = useRef<number | null>(null);
@@ -1133,11 +1155,7 @@ export function Sidebar({
         <div className="sidebar-actions">
           {/* New Session: link to most recent project's new session page */}
           <SidebarNavItem
-            to={
-              newSessionProjectId
-                ? `/new-session?projectId=${encodeURIComponent(newSessionProjectId)}`
-                : "/new-session"
-            }
+            to={newSessionLink}
             icon={SidebarIcons.newSession}
             label={t("sidebarNewSession")}
             onClick={onNavigate}

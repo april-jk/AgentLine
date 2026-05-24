@@ -875,6 +875,8 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     const globalInstructions =
       deps.serverSettingsService?.getSetting("globalInstructions") || undefined;
+    const providerName =
+      body.provider ?? project.defaultSessionProvider ?? project.provider;
 
     const result = await deps.supervisor.startSession(
       project.path,
@@ -884,7 +886,7 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         model,
         thinking,
         effort,
-        providerName: body.provider,
+        providerName,
         executor,
         globalInstructions,
         permissions: body.permissions,
@@ -906,10 +908,10 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     // Save provider and executor to session metadata for resume
     if (deps.sessionMetadataService) {
-      if (body.provider) {
+      if (providerName) {
         await deps.sessionMetadataService.setProvider(
           result.sessionId,
-          body.provider,
+          providerName,
         );
       }
       if (executor) {
@@ -969,6 +971,8 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     const globalInstructions =
       deps.serverSettingsService?.getSetting("globalInstructions") || undefined;
+    const providerName =
+      body.provider ?? project.defaultSessionProvider ?? project.provider;
 
     const result = await deps.supervisor.createSession(
       project.path,
@@ -977,7 +981,7 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         model,
         thinking,
         effort,
-        providerName: body.provider,
+        providerName,
         executor,
         globalInstructions,
         permissions: body.permissions,
@@ -999,10 +1003,10 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     // Save provider and executor to session metadata for resume
     if (deps.sessionMetadataService) {
-      if (body.provider) {
+      if (providerName) {
         await deps.sessionMetadataService.setProvider(
           result.sessionId,
-          body.provider,
+          providerName,
         );
       }
       if (executor) {
