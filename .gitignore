@@ -79,3 +79,6 @@ packages/server/bundled/
 # Reference repos (cloned for source reading)
 references/
 start.sh
+
+# HyperFrames test assets
+/marketing/hyperframes-agentline-15s/
