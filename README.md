@@ -5,7 +5,7 @@
 <h1 align="center">AgentLine</h1>
 
 <p align="center">
-  <strong>面向长时间运行 Coding Agent 的移动监督中枢。</strong>
+  <strong>你的移动办公中枢，随时随地接上 Agent 对话。</strong>
 </p>
 
 <p align="center">

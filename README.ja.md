@@ -5,7 +5,7 @@
 <h1 align="center">AgentLine</h1>
 
 <p align="center">
-  <strong>長時間動く Coding Agent のためのモバイル監督ハブ。</strong>
+  <strong>どこからでも Agent の会話につながる、モバイルワークハブ。</strong>
 </p>
 
 <p align="center">

@@ -5,7 +5,7 @@
 <h1 align="center">AgentLine</h1>
 
 <p align="center">
-  <strong>Mobile supervisor for long-running coding agents.</strong>
+  <strong>Your mobile work hub for reaching agent conversations anywhere.</strong>
 </p>
 
 <p align="center">
