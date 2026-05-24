@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.41] - 2026-05-24
+
+### Fixed
+- Serve the GitHub Pages website from the custom domain root so CSS, images, and the remote client load without the old `/AgentLine/` prefix.
+
 ## [site-v1.5.40] - 2026-05-24
 
 ### Changed

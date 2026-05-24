@@ -41,12 +41,12 @@ jobs:
         run: pnpm --filter @agentline/shared build
 
       - name: Build site (Astro)
-        run: cd site && npm ci && SITE_BASE=/AgentLine/ npm run build
+        run: cd site && npm ci && npm run build
 
       - name: Build remote client
         run: |
           pnpm --filter @agentline/client exec tsc
-          pnpm --filter @agentline/client exec vite build --config vite.config.remote.ts --base /AgentLine/remote/
+          pnpm --filter @agentline/client exec vite build --config vite.config.remote.ts --base /remote/
 
       - name: Prepare deployment directory
         run: |
