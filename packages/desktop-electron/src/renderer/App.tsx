@@ -1,6 +1,7 @@
 import {
   DEFAULT_CONTROL_PLANE_URL,
   type UpdateManifest,
+  fetchAgentLineUpdate,
 } from "@agentline/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_DESKTOP_DISCOVERY_PORT } from "../common/desktopDiscovery";
@@ -68,8 +69,6 @@ const stateClass: Record<ServerState, string> = {
 };
 
 const DEFAULT_CONTROL_PLANE_BASE_URL = DEFAULT_CONTROL_PLANE_URL;
-const UPDATE_URL = "https://relay.oneceo.ai/version";
-
 const CONTROL_PLANE_ERROR_LABELS: Record<string, string> = {
   control_plane_base_url_required: "请输入平台地址（Control Plane URL）。",
   control_plane_base_url_invalid: "平台地址格式无效，请检查 URL。",
@@ -210,21 +209,16 @@ export function App() {
   const checkForUpdates = useCallback(async () => {
     setUpdateState((current) => ({ ...current, checking: true, error: null }));
     try {
-      const response = await fetch(`${UPDATE_URL}/${__APP_VERSION__}`, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": `AgentLine-Desktop-Electron/${__APP_VERSION__}`,
-        },
-      });
-      if (response.status === 204) {
+      const result = await fetchAgentLineUpdate(
+        __APP_VERSION__,
+        `AgentLine-Desktop-Electron/${__APP_VERSION__}`,
+      );
+      if (result.status === "current") {
         setUpdateState({ checking: false, update: null, error: null });
         return;
       }
-      if (!response.ok) {
-        throw new Error(`Update check failed: ${response.status}`);
-      }
-      const update = (await response.json()) as UpdateManifest;
-      setUpdateState({ checking: false, update, error: null });
+      setDismissedUpdateVersion(null);
+      setUpdateState({ checking: false, update: result.update, error: null });
     } catch (e) {
       setUpdateState({
         checking: false,
@@ -252,7 +246,6 @@ export function App() {
   const showUpdatePrompt = Boolean(
     updateState.update && updateState.update.version !== dismissedUpdateVersion,
   );
-
   const runAction = async (action: () => Promise<ServerStatus>) => {
     setBusy(true);
     setError(null);
@@ -354,6 +347,15 @@ export function App() {
     }
   };
 
+  const openExternalUrl = useCallback(
+    (url: string) => {
+      if (desktopApi) {
+        void desktopApi.openExternalUrl(url);
+      }
+    },
+    [desktopApi],
+  );
+
   return (
     <main className="container">
       {updateState.update && showUpdatePrompt ? (
@@ -362,72 +364,16 @@ export function App() {
           update={updateState.update}
           download={desktopDownload}
           downloadUrl={updateDownloadUrl}
-          checking={updateState.checking}
-          onCheckAgain={() => void checkForUpdates()}
           onDismiss={() => {
             setDismissedUpdateVersion(updateState.update?.version ?? null);
           }}
           onDownload={(url) => {
             setDismissedUpdateVersion(updateState.update?.version ?? null);
-            window.open(url, "_blank", "noopener");
+            openExternalUrl(url);
           }}
         />
       ) : null}
       <h1>AgentLine Server Control</h1>
-      {updateState.update ? (
-        <section className="card update-card">
-          <div>
-            <h2>Update Available</h2>
-            <p>
-              AgentLine v{updateState.update.version} is available. Current
-              version: v{__APP_VERSION__}.
-            </p>
-            {desktopDownload ? (
-              <p>Recommended download: {desktopDownload.name}</p>
-            ) : (
-              <p>Open the official release page to choose a download.</p>
-            )}
-          </div>
-          <div className="actions inline-actions">
-            {updateDownloadUrl ? (
-              <button
-                type="button"
-                onClick={() => {
-                  window.open(updateDownloadUrl, "_blank", "noopener");
-                }}
-              >
-                Download Update
-              </button>
-            ) : null}
-            <button
-              type="button"
-              disabled={updateState.checking}
-              onClick={() => void checkForUpdates()}
-            >
-              Check Again
-            </button>
-          </div>
-        </section>
-      ) : (
-        <section className="card update-card compact">
-          <p>
-            Desktop version: v{__APP_VERSION__}
-            {updateState.checking
-              ? " · Checking for updates..."
-              : " · Up to date"}
-          </p>
-          {updateState.error ? (
-            <p className="error">{updateState.error}</p>
-          ) : null}
-          <button
-            type="button"
-            disabled={updateState.checking}
-            onClick={() => void checkForUpdates()}
-          >
-            Check for Updates
-          </button>
-        </section>
-      )}
       <section className="card">
         <div className="status-row">
           <span

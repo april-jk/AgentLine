@@ -147,7 +147,7 @@ const createStyles = (theme: AppTheme) =>
       transform: [{ scale: 0.96 }],
     },
     nextArrow: {
-      color: "#ffffff",
+      color: theme.isLight ? "#f8fafc" : "#f3f4f6",
       fontSize: 30,
       lineHeight: 30,
       fontWeight: "700",

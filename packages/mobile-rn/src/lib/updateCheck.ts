@@ -1,4 +1,4 @@
-import type { UpdateManifest } from "@agentline/shared";
+import { type UpdateManifest, fetchAgentLineUpdate } from "@agentline/shared";
 import { Alert, Linking, Platform } from "react-native";
 import packageJson from "../../package.json";
 import {
@@ -7,8 +7,6 @@ import {
   setSecureItem,
 } from "./storage/secureStorage";
 import { getNativeUpdateUrl } from "./updateDownloads";
-
-const UPDATE_URL = "https://relay.oneceo.ai/version";
 
 async function openUpdateUrl(update: UpdateManifest): Promise<void> {
   const url = getNativeUpdateUrl(
@@ -19,20 +17,23 @@ async function openUpdateUrl(update: UpdateManifest): Promise<void> {
   await Linking.openURL(url);
 }
 
-export async function checkForNativeUpdate(): Promise<void> {
+export async function checkForNativeUpdate(options?: {
+  silent?: boolean;
+}): Promise<void> {
   const currentVersion = packageJson.version;
   try {
-    const response = await fetch(`${UPDATE_URL}/${currentVersion}`, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": `AgentLine-Mobile-RN/${currentVersion}`,
-      },
-    });
-    if (response.status === 204 || !response.ok) return;
+    const result = await fetchAgentLineUpdate(
+      currentVersion,
+      `AgentLine-Mobile-RN/${currentVersion}`,
+    );
+    if (result.status === "current") {
+      if (!options?.silent) {
+        Alert.alert("已是最新版本", `AgentLine v${currentVersion} 已是最新。`);
+      }
+      return;
+    }
 
-    const update = (await response.json()) as UpdateManifest;
-    if (!update.version || !update.releaseUrl) return;
-
+    const update = result.update;
     const dismissedVersion = await getSecureItem(
       secureStorageKeys.dismissedUpdateVersion,
     );
@@ -64,7 +65,13 @@ export async function checkForNativeUpdate(): Promise<void> {
         },
       ],
     );
-  } catch {
+  } catch (error) {
     // Update checks must never block app startup.
+    if (!options?.silent) {
+      Alert.alert(
+        "检查更新失败",
+        error instanceof Error ? error.message : "请稍后再试。",
+      );
+    }
   }
 }

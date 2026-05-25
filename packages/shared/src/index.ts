@@ -25,6 +25,12 @@ export type {
   UpdateManifest,
 } from "./update.js";
 export {
+  AGENTLINE_UPDATE_URL,
+  fetchAgentLineUpdate,
+  type UpdateCheckResult,
+} from "./update-check.js";
+
+export {
   compareSemver,
   detectUpdatePlatform,
   isNewerSemver,

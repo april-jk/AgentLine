@@ -30,6 +30,8 @@ describe("UpdateAvailableModal", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
+    window.__AGENTLINE_NATIVE_APP_VERSION__ = undefined;
+    window.ReactNativeWebView = undefined;
     Object.defineProperty(window.navigator, "userAgent", {
       value: defaultUserAgent,
       configurable: true,
@@ -63,6 +65,8 @@ describe("UpdateAvailableModal", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    window.__AGENTLINE_NATIVE_APP_VERSION__ = undefined;
+    window.ReactNativeWebView = undefined;
   });
 
   it("shows the Android APK when running in an Android browser", () => {
@@ -124,5 +128,16 @@ describe("UpdateAvailableModal", () => {
     renderModal();
 
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("does not use server update state inside a native shell", () => {
+    const postMessage = vi.fn();
+    window.__AGENTLINE_NATIVE_APP_VERSION__ = "1.0.1";
+    window.ReactNativeWebView = { postMessage };
+
+    renderModal();
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(postMessage).not.toHaveBeenCalled();
   });
 });

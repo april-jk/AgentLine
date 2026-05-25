@@ -13,3 +13,7 @@ interface ImportMeta {
 
 /** Build-time version from git describe (injected by Vite define) */
 declare const __APP_VERSION__: string;
+
+interface Window {
+  __AGENTLINE_NATIVE_APP_VERSION__?: string;
+}

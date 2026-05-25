@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-05-25
+
+### Added
+- Add a shared Updates settings page for web, desktop, and mobile shell sessions with manual update checks from the settings sidebar.
+- Add native shell version detection so desktop Electron and React Native mobile update checks compare against the installed app version instead of the web bundle version.
+
+### Fixed
+- Suppress the web/server update modal inside native shells to avoid reporting web release versions as installed desktop or mobile versions.
+- Keep desktop and mobile startup checks using shell-specific update requests while preserving user-dismissed update prompts.
+
 ## [1.0.2] - 2026-05-24
 
 ### Added

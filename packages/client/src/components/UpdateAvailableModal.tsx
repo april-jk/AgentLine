@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VersionInfo } from "../api/client";
 import { useVersion } from "../hooks/useVersion";
 import { useI18n } from "../i18n";
+import { getNativeShellInfo } from "../lib/nativeShell";
 import { selectBestDownload } from "../lib/updateDownloads";
 import { Modal } from "./ui/Modal";
 
@@ -41,20 +42,24 @@ function emitNativeShellUpdateAvailable(versionInfo: VersionInfo): void {
 
 export function UpdateAvailableModal() {
   const { t } = useI18n();
+  const nativeShellInfo = getNativeShellInfo();
   const { version } = useVersion({ freshOnMount: true });
   const [dismissedVersion, setDismissedVersion] = useState(() =>
     getDismissedUpdateVersion(),
   );
 
   useEffect(() => {
-    if (version) {
+    if (!nativeShellInfo && version) {
       emitNativeShellUpdateAvailable(version);
     }
-  }, [version]);
+  }, [nativeShellInfo, version]);
 
   const latest = version?.latest ?? null;
   const showModal = Boolean(
-    version?.updateAvailable && latest && dismissedVersion !== latest,
+    !nativeShellInfo &&
+      version?.updateAvailable &&
+      latest &&
+      dismissedVersion !== latest,
   );
   const bestDownload = useMemo(
     () => selectBestDownload(version?.update),

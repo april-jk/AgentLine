@@ -1,6 +1,6 @@
 [package]
 name = "agentline-mobile"
-version = "1.0.2"
+version = "1.0.3"
 description = "AgentLine Mobile"
 edition = "2021"
 

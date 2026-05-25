@@ -21,6 +21,7 @@ import { PhoneSettings } from "./PhoneSettings";
 import { ProvidersSettings } from "./ProvidersSettings";
 import { RemoteAccessSettings } from "./RemoteAccessSettings";
 import { RemoteExecutorsSettings } from "./RemoteExecutorsSettings";
+import { UpdatesSettings } from "./UpdatesSettings";
 import type { SettingsCategory } from "./types";
 
 // Map category IDs to their components
@@ -36,6 +37,7 @@ const CATEGORY_COMPONENTS: Record<string, React.ComponentType> = {
   remote: RemoteAccessSettings,
   providers: ProvidersSettings,
   "remote-executors": RemoteExecutorsSettings,
+  updates: UpdatesSettings,
   emulator: EmulatorSettings,
   about: AboutSettings,
 };
@@ -96,7 +98,12 @@ export function SettingsLayout() {
       getEmulatorCategory((key) => t(key as never)),
     );
   }
-  const normalizedCategory = category === "development" ? "about" : category;
+  const normalizedCategory =
+    category === "development"
+      ? "about"
+      : category === "update"
+        ? "updates"
+        : category;
 
   // On wide screen, default to first category if none selected
   const effectiveCategory =

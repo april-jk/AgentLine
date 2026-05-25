@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { contextBridge, ipcRenderer } from "electron";
 import type { ServerStatus } from "./serverManager.js";
 
@@ -47,7 +50,14 @@ interface RemoteAccessConfig {
   hostAccessConfigured: boolean;
 }
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const packageJson = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../../package.json"), "utf8"),
+) as { version?: string };
+
 const api = {
+  getAppVersion: (): string => packageJson.version ?? "unknown",
   getServerStatus: (): Promise<ServerStatus> =>
     ipcRenderer.invoke("server:get-status"),
   getServerRuntimeState: (): Promise<ServerRuntimeState> =>
@@ -58,6 +68,8 @@ const api = {
     ipcRenderer.invoke("server:restart"),
   openDashboard: (): Promise<void> =>
     ipcRenderer.invoke("server:open-dashboard"),
+  openExternalUrl: (url: string): Promise<void> =>
+    ipcRenderer.invoke("app:open-external-url", url),
   getControlPlaneConfig: (): Promise<ControlPlanePublicConfig> =>
     ipcRenderer.invoke("control-plane:get-config"),
   getControlPlaneAccount: (): Promise<ControlPlaneAccountSummary> =>

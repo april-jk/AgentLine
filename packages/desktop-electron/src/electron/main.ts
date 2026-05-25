@@ -10,6 +10,7 @@ import {
   dialog,
   ipcMain,
   nativeImage,
+  shell,
 } from "electron";
 import { DESKTOP_DISCOVERY_PORT_CANDIDATES } from "../common/desktopDiscovery.js";
 import {
@@ -918,6 +919,13 @@ const registerIpcHandlers = (): void => {
   ipcMain.handle("server:restart", () => getServerManager().restart());
   ipcMain.handle("server:open-dashboard", async () => {
     await openMainProgram();
+  });
+  ipcMain.handle("app:open-external-url", async (_event, url: string) => {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      throw new Error("unsupported_url_protocol");
+    }
+    await shell.openExternal(parsed.toString());
   });
   ipcMain.handle("control-plane:get-config", () =>
     getControlPlanePublicConfig(),

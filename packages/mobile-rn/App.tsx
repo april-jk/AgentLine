@@ -20,7 +20,7 @@ function AppShell() {
   const baseTheme = theme.isLight ? DefaultTheme : DarkTheme;
 
   useEffect(() => {
-    void checkForNativeUpdate();
+    void checkForNativeUpdate({ silent: true });
   }, []);
 
   const navigationTheme = {

@@ -5,8 +5,6 @@ interface DesktopUpdatePromptProps {
   update: UpdateManifest;
   download: ReleaseDownload | null;
   downloadUrl: string | null;
-  checking: boolean;
-  onCheckAgain: () => void;
   onDismiss: () => void;
   onDownload: (url: string) => void;
 }
@@ -16,8 +14,6 @@ export function DesktopUpdatePrompt({
   update,
   download,
   downloadUrl,
-  checking,
-  onCheckAgain,
   onDismiss,
   onDownload,
 }: DesktopUpdatePromptProps) {
@@ -56,9 +52,6 @@ export function DesktopUpdatePrompt({
         <div className="actions inline-actions">
           <button type="button" className="secondary" onClick={onDismiss}>
             Later
-          </button>
-          <button type="button" disabled={checking} onClick={onCheckAgain}>
-            Check Again
           </button>
           {downloadUrl ? (
             <button

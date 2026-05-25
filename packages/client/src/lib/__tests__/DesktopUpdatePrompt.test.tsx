@@ -26,8 +26,6 @@ describe("DesktopUpdatePrompt", () => {
           url: "https://example.invalid/AgentLine.Desktop-1.0.2-arm64.dmg",
         }}
         downloadUrl="https://example.invalid/AgentLine.Desktop-1.0.2-arm64.dmg"
-        checking={false}
-        onCheckAgain={vi.fn()}
         onDismiss={vi.fn()}
         onDownload={onDownload}
       />,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { fetchAgentLineUpdate } from "../src/update-check.js";
 import {
   type UpdateManifest,
   detectUpdatePlatform,
@@ -134,5 +135,38 @@ describe("selectBestUpdateDownload", () => {
         includeStorePackages: true,
       })?.kind,
     ).toBe("aab");
+  });
+});
+
+describe("fetchAgentLineUpdate", () => {
+  it("returns current when the update server responds with 204", async () => {
+    const result = await fetchAgentLineUpdate(
+      "1.0.2",
+      "AgentLine-Test/1.0.2",
+      async () => new Response(null, { status: 204 }),
+    );
+
+    expect(result).toEqual({ status: "current" });
+  });
+
+  it("returns an update manifest when a new version is available", async () => {
+    const result = await fetchAgentLineUpdate(
+      "1.0.1",
+      "AgentLine-Test/1.0.1",
+      async () => Response.json(update),
+    );
+
+    expect(result.status).toBe("available");
+    if (result.status === "available") {
+      expect(result.update.version).toBe("1.0.2");
+    }
+  });
+
+  it("rejects malformed update manifests", async () => {
+    await expect(
+      fetchAgentLineUpdate("1.0.1", "AgentLine-Test/1.0.1", async () =>
+        Response.json({ version: "1.0.2", downloads: [] }),
+      ),
+    ).rejects.toThrow("Update manifest is missing required fields");
   });
 });

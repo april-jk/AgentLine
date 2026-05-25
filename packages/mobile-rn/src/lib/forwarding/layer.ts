@@ -1,4 +1,5 @@
 import type { ThemeMode } from "../../styles/theme";
+import packageJson from "../../../package.json";
 import { normalizeHttpBaseUrl } from "../api/client";
 
 export type ForwardMode = "direct" | "relay";
@@ -58,12 +59,17 @@ function buildModeBootstrapScript(
 ): string {
   return `
     window.__AGENTLINE_NATIVE_SHELL__ = true;
+    window.__AGENTLINE_NATIVE_APP_VERSION__ = ${JSON.stringify(packageJson.version)};
     window.__AGENTLINE_FORWARD_MODE__ = ${JSON.stringify(mode)};
     window.__AGENTLINE_NATIVE_BOOTSTRAP__ = ${JSON.stringify(payload ?? {})};
     try {
       const themeMode = ${JSON.stringify(themeMode)};
       localStorage.setItem("agentline-theme", themeMode);
       localStorage.setItem("agentline-native-shell", "1");
+      localStorage.setItem(
+        "agentline-native-app-version",
+        ${JSON.stringify(packageJson.version)},
+      );
       document.documentElement.setAttribute("data-theme", themeMode);
 
       const postTheme = () => {

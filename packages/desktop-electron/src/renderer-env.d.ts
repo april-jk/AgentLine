@@ -62,12 +62,14 @@ interface RemoteAccessConfig {
 }
 
 interface DesktopApi {
+  getAppVersion: () => string;
   getServerStatus: () => Promise<ServerStatus>;
   getServerRuntimeState: () => Promise<ServerRuntimeState>;
   startServer: () => Promise<ServerStatus>;
   stopServer: () => Promise<ServerStatus>;
   restartServer: () => Promise<ServerStatus>;
   openDashboard: () => Promise<void>;
+  openExternalUrl: (url: string) => Promise<void>;
   getControlPlaneConfig: () => Promise<ControlPlanePublicConfig>;
   getControlPlaneAccount: () => Promise<ControlPlaneAccountSummary>;
   getControlPlaneStatus: () => Promise<unknown>;

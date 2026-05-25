@@ -17,6 +17,7 @@ const settingsIcons = {
   remote: SidebarIcons.projects,
   providers: SidebarIcons.sourceControl,
   remoteExecutors: SidebarIcons.emulator,
+  updates: SidebarIcons.updates,
   about: SidebarIcons.settings,
   emulator: SidebarIcons.emulator,
   development: SidebarIcons.settings,
@@ -147,6 +148,12 @@ export function getSettingsCategories(
       label: t("settingsRemoteExecutorsTitle"),
       icon: settingsIcons.remoteExecutors,
       description: t("settingsRemoteExecutorsDescription"),
+    },
+    {
+      id: "updates",
+      label: t("settingsUpdatesTitle"),
+      icon: settingsIcons.updates,
+      description: t("settingsUpdatesDescription"),
     },
     {
       id: "about",

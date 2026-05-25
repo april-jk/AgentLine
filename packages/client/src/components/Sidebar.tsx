@@ -56,6 +56,7 @@ interface ControlPlaneAccountSummary {
 }
 
 interface DesktopApiBridge {
+  getAppVersion?: () => string;
   getControlPlaneConfig: () => Promise<{
     baseUrl?: string;
     lastEmail?: string;
