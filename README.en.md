@@ -28,7 +28,7 @@ The core idea is simple: the agent process stays local; the control surface can 
 
 ## Current Status
 
-- Latest public release: [v1.0.1](https://github.com/april-jk/AgentLine/releases/tag/v1.0.1)
+- Latest public release: [v1.0.3](https://github.com/april-jk/AgentLine/releases/tag/v1.0.3)
 - Desktop downloads: macOS DMG, Windows installer/portable executable, Linux AppImage and DEB
 - Mobile downloads: Android APK in the GitHub Release; iOS is currently distributed through TestFlight collection on the website
 
@@ -76,10 +76,10 @@ For most users, download directly from the [latest GitHub Release](https://githu
 
 | Platform | Direct download |
 | --- | --- |
-| macOS | [Download DMG](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop-1.0.1-arm64.dmg) |
-| Windows | [Download installer](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.Setup.1.0.1.exe) / [Download portable](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.1.0.1.exe) |
-| Linux | [Download AppImage](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.1-x86_64.AppImage) / [Download DEB](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.1-amd64.deb) |
-| Android | [Download APK](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine-Mobile-RN-1.0.1-android.apk) |
+| macOS | [Download DMG](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop-1.0.3-arm64.dmg) |
+| Windows | [Download installer](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.Setup.1.0.3.exe) / [Download portable](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.1.0.3.exe) |
+| Linux | [Download AppImage](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.3-x86_64.AppImage) / [Download DEB](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.3-amd64.deb) |
+| Android | [Download APK](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine-Mobile-RN-1.0.3-android.apk) |
 | iOS | [Join the TestFlight collection flow](https://april-jk.github.io/AgentLine/#install) |
 | Other assets | [View full Release](https://github.com/april-jk/AgentLine/releases/latest) |
 
