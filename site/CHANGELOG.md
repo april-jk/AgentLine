@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.42] - 2026-05-25
+
+### Changed
+- Point homepage platform download buttons directly at the published v1.0.5 GitHub Release assets for macOS, Windows, Linux, and Android.
+- Add homepage GitHub project, issue, release, and pull request links so users can inspect the repo and contribute changes.
+
 ## [site-v1.5.41] - 2026-05-24
 
 ### Fixed

@@ -1,11 +1,27 @@
 ---
-import { withBase } from "../lib/paths";
 import Footer from "../components/Footer.astro";
 import Header from "../components/Header.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { withBase } from "../lib/paths";
 
-const releasePage = "https://github.com/april-jk/AgentLine/releases/latest";
-const latestReleaseApi = "https://api.github.com/repos/april-jk/AgentLine/releases/latest";
+const githubRepo = "https://github.com/april-jk/AgentLine";
+const githubIssues = `${githubRepo}/issues`;
+const githubPulls = `${githubRepo}/pulls`;
+const releasePage = `${githubRepo}/releases/tag/v1.0.5`;
+const downloadUrls = {
+  macosDmg:
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop-1.0.5-arm64.dmg",
+  windowsInstaller:
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.Setup.1.0.5.exe",
+  windowsPortable:
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.1.0.5.exe",
+  linuxAppImage:
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-x86_64.AppImage",
+  linuxDeb:
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-amd64.deb",
+  androidApk:
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine-Mobile-RN-1.0.5-android.apk",
+};
 
 type DownloadAction = {
   label: string;
@@ -13,7 +29,6 @@ type DownloadAction = {
   style: "dark" | "disabled" | "primary" | "secondary";
   detail: string;
   href?: string;
-  assetPattern?: string;
   hoverCard?: {
     title: string;
     description: string;
@@ -44,7 +59,7 @@ const downloadPlatforms: DownloadPlatform[] = [
     headline: "AgentLine for macOS",
     description:
       "把 AgentLine 固定在 Apple Silicon 开发机上，是桌面端里最顺手的一种开始方式。任务留在本机持续运行，手机只接手关键决策。",
-    note: "页面会优先匹配最新 GitHub Release 里的 Apple Silicon DMG；匹配失败时会打开最新 Release 页面。",
+    note: "固定指向 v1.0.5 Apple Silicon DMG；完整资产和校验文件在 GitHub Release 页面。",
     visualTone: "desktop",
     primaryImage: withBase("/screenshots/session-complete-real.png"),
     secondaryImage: withBase("/screenshots/overview-projects-real.png"),
@@ -52,11 +67,10 @@ const downloadPlatforms: DownloadPlatform[] = [
     actions: [
       {
         label: "下载 DMG",
-        kind: "asset",
-        assetPattern: "AgentLine\\.Desktop-[\\d.]+-arm64\\.dmg$",
-        href: releasePage,
+        kind: "link",
+        href: downloadUrls.macosDmg,
         style: "primary",
-        detail: "Latest · Apple Silicon",
+        detail: "v1.0.5 · Apple Silicon",
       },
     ],
     iconType: "svg",
@@ -68,7 +82,7 @@ const downloadPlatforms: DownloadPlatform[] = [
     headline: "AgentLine for Windows",
     description:
       "把会话留在这台 Windows 主机上，让桌面执行和手机审批同时成立。适合办公机、家庭主机和常驻远程桌面环境。",
-    note: "页面会优先匹配最新 GitHub Release 里的安装版和便携版；匹配失败时会打开最新 Release 页面。",
+    note: "固定指向 v1.0.5 Windows 安装版和便携版；推荐新用户使用安装版。",
     visualTone: "desktop",
     primaryImage: withBase("/screenshots/session-running-real.png"),
     secondaryImage: withBase("/screenshots/overview-projects-real.png"),
@@ -76,19 +90,17 @@ const downloadPlatforms: DownloadPlatform[] = [
     actions: [
       {
         label: "下载安装版",
-        kind: "asset",
-        assetPattern: "AgentLine\\.Desktop\\.Setup\\.[\\d.]+\\.exe$",
-        href: releasePage,
+        kind: "link",
+        href: downloadUrls.windowsInstaller,
         style: "primary",
-        detail: "Latest · Windows installer",
+        detail: "v1.0.5 · Windows installer",
       },
       {
         label: "下载便携版",
-        kind: "asset",
-        assetPattern: "AgentLine\\.Desktop\\.[\\d.]+\\.exe$",
-        href: releasePage,
+        kind: "link",
+        href: downloadUrls.windowsPortable,
         style: "secondary",
-        detail: "Latest · Portable",
+        detail: "v1.0.5 · Portable",
       },
     ],
     iconType: "svg",
@@ -100,7 +112,7 @@ const downloadPlatforms: DownloadPlatform[] = [
     headline: "AgentLine for Linux",
     description:
       "给常驻 Linux 工作站和主机的轻量入口。AppImage 适合免安装启动，DEB 面向 Debian/Ubuntu；更多架构或包格式以最新 Release 为准。",
-    note: "页面会优先匹配最新 GitHub Release 里的 x86_64 AppImage 和 amd64 DEB；完整资产和校验文件请从最新 Release 页面查看。",
+    note: "固定指向 v1.0.5 x86_64 AppImage 和 amd64 DEB；完整资产和校验文件请从 GitHub Release 页面查看。",
     visualTone: "desktop",
     primaryImage: withBase("/screenshots/sessions-list-real.png"),
     secondaryImage: withBase("/screenshots/overview-projects-real.png"),
@@ -108,26 +120,24 @@ const downloadPlatforms: DownloadPlatform[] = [
     actions: [
       {
         label: "下载 AppImage",
-        kind: "asset",
-        assetPattern: "agentline-desktop-[\\d.]+-x86_64\\.AppImage$",
-        href: releasePage,
+        kind: "link",
+        href: downloadUrls.linuxAppImage,
         style: "primary",
-        detail: "Latest · x86_64",
+        detail: "v1.0.5 · x86_64",
       },
       {
         label: "下载 DEB",
-        kind: "asset",
-        assetPattern: "agentline-desktop-[\\d.]+-amd64\\.deb$",
-        href: releasePage,
+        kind: "link",
+        href: downloadUrls.linuxDeb,
         style: "secondary",
-        detail: "Latest · Debian/Ubuntu",
+        detail: "v1.0.5 · Debian/Ubuntu",
       },
       {
         label: "查看其他 Linux 包",
         kind: "link",
         href: releasePage,
         style: "dark",
-        detail: "Release · 全部资产/校验文件",
+        detail: "v1.0.5 · 全部资产/校验文件",
       },
     ],
     iconType: "svg",
@@ -143,7 +153,8 @@ const downloadPlatforms: DownloadPlatform[] = [
     visualTone: "mobile",
     primaryImage: withBase("/screenshots/session-mobile-real.png"),
     secondaryImage: withBase("/screenshots/session-mobile-complete-real.png"),
-    imageAlt: "AgentLine mobile supervision preview for future App Store release",
+    imageAlt:
+      "AgentLine mobile supervision preview for future App Store release",
     actions: [
       {
         label: "填写收集表",
@@ -162,7 +173,7 @@ const downloadPlatforms: DownloadPlatform[] = [
         kind: "link",
         href: releasePage,
         style: "dark",
-        detail: "桌面端与 Android 已可下载",
+        detail: "v1.0.5 · 桌面端与 Android",
       },
     ],
     iconType: "svg",
@@ -174,7 +185,7 @@ const downloadPlatforms: DownloadPlatform[] = [
     headline: "AgentLine for Android",
     description:
       "离开工位以后，Android 往往是最先接手代理的一端。直接装 APK 就能开始看进度、做审批、接推送。",
-    note: "页面会优先匹配最新 GitHub Release 里的 Android APK；匹配失败时会打开最新 Release 页面。",
+    note: "固定指向 v1.0.5 Android APK；下载后按系统提示允许安装即可。",
     visualTone: "mobile",
     primaryImage: withBase("/screenshots/session-mobile-real.png"),
     secondaryImage: withBase("/screenshots/session-mobile-complete-real.png"),
@@ -182,11 +193,10 @@ const downloadPlatforms: DownloadPlatform[] = [
     actions: [
       {
         label: "下载 APK",
-        kind: "asset",
-        assetPattern: "AgentLine-Mobile-RN-[\\d.]+-android\\.apk$",
-        href: releasePage,
+        kind: "link",
+        href: downloadUrls.androidApk,
         style: "primary",
-        detail: "Latest · 直接安装",
+        detail: "v1.0.5 · 直接安装",
       },
     ],
     iconType: "svg",
@@ -211,6 +221,7 @@ const downloadPlatforms: DownloadPlatform[] = [
       <a href="#compare" aria-label="Comparison"><span>Compare</span></a>
       <a href="#quickstart" aria-label="Quickstart"><span>Start</span></a>
       <a href="#faq" aria-label="FAQ"><span>FAQ</span></a>
+      <a href="#github" aria-label="GitHub project"><span>GitHub</span></a>
       <a href="#finish" aria-label="Download AgentLine"><span>Finish</span></a>
     </nav>
 
@@ -218,7 +229,6 @@ const downloadPlatforms: DownloadPlatform[] = [
       <div
         class="container hero-install-layout"
         data-download-center
-        data-release-api={latestReleaseApi}
       >
         <div class="home-hero-copy">
           <p class="eyebrow">Product</p>
@@ -278,7 +288,6 @@ const downloadPlatforms: DownloadPlatform[] = [
                       ) : (
                         <a
                           href={action.kind === "link" || action.kind === "asset" ? action.href ?? releasePage : releasePage}
-                          data-asset-pattern={action.kind === "asset" ? action.assetPattern : undefined}
                           class={`download-action download-action-${action.style === "secondary" ? "secondary" : action.style === "dark" ? "dark" : "primary"}`}
                           target={action.kind === "link" || action.kind === "asset" ? "_blank" : undefined}
                           rel={action.kind === "link" || action.kind === "asset" ? "noreferrer" : undefined}
@@ -560,6 +569,37 @@ const downloadPlatforms: DownloadPlatform[] = [
       </div>
     </section>
 
+    <section id="github" class="section section-soft github-section">
+      <div class="container github-layout">
+        <div class="home-intro-block github-copy">
+          <p class="eyebrow">Open Source</p>
+          <h2>代码、Release 和贡献入口都在 GitHub。</h2>
+          <p>
+            AgentLine 是 MIT 许可的开源项目。你可以直接查看源码、下载每个平台的发布资产，
+            也可以用 Issue 或 Pull Request 帮我们修问题、提改进。
+          </p>
+          <div class="cta-row github-actions">
+            <a href={githubRepo} class="btn btn-primary" target="_blank" rel="noreferrer">打开 GitHub 项目</a>
+            <a href={githubPulls} class="btn btn-secondary" target="_blank" rel="noreferrer">提交 Pull Request</a>
+          </div>
+        </div>
+        <div class="github-links" aria-label="GitHub links">
+          <a href={releasePage} class="github-link-card" target="_blank" rel="noreferrer">
+            <span>Release</span>
+            <strong>v1.0.5 下载与校验</strong>
+          </a>
+          <a href={githubIssues} class="github-link-card" target="_blank" rel="noreferrer">
+            <span>Issues</span>
+            <strong>反馈问题或提出需求</strong>
+          </a>
+          <a href={githubPulls} class="github-link-card" target="_blank" rel="noreferrer">
+            <span>Pull Requests</span>
+            <strong>贡献修复和改进</strong>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <section id="finish" class="section final-cta">
       <div class="container">
         <h2>把等待代理，变成调度代理。</h2>
@@ -580,39 +620,8 @@ document.querySelectorAll("[data-download-center]").forEach(function (root) {
   var tabs = Array.from(root.querySelectorAll("[role='tab']"));
   var panels = Array.from(root.querySelectorAll("[role='tabpanel']"));
   var hoverCards = Array.from(root.querySelectorAll(".download-action-group.has-hover-card"));
-  var assetLinks = Array.from(root.querySelectorAll("[data-asset-pattern]"));
-  var releaseApi = root.getAttribute("data-release-api");
 
   if (!tablist || !tabs.length || !panels.length) return;
-
-  if (releaseApi && assetLinks.length && "fetch" in window) {
-    fetch(releaseApi, { headers: { Accept: "application/vnd.github+json" } })
-      .then(function (response) {
-        if (!response.ok) throw new Error("Release lookup failed");
-        return response.json();
-      })
-      .then(function (release) {
-        var assets = Array.isArray(release.assets) ? release.assets : [];
-        assetLinks.forEach(function (link) {
-          var pattern = link.getAttribute("data-asset-pattern");
-          if (!pattern) return;
-
-          var matcher = new RegExp(pattern);
-          var asset = assets.find(function (item) {
-            return matcher.test(item.name);
-          });
-
-          if (asset && asset.browser_download_url) {
-            link.href = asset.browser_download_url;
-          }
-        });
-      })
-      .catch(function () {
-        assetLinks.forEach(function (link) {
-          link.removeAttribute("data-asset-pattern");
-        });
-      });
-  }
 
   function moveIndicator(tab) {
     var tabRect = tab.getBoundingClientRect();

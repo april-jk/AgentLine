@@ -301,6 +301,13 @@ li {
   border-color: var(--accent);
 }
 
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
 .section {
   padding: 34px 0;
 }
@@ -412,6 +419,56 @@ li {
 
 .final-cta {
   text-align: center;
+}
+
+.github-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.github-copy {
+  max-width: 760px;
+}
+
+.github-actions {
+  margin-top: 18px;
+  justify-content: flex-start;
+}
+
+.github-links {
+  display: grid;
+  gap: 10px;
+}
+
+.github-link-card {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  text-decoration: none;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+.github-link-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.github-link-card span {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.github-link-card strong {
+  font-size: 15px;
 }
 
 /* Anchor strip + snap image/text panels */
@@ -1862,6 +1919,7 @@ footer a:hover {
   .hero-install-layout,
   .home-value,
   .proof-grid,
+  .github-layout,
   .quickstart-layout,
   .home-faq-layout,
   .theme-feature {
@@ -2019,6 +2077,14 @@ footer a:hover {
 
   .quickstart-cards {
     grid-template-columns: 1fr;
+  }
+
+  .github-actions {
+    align-items: stretch;
+  }
+
+  .github-actions .btn {
+    width: 100%;
   }
 
   .hero-install-layout {
