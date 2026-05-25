@@ -10,6 +10,7 @@ const packageRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(packageRoot, "../..");
 const bundleRoot = path.join(repoRoot, "dist", "npm-package");
 const runtimeRoot = path.join(packageRoot, "runtime", "agentline");
+const runtimeNodeRoot = path.join(packageRoot, "runtime", "node");
 
 function run(command, args, cwd) {
   execFileSync(command, args, {
@@ -48,9 +49,19 @@ function installRuntimeDependencies() {
   );
 }
 
+function copyEmbeddedNodeRuntime() {
+  if (process.platform !== "win32") {
+    return;
+  }
+
+  mkdirSync(runtimeNodeRoot, { recursive: true });
+  cpSync(process.execPath, path.join(runtimeNodeRoot, "node.exe"));
+}
+
 ensureCleanRuntime();
 buildServerBundle();
 copyBundle();
 installRuntimeDependencies();
+copyEmbeddedNodeRuntime();
 
 console.log(`[prepare-runtime] Runtime prepared at ${runtimeRoot}`);

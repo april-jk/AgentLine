@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-05-25
+
+### Fixed
+- Fix Windows portable desktop startup by launching the embedded backend with a bundled Node runtime instead of reusing the portable Electron executable as Node.
+- Improve desktop startup diagnostics so backend failures include recent server output.
+
+### Added
+- Add a Windows packaged-backend smoke test to the Electron release workflow.
+
 ## [1.0.3] - 2026-05-25
 
 ### Added

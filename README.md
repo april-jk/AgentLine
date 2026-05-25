@@ -28,7 +28,7 @@ AgentLine 让 Claude Code、Codex、Gemini、OpenCode 这类 Agent 会话继续�
 
 ## 当前状态
 
-- 最新公开版本：[v1.0.3](https://github.com/april-jk/AgentLine/releases/tag/v1.0.3)
+- 最新公开版本：[v1.0.4](https://github.com/april-jk/AgentLine/releases/tag/v1.0.4)
 - 桌面端下载：macOS DMG、Windows 安装版/便携版、Linux AppImage 和 DEB
 - 移动端下载：GitHub Release 提供 Android APK；iOS 当前通过官网收集 TestFlight 内测信息
 
@@ -76,10 +76,10 @@ Provider 会根据本机已安装的 CLI 和配置自动检测。
 
 | 平台 | 直接下载 |
 | --- | --- |
-| macOS | [下载 DMG](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop-1.0.3-arm64.dmg) |
-| Windows | [下载安装版](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.Setup.1.0.3.exe) / [下载便携版](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.1.0.3.exe) |
-| Linux | [下载 AppImage](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.3-x86_64.AppImage) / [下载 DEB](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.3-amd64.deb) |
-| Android | [下载 APK](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine-Mobile-RN-1.0.3-android.apk) |
+| macOS | [下载 DMG](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop-1.0.4-arm64.dmg) |
+| Windows | [下载安装版](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.Setup.1.0.4.exe) / [下载便携版](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.1.0.4.exe) |
+| Linux | [下载 AppImage](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.4-x86_64.AppImage) / [下载 DEB](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.4-amd64.deb) |
+| Android | [下载 APK](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine-Mobile-RN-1.0.4-android.apk) |
 | iOS | [填写 TestFlight 收集表](https://april-jk.github.io/AgentLine/#install) |
 | 其它资产 | [查看完整 Release](https://github.com/april-jk/AgentLine/releases/latest) |
 

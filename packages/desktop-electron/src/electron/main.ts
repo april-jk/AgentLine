@@ -772,6 +772,16 @@ const ensureBackendReady = async (): Promise<boolean> => {
   return false;
 };
 
+const formatBackendStartupFailure = (): string => {
+  const status = getServerManager().getStatus();
+  return [
+    `AgentLine backend did not become ready at ${getDashboardBaseUrl()}.`,
+    status.message ? `Server status: ${status.message}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+};
+
 const tryAttachDashboard = async (): Promise<void> => {
   if (!mainWindow) {
     return;
@@ -855,7 +865,10 @@ const createWindow = async (): Promise<void> => {
     },
   );
 
-  await waitForDashboard();
+  const ready = await waitForDashboard();
+  if (!ready) {
+    throw new Error(formatBackendStartupFailure());
+  }
   await mainWindow.loadURL(getDashboardUrl());
 
   mainWindow.on("closed", () => {
@@ -1008,7 +1021,10 @@ app
       }
     });
 
-    await ensureBackendReady();
+    const backendReady = await ensureBackendReady();
+    if (!backendReady) {
+      throw new Error(formatBackendStartupFailure());
+    }
     await createWindow();
     createTray();
 

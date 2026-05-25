@@ -1,6 +1,7 @@
 import { type ChildProcessByStdio, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { existsSync } from "node:fs";
 import { access } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -22,6 +23,7 @@ export interface ServerStatus {
 }
 
 const SERVER_PORT = 3400;
+const OUTPUT_TAIL_LIMIT = 16_384;
 
 type ManagedChildProcess = ChildProcessByStdio<null, Readable, Readable>;
 
@@ -60,6 +62,7 @@ export class ServerManager extends EventEmitter {
   private readonly desktopAuthToken: string;
   private child: ManagedChildProcess | null = null;
   private childUsesProcessGroup = false;
+  private childOutputTail = "";
   private status: ServerStatus;
 
   constructor(options: ServerManagerOptions) {
@@ -139,12 +142,15 @@ export class ServerManager extends EventEmitter {
 
     this.child = child;
     this.childUsesProcessGroup = process.platform !== "win32";
+    this.childOutputTail = "";
 
     child.stdout.on("data", (chunk) => {
+      this.recordChildOutput("stdout", chunk);
       process.stdout.write(`[desktop-electron][server] ${chunk}`);
     });
 
     child.stderr.on("data", (chunk) => {
+      this.recordChildOutput("stderr", chunk);
       process.stderr.write(`[desktop-electron][server] ${chunk}`);
     });
 
@@ -172,9 +178,15 @@ export class ServerManager extends EventEmitter {
       this.child = null;
       this.childUsesProcessGroup = false;
       const wasStopping = this.status.state === "stopping";
+      const outputTail = this.childOutputTail.trim();
       const message = wasStopping
         ? "Server stopped"
-        : `Server exited unexpectedly (code=${code ?? "null"}, signal=${signal ?? "null"})`;
+        : [
+            `Server exited unexpectedly (code=${code ?? "null"}, signal=${signal ?? "null"})`,
+            outputTail ? `Recent server output:\n${outputTail}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n\n");
 
       this.updateStatus({
         state: wasStopping ? "stopped" : "error",
@@ -235,6 +247,16 @@ export class ServerManager extends EventEmitter {
     this.emit("status", this.getStatus());
   }
 
+  private recordChildOutput(streamName: "stdout" | "stderr", chunk: unknown) {
+    const text = Buffer.isBuffer(chunk)
+      ? chunk.toString("utf-8")
+      : String(chunk);
+    this.childOutputTail = `${this.childOutputTail}[${streamName}] ${text}`;
+    if (this.childOutputTail.length > OUTPUT_TAIL_LIMIT) {
+      this.childOutputTail = this.childOutputTail.slice(-OUTPUT_TAIL_LIMIT);
+    }
+  }
+
   private killManagedProcess(signal: NodeJS.Signals): void {
     if (!this.child?.pid) {
       return;
@@ -292,14 +314,15 @@ export class ServerManager extends EventEmitter {
 
     if (this.packaged) {
       const serverEntry = path.join(this.runtimeRoot ?? "", "dist/index.js");
+      const embeddedNodeCommand = this.getEmbeddedNodeCommand();
       return {
-        command: process.execPath,
+        command: embeddedNodeCommand ?? process.execPath,
         args: [serverEntry],
         cwd: this.runtimeRoot ?? this.repoRoot,
         env: {
           ...sharedEnv,
           NODE_ENV: "production",
-          ELECTRON_RUN_AS_NODE: "1",
+          ...(embeddedNodeCommand ? {} : { ELECTRON_RUN_AS_NODE: "1" }),
         },
       };
     }
@@ -313,5 +336,20 @@ export class ServerManager extends EventEmitter {
         NODE_ENV: "development",
       },
     };
+  }
+
+  private getEmbeddedNodeCommand(): string | null {
+    if (!this.runtimeRoot) {
+      return null;
+    }
+
+    const executableName = process.platform === "win32" ? "node.exe" : "node";
+    const candidate = path.resolve(
+      this.runtimeRoot,
+      "..",
+      "node",
+      executableName,
+    );
+    return existsSync(candidate) ? candidate : null;
   }
 }
