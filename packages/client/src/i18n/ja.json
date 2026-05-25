@@ -724,6 +724,7 @@
   "updatesVersionTitle": "バージョン",
   "updatesServerVersion": "サーバー:",
   "updatesClientVersion": "クライアント:",
+  "updatesUnknownVersion": "インストール済みバージョン不明",
   "updatesVersionAvailable": "(v{version} が利用可能)",
   "updatesUpToDate": "(最新)",
   "updatesUnableRefresh": "現在アップデート状態を更新できません。",

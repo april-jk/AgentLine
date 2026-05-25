@@ -13,7 +13,13 @@ export function UpdatesSettings() {
   const nativeShellAppVersion = nativeShellInfo?.version ?? null;
   const nativeShellType = nativeShellInfo?.type ?? null;
   const nativeShellPlatform = nativeShellInfo?.platform;
-  const displayedClientVersion = nativeShellAppVersion ?? __APP_VERSION__;
+  const isNativeShell = !!nativeShellInfo;
+  const hasNativeShellVersion = !!nativeShellAppVersion;
+  const displayedClientVersion = hasNativeShellVersion
+    ? `v${nativeShellAppVersion}`
+    : isNativeShell
+      ? t("updatesUnknownVersion")
+      : `v${__APP_VERSION__}`;
   const [nativeUpdate, setNativeUpdate] = useState<UpdateManifest | null>(null);
   const [nativeUpdateChecking, setNativeUpdateChecking] = useState(false);
   const [nativeUpdateError, setNativeUpdateError] = useState<Error | null>(
@@ -33,18 +39,32 @@ export function UpdatesSettings() {
   const showRelayResumeUpdateWarning =
     isRelayConnection && !!versionInfo && !hasResumeProtocolSupport;
   const checkNativeUpdate = useCallback(async () => {
-    if (!nativeShellAppVersion) return;
-
     setNativeUpdateChecking(true);
     setNativeUpdateError(null);
     try {
-      const result = await fetchAgentLineUpdate(
-        nativeShellAppVersion,
-        nativeShellType === "desktop-electron"
-          ? `AgentLine-Desktop-Electron/${nativeShellAppVersion}`
-          : `AgentLine-Mobile-RN/${nativeShellAppVersion}`,
-      );
-      setNativeUpdate(result.status === "available" ? result.update : null);
+      if (nativeShellAppVersion) {
+        const result = await fetchAgentLineUpdate(
+          nativeShellAppVersion,
+          nativeShellType === "desktop-electron"
+            ? `AgentLine-Desktop-Electron/${nativeShellAppVersion}`
+            : `AgentLine-Mobile-RN/${nativeShellAppVersion}`,
+        );
+        setNativeUpdate(result.status === "available" ? result.update : null);
+        return;
+      }
+
+      if (nativeShellInfo?.legacy) {
+        const response = await fetch("https://relay.oneceo.ai/version", {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "AgentLine-Mobile-RN/legacy",
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`Update check failed: ${response.status}`);
+        }
+        setNativeUpdate((await response.json()) as UpdateManifest);
+      }
     } catch (error) {
       setNativeUpdateError(
         error instanceof Error ? error : new Error(String(error)),
@@ -52,25 +72,27 @@ export function UpdatesSettings() {
     } finally {
       setNativeUpdateChecking(false);
     }
-  }, [nativeShellAppVersion, nativeShellType]);
+  }, [nativeShellAppVersion, nativeShellInfo?.legacy, nativeShellType]);
 
   useEffect(() => {
-    void checkNativeUpdate();
-  }, [checkNativeUpdate]);
+    if (isNativeShell) {
+      void checkNativeUpdate();
+    }
+  }, [checkNativeUpdate, isNativeShell]);
 
-  const effectiveClientUpdate = nativeShellAppVersion
+  const effectiveClientUpdate = isNativeShell
     ? nativeUpdate
     : (versionInfo?.update ?? null);
-  const effectiveClientLatest = nativeShellAppVersion
+  const effectiveClientLatest = isNativeShell
     ? nativeUpdate?.version
     : versionInfo?.latest;
-  const effectiveClientUpdateAvailable = nativeShellAppVersion
+  const effectiveClientUpdateAvailable = isNativeShell
     ? Boolean(nativeUpdate)
     : Boolean(versionInfo?.updateAvailable);
-  const effectiveVersionError = nativeShellAppVersion
+  const effectiveVersionError = isNativeShell
     ? nativeUpdateError
     : versionError;
-  const effectiveVersionLoading = nativeShellAppVersion
+  const effectiveVersionLoading = isNativeShell
     ? nativeUpdateChecking
     : versionLoading;
   const bestUpdateDownload = selectBestDownload(
@@ -82,7 +104,7 @@ export function UpdatesSettings() {
     bestUpdateDownload?.url ?? effectiveClientUpdate?.releaseUrl;
 
   const checkUpdates = () => {
-    if (nativeShellAppVersion) {
+    if (isNativeShell) {
       void checkNativeUpdate();
       return;
     }
@@ -145,7 +167,7 @@ export function UpdatesSettings() {
               )}
             </p>
             <p>
-              {t("updatesClientVersion")} v{displayedClientVersion}
+              {t("updatesClientVersion")} {displayedClientVersion}
               {effectiveClientUpdateAvailable && effectiveClientLatest ? (
                 <span className="settings-update-available">
                   {" "}

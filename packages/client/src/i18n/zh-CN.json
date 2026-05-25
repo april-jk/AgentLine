@@ -724,6 +724,7 @@
   "updatesVersionTitle": "版本",
   "updatesServerVersion": "服务端：",
   "updatesClientVersion": "客户端：",
+  "updatesUnknownVersion": "未知安装版本",
   "updatesVersionAvailable": "（可升级到 v{version}）",
   "updatesUpToDate": "（已是最新）",
   "updatesUnableRefresh": "暂时无法刷新更新状态。",

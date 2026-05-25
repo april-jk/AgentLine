@@ -2,8 +2,9 @@ export type NativeShellPlatform = "android" | "ios" | "macos" | "windows" | "lin
 
 export interface NativeShellInfo {
   type: "mobile-rn" | "desktop-electron";
-  version: string;
+  version?: string;
   platform?: NativeShellPlatform;
+  legacy?: boolean;
 }
 
 export function getNativeShellAppVersion(): string | null {
@@ -53,14 +54,34 @@ export function getNativeShellInfo(): NativeShellInfo | null {
       "agentline-native-app-version",
     );
     const version = fromStorage?.trim();
-    return version
-      ? {
-          type: "mobile-rn",
-          version,
-          platform: getMobilePlatform(),
-        }
-      : null;
+    if (version) {
+      return {
+        type: "mobile-rn",
+        version,
+        platform: getMobilePlatform(),
+      };
+    }
+  } catch {
+    // Continue to legacy shell detection below.
+  }
+
+  try {
+    if (
+      window.__AGENTLINE_NATIVE_SHELL__ ||
+      window.localStorage.getItem("agentline-native-shell") === "1" ||
+      typeof window.ReactNativeWebView?.postMessage === "function" ||
+      new URLSearchParams(window.location.search).has("mobile_entry") ||
+      /reactnativewebview/i.test(navigator.userAgent)
+    ) {
+      return {
+        type: "mobile-rn",
+        platform: getMobilePlatform(),
+        legacy: true,
+      };
+    }
   } catch {
     return null;
   }
+
+  return null;
 }

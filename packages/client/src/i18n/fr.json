@@ -724,6 +724,7 @@
   "updatesVersionTitle": "Version",
   "updatesServerVersion": "Serveur :",
   "updatesClientVersion": "Client :",
+  "updatesUnknownVersion": "version installée inconnue",
   "updatesVersionAvailable": "(v{version} disponible)",
   "updatesUpToDate": "(à jour)",
   "updatesUnableRefresh": "Impossible d’actualiser l’état des mises à jour pour le moment.",

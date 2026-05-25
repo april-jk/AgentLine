@@ -137,6 +137,46 @@ describe("SettingsLayout", () => {
     ).toBe("https://example.invalid/mobile.apk");
   });
 
+  it("falls back to the release manifest for legacy mobile shells", async () => {
+    window.localStorage.setItem("agentline-native-shell", "1");
+    Object.defineProperty(navigator, "userAgent", {
+      configurable: true,
+      value: "Mozilla/5.0 (Linux; Android 14)",
+    });
+
+    render(
+      <I18nProvider>
+        <MemoryRouter initialEntries={["/settings/update"]}>
+          <Routes>
+            <Route path="/settings/:category" element={<SettingsLayout />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nProvider>,
+    );
+
+    expect(screen.getByText("Client: unknown installed version")).toBeDefined();
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "https://relay.oneceo.ai/version",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "User-Agent": "AgentLine-Mobile-RN/legacy",
+          }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getAllByText("(v1.0.2 available)").length).toBeGreaterThan(
+        0,
+      );
+    });
+    expect(
+      (
+        await screen.findByText("Download update", { selector: "a" })
+      ).getAttribute("href"),
+    ).toBe("https://example.invalid/mobile.apk");
+  });
+
   it("uses the desktop shell version for desktop update settings", async () => {
     Object.defineProperty(window, "desktopApi", {
       configurable: true,
