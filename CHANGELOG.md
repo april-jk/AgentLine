@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-05-25
+
+### Fixed
+- Fix Windows desktop packaged backend startup by normalizing bundled ESM import paths to forward-slash separators.
+- Keep the bundled Windows Node runtime smoke test in the Electron release workflow so packaged backend startup regressions block publishing.
+
 ## [1.0.4] - 2026-05-25
 
 ### Fixed

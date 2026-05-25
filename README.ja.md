@@ -28,7 +28,7 @@ AgentLine は、Claude Code、Codex、Gemini、OpenCode 形式の Agent セッ�
 
 ## 現在の状態
 
-- 最新公開版：[v1.0.4](https://github.com/april-jk/AgentLine/releases/tag/v1.0.4)
+- 最新公開版：[v1.0.5](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5)
 - デスクトップ版：macOS DMG、Windows installer/portable executable、Linux AppImage と DEB
 - モバイル版：GitHub Release に Android APK を公開中。iOS は現在、公式サイトで TestFlight 情報を収集中
 
@@ -76,10 +76,10 @@ Provider は、インストール済み CLI とローカル設定から自動検
 
 | Platform | 直接ダウンロード |
 | --- | --- |
-| macOS | [DMG をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop-1.0.4-arm64.dmg) |
-| Windows | [Installer をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.Setup.1.0.4.exe) / [Portable をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.1.0.4.exe) |
-| Linux | [AppImage をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.4-x86_64.AppImage) / [DEB をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.4-amd64.deb) |
-| Android | [APK をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine-Mobile-RN-1.0.4-android.apk) |
+| macOS | [DMG をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop-1.0.5-arm64.dmg) |
+| Windows | [Installer をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.Setup.1.0.5.exe) / [Portable をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine.Desktop.1.0.5.exe) |
+| Linux | [AppImage をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.5-x86_64.AppImage) / [DEB をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/agentline-desktop-1.0.5-amd64.deb) |
+| Android | [APK をダウンロード](https://github.com/april-jk/AgentLine/releases/latest/download/AgentLine-Mobile-RN-1.0.5-android.apk) |
 | iOS | [TestFlight 収集フローに参加](https://april-jk.github.io/AgentLine/#install) |
 | その他のアセット | [Release 全体を見る](https://github.com/april-jk/AgentLine/releases/latest) |
 

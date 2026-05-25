@@ -2,7 +2,7 @@
   "expo": {
     "name": "AgentLine",
     "slug": "agentline-mobile-rn",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "AgentLine mobile client for securely connecting to your desktop AI sessions over direct LAN or relay mode.",
     "icon": "./assets/icon.png",
     "newArchEnabled": false,

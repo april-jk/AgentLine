@@ -34,7 +34,8 @@ const SERVER_PACKAGE_JSON = JSON.parse(
 const STAGING_DIR = path.join(ROOT_DIR, "dist/npm-package");
 
 // Version for the bundled runtime package - use the release-marked server version unless CI overrides it.
-const NPM_VERSION = process.env.NPM_VERSION || SERVER_PACKAGE_JSON.version || "0.0.0";
+const NPM_VERSION =
+  process.env.NPM_VERSION || SERVER_PACKAGE_JSON.version || "0.0.0";
 
 interface StepResult {
   step: string;
@@ -198,7 +199,9 @@ step("Rewrite @agentline/shared imports", () => {
         const content = fs.readFileSync(fullPath, "utf-8");
         if (!content.includes("@agentline/shared")) continue;
 
-        let relPath = path.relative(path.dirname(fullPath), sharedEntry);
+        let relPath = path
+          .relative(path.dirname(fullPath), sharedEntry)
+          .replaceAll(path.sep, path.posix.sep);
         // Ensure it starts with ./ for Node.js ESM resolution
         if (!relPath.startsWith(".")) relPath = `./${relPath}`;
 
