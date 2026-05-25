@@ -566,6 +566,7 @@ export function createApp(options: AppOptions): AppResult {
       geminiReaderFactory,
       serverSettingsService: options.serverSettingsService,
       modelInfoService: options.modelInfoService,
+      preferLegacySdk: Boolean(options.sdk && !options.realSdk),
     }),
   );
   app.route(

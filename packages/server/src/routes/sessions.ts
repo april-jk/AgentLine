@@ -96,6 +96,18 @@ function isCodexProviderName(
   return provider === "codex" || provider === "codex-oss";
 }
 
+function resolveRequestedProviderName(
+  deps: SessionsDeps,
+  bodyProvider: ProviderName | undefined,
+  project: Project,
+): ProviderName | undefined {
+  if (deps.preferLegacySdk && !bodyProvider) {
+    return undefined;
+  }
+
+  return bodyProvider ?? project.defaultSessionProvider ?? project.provider;
+}
+
 async function loadCodexResumeOptions(
   deps: SessionsDeps,
   projectPath: string,
@@ -146,6 +158,8 @@ export interface SessionsDeps {
   serverSettingsService?: ServerSettingsService;
   /** ModelInfoService for context window lookups */
   modelInfoService?: ModelInfoService;
+  /** Use the legacy injected SDK in tests instead of resolving concrete providers. */
+  preferLegacySdk?: boolean;
 }
 
 interface StartSessionBody {
@@ -875,8 +889,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     const globalInstructions =
       deps.serverSettingsService?.getSetting("globalInstructions") || undefined;
-    const providerName =
-      body.provider ?? project.defaultSessionProvider ?? project.provider;
+    const providerName = resolveRequestedProviderName(
+      deps,
+      body.provider,
+      project,
+    );
 
     const result = await deps.supervisor.startSession(
       project.path,
@@ -971,8 +988,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     const globalInstructions =
       deps.serverSettingsService?.getSetting("globalInstructions") || undefined;
-    const providerName =
-      body.provider ?? project.defaultSessionProvider ?? project.provider;
+    const providerName = resolveRequestedProviderName(
+      deps,
+      body.provider,
+      project,
+    );
 
     const result = await deps.supervisor.createSession(
       project.path,

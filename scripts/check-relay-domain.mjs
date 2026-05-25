@@ -10,7 +10,6 @@ const REQUIRED_RELAY_URLS = [
   "wss://relay.oneceo.ai/ws",
   "https://relay.oneceo.ai/remote/login",
   "https://relay.oneceo.ai/version",
-  "https://relay.oneceo.ai/version/{{current_version}}",
   "https://relay.oneceo.ai/bridge/version",
   "https://relay.oneceo.ai/tauri/{{target}}/{{arch}}/{{current_version}}",
 ];
@@ -24,13 +23,9 @@ const REQUIRED_FILES_BY_URL = new Map([
   ],
   [
     "https://relay.oneceo.ai/version",
-    ["packages/server/src/routes/version.ts"],
-  ],
-  [
-    "https://relay.oneceo.ai/version/{{current_version}}",
     [
-      "packages/mobile-rn/src/lib/updateCheck.ts",
-      "packages/desktop-electron/src/renderer/App.tsx",
+      "packages/server/src/routes/version.ts",
+      "packages/shared/src/update-check.ts",
     ],
   ],
   [
@@ -43,7 +38,10 @@ const REQUIRED_FILES_BY_URL = new Map([
   ],
 ]);
 
-const APPROVED_FIRST_PARTY_DOMAINS = new Set(["relay.oneceo.ai"]);
+const APPROVED_FIRST_PARTY_DOMAINS = new Set([
+  "agentline.oneceo.ai",
+  "relay.oneceo.ai",
+]);
 
 const forbiddenLiterals = [
   AGENTLINE_DOMAIN,
