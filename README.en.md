@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://agentline.oneceo.ai/"><img alt="Website" src="https://img.shields.io/badge/Website-agentline.oneceo.ai-111827?style=for-the-badge"></a>
-  <a href="https://github.com/april-jk/AgentLine/releases/tag/v1.0.5"><img alt="Latest release" src="https://img.shields.io/github/v/release/april-jk/AgentLine?style=for-the-badge&label=Release&color=2563eb"></a>
+  <a href="https://github.com/april-jk/AgentLine/releases/tag/v1.0.6"><img alt="Latest release" src="https://img.shields.io/github/v/release/april-jk/AgentLine?style=for-the-badge&label=Release&color=2563eb"></a>
   <a href="#license"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-7c3aed?style=for-the-badge"></a>
 </p>
 
@@ -35,7 +35,7 @@ It is built for moments like these:
 
 ## Current Status
 
-- Latest public release: [v1.0.5](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5)
+- Latest public release: [v1.0.6](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6)
 - Desktop downloads: macOS DMG, Windows installer/portable executable, Linux AppImage and DEB
 - Mobile downloads: Android APK in the GitHub Release; iOS is currently distributed through TestFlight collection on the website
 
@@ -88,16 +88,16 @@ Provider availability is detected from the installed CLIs and local configuratio
 
 ## Install
 
-For most users, download directly from the [latest GitHub Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5):
+For most users, download directly from the [latest GitHub Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6):
 
 | Platform | Direct download |
 | --- | --- |
-| macOS | [Download DMG](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop-1.0.5-arm64.dmg) |
-| Windows | [Download installer](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.Setup.1.0.5.exe) / [Download portable](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.1.0.5.exe) |
-| Linux | [Download AppImage](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-x86_64.AppImage) / [Download DEB](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-amd64.deb) |
-| Android | [Download APK](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine-Mobile-RN-1.0.5-android.apk) |
+| macOS | [Download DMG](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop-1.0.6-arm64.dmg) |
+| Windows | [Download installer](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop.Setup.1.0.6.exe) / [Download portable](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop.1.0.6.exe) |
+| Linux | [Download AppImage](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/agentline-desktop-1.0.6-x86_64.AppImage) / [Download DEB](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/agentline-desktop-1.0.6-amd64.deb) |
+| Android | [Download APK](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine-Mobile-RN-1.0.6-android.apk) |
 | iOS | [Join the TestFlight collection flow](https://agentline.oneceo.ai/#install) |
-| Other assets | [View full Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5) |
+| Other assets | [View full Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6) |
 
 After installing the desktop app, keep it running on the machine that should own the agent sessions. Use the Android app or a mobile browser to supervise from another device.
 

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.44] - 2026-05-26
+
+### Changed
+- Point homepage platform download buttons directly at the published v1.0.6 GitHub Release assets.
+
 ## [site-v1.5.43] - 2026-05-26
 
 ### Changed

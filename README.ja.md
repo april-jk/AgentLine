@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://agentline.oneceo.ai/"><img alt="Website" src="https://img.shields.io/badge/Website-agentline.oneceo.ai-111827?style=for-the-badge"></a>
-  <a href="https://github.com/april-jk/AgentLine/releases/tag/v1.0.5"><img alt="Latest release" src="https://img.shields.io/github/v/release/april-jk/AgentLine?style=for-the-badge&label=Release&color=2563eb"></a>
+  <a href="https://github.com/april-jk/AgentLine/releases/tag/v1.0.6"><img alt="Latest release" src="https://img.shields.io/github/v/release/april-jk/AgentLine?style=for-the-badge&label=Release&color=2563eb"></a>
   <a href="#license"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-7c3aed?style=for-the-badge"></a>
 </p>
 
@@ -35,7 +35,7 @@ AgentLine は、AI coding agent のためのローカルファーストな監督
 
 ## 現在の状態
 
-- 最新公開版：[v1.0.5](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5)
+- 最新公開版：[v1.0.6](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6)
 - デスクトップ版：macOS DMG、Windows installer/portable executable、Linux AppImage と DEB
 - モバイル版：GitHub Release に Android APK を公開中。iOS は現在、公式サイトで TestFlight 情報を収集中
 
@@ -88,16 +88,16 @@ Provider は、インストール済み CLI とローカル設定から自動検
 
 ## インストール
 
-多くの場合は [latest GitHub Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5) から直接ダウンロードしてください。
+多くの場合は [latest GitHub Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6) から直接ダウンロードしてください。
 
 | Platform | 直接ダウンロード |
 | --- | --- |
-| macOS | [DMG をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop-1.0.5-arm64.dmg) |
-| Windows | [Installer をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.Setup.1.0.5.exe) / [Portable をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.1.0.5.exe) |
-| Linux | [AppImage をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-x86_64.AppImage) / [DEB をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-amd64.deb) |
-| Android | [APK をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine-Mobile-RN-1.0.5-android.apk) |
+| macOS | [DMG をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop-1.0.6-arm64.dmg) |
+| Windows | [Installer をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop.Setup.1.0.6.exe) / [Portable をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop.1.0.6.exe) |
+| Linux | [AppImage をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/agentline-desktop-1.0.6-x86_64.AppImage) / [DEB をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/agentline-desktop-1.0.6-amd64.deb) |
+| Android | [APK をダウンロード](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine-Mobile-RN-1.0.6-android.apk) |
 | iOS | [TestFlight 収集フローに参加](https://agentline.oneceo.ai/#install) |
-| その他のアセット | [Release 全体を見る](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5) |
+| その他のアセット | [Release 全体を見る](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6) |
 
 デスクトップアプリをインストールしたら、Agent セッションを所有するマシンで起動したままにします。その後、Android アプリまたはモバイルブラウザから別デバイスで監督できます。
 

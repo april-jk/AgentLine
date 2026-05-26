@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://agentline.oneceo.ai/"><img alt="官网" src="https://img.shields.io/badge/Website-agentline.oneceo.ai-111827?style=for-the-badge"></a>
-  <a href="https://github.com/april-jk/AgentLine/releases/tag/v1.0.5"><img alt="最新版本" src="https://img.shields.io/github/v/release/april-jk/AgentLine?style=for-the-badge&label=Release&color=2563eb"></a>
+  <a href="https://github.com/april-jk/AgentLine/releases/tag/v1.0.6"><img alt="最新版本" src="https://img.shields.io/github/v/release/april-jk/AgentLine?style=for-the-badge&label=Release&color=2563eb"></a>
   <a href="#license"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-7c3aed?style=for-the-badge"></a>
 </p>
 
@@ -36,7 +36,7 @@ AgentLine 是一个本机优先的 Agent 监督控制台。它让 Claude Code、
 ## 当前状态
 
 - 官方网站：[agentline.oneceo.ai](https://agentline.oneceo.ai/)（下载桌面端/移动端、查看产品介绍和 GitHub 贡献入口）
-- 最新公开版本：[v1.0.5](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5)
+- 最新公开版本：[v1.0.6](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6)
 - 桌面端下载：macOS DMG、Windows 安装版/便携版、Linux AppImage 和 DEB
 - 移动端下载：GitHub Release 提供 Android APK；iOS 当前通过官网收集 TestFlight 内测信息
 
@@ -89,16 +89,16 @@ Provider 会根据本机已安装的 CLI 和配置自动检测。
 
 ## 安装
 
-大多数用户直接下载 [最新 GitHub Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5) 里的安装包：
+大多数用户直接下载 [最新 GitHub Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6) 里的安装包：
 
 | 平台 | 直接下载 |
 | --- | --- |
-| macOS | [下载 DMG](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop-1.0.5-arm64.dmg) |
-| Windows | [下载安装版](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.Setup.1.0.5.exe) / [下载便携版](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.1.0.5.exe) |
-| Linux | [下载 AppImage](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-x86_64.AppImage) / [下载 DEB](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-amd64.deb) |
-| Android | [下载 APK](https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine-Mobile-RN-1.0.5-android.apk) |
+| macOS | [下载 DMG](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop-1.0.6-arm64.dmg) |
+| Windows | [下载安装版](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop.Setup.1.0.6.exe) / [下载便携版](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop.1.0.6.exe) |
+| Linux | [下载 AppImage](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/agentline-desktop-1.0.6-x86_64.AppImage) / [下载 DEB](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/agentline-desktop-1.0.6-amd64.deb) |
+| Android | [下载 APK](https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine-Mobile-RN-1.0.6-android.apk) |
 | iOS | [填写 TestFlight 收集表](https://agentline.oneceo.ai/#install) |
-| 其它资产 | [查看完整 Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.5) |
+| 其它资产 | [查看完整 Release](https://github.com/april-jk/AgentLine/releases/tag/v1.0.6) |
 
 安装桌面端后，让它运行在真正承载 Agent 会话的机器上。之后可以用 Android App 或手机浏览器从其它设备接手监督。
 

@@ -7,20 +7,20 @@ import { withBase } from "../lib/paths";
 const githubRepo = "https://github.com/april-jk/AgentLine";
 const githubIssues = `${githubRepo}/issues`;
 const githubPulls = `${githubRepo}/pulls`;
-const releasePage = `${githubRepo}/releases/tag/v1.0.5`;
+const releasePage = `${githubRepo}/releases/tag/v1.0.6`;
 const downloadUrls = {
   macosDmg:
-    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop-1.0.5-arm64.dmg",
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop-1.0.6-arm64.dmg",
   windowsInstaller:
-    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.Setup.1.0.5.exe",
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop.Setup.1.0.6.exe",
   windowsPortable:
-    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine.Desktop.1.0.5.exe",
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine.Desktop.1.0.6.exe",
   linuxAppImage:
-    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-x86_64.AppImage",
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.6/agentline-desktop-1.0.6-x86_64.AppImage",
   linuxDeb:
-    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/agentline-desktop-1.0.5-amd64.deb",
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.6/agentline-desktop-1.0.6-amd64.deb",
   androidApk:
-    "https://github.com/april-jk/AgentLine/releases/download/v1.0.5/AgentLine-Mobile-RN-1.0.5-android.apk",
+    "https://github.com/april-jk/AgentLine/releases/download/v1.0.6/AgentLine-Mobile-RN-1.0.6-android.apk",
 };
 
 type DownloadAction = {
@@ -59,7 +59,7 @@ const downloadPlatforms: DownloadPlatform[] = [
     headline: "AgentLine for macOS",
     description:
       "把 AgentLine 固定在 Apple Silicon 开发机上，是桌面端里最顺手的一种开始方式。任务留在本机持续运行，手机只接手关键决策。",
-    note: "固定指向 v1.0.5 Apple Silicon DMG；完整资产和校验文件在 GitHub Release 页面。",
+    note: "固定指向 v1.0.6 Apple Silicon DMG；完整资产和校验文件在 GitHub Release 页面。",
     visualTone: "desktop",
     primaryImage: withBase("/screenshots/session-complete-real.png"),
     secondaryImage: withBase("/screenshots/overview-projects-real.png"),
@@ -70,7 +70,7 @@ const downloadPlatforms: DownloadPlatform[] = [
         kind: "link",
         href: downloadUrls.macosDmg,
         style: "primary",
-        detail: "v1.0.5 · Apple Silicon",
+        detail: "v1.0.6 · Apple Silicon",
       },
     ],
     iconType: "svg",
@@ -82,7 +82,7 @@ const downloadPlatforms: DownloadPlatform[] = [
     headline: "AgentLine for Windows",
     description:
       "把会话留在这台 Windows 主机上，让桌面执行和手机审批同时成立。适合办公机、家庭主机和常驻远程桌面环境。",
-    note: "固定指向 v1.0.5 Windows 安装版和便携版；推荐新用户使用安装版。",
+    note: "固定指向 v1.0.6 Windows 安装版和便携版；推荐新用户使用安装版。",
     visualTone: "desktop",
     primaryImage: withBase("/screenshots/session-running-real.png"),
     secondaryImage: withBase("/screenshots/overview-projects-real.png"),
@@ -93,14 +93,14 @@ const downloadPlatforms: DownloadPlatform[] = [
         kind: "link",
         href: downloadUrls.windowsInstaller,
         style: "primary",
-        detail: "v1.0.5 · Windows installer",
+        detail: "v1.0.6 · Windows installer",
       },
       {
         label: "下载便携版",
         kind: "link",
         href: downloadUrls.windowsPortable,
         style: "secondary",
-        detail: "v1.0.5 · Portable",
+        detail: "v1.0.6 · Portable",
       },
     ],
     iconType: "svg",
@@ -112,7 +112,7 @@ const downloadPlatforms: DownloadPlatform[] = [
     headline: "AgentLine for Linux",
     description:
       "给常驻 Linux 工作站和主机的轻量入口。AppImage 适合免安装启动，DEB 面向 Debian/Ubuntu；更多架构或包格式以最新 Release 为准。",
-    note: "固定指向 v1.0.5 x86_64 AppImage 和 amd64 DEB；完整资产和校验文件请从 GitHub Release 页面查看。",
+    note: "固定指向 v1.0.6 x86_64 AppImage 和 amd64 DEB；完整资产和校验文件请从 GitHub Release 页面查看。",
     visualTone: "desktop",
     primaryImage: withBase("/screenshots/sessions-list-real.png"),
     secondaryImage: withBase("/screenshots/overview-projects-real.png"),
@@ -123,21 +123,21 @@ const downloadPlatforms: DownloadPlatform[] = [
         kind: "link",
         href: downloadUrls.linuxAppImage,
         style: "primary",
-        detail: "v1.0.5 · x86_64",
+        detail: "v1.0.6 · x86_64",
       },
       {
         label: "下载 DEB",
         kind: "link",
         href: downloadUrls.linuxDeb,
         style: "secondary",
-        detail: "v1.0.5 · Debian/Ubuntu",
+        detail: "v1.0.6 · Debian/Ubuntu",
       },
       {
         label: "查看其他 Linux 包",
         kind: "link",
         href: releasePage,
         style: "dark",
-        detail: "v1.0.5 · 全部资产/校验文件",
+        detail: "v1.0.6 · 全部资产/校验文件",
       },
     ],
     iconType: "svg",
@@ -173,7 +173,7 @@ const downloadPlatforms: DownloadPlatform[] = [
         kind: "link",
         href: releasePage,
         style: "dark",
-        detail: "v1.0.5 · 桌面端与 Android",
+        detail: "v1.0.6 · 桌面端与 Android",
       },
     ],
     iconType: "svg",
@@ -185,7 +185,7 @@ const downloadPlatforms: DownloadPlatform[] = [
     headline: "AgentLine for Android",
     description:
       "离开工位以后，Android 往往是最先接手代理的一端。直接装 APK 就能开始看进度、做审批、接推送。",
-    note: "固定指向 v1.0.5 Android APK；下载后按系统提示允许安装即可。",
+    note: "固定指向 v1.0.6 Android APK；下载后按系统提示允许安装即可。",
     visualTone: "mobile",
     primaryImage: withBase("/screenshots/session-mobile-real.png"),
     secondaryImage: withBase("/screenshots/session-mobile-complete-real.png"),
@@ -196,7 +196,7 @@ const downloadPlatforms: DownloadPlatform[] = [
         kind: "link",
         href: downloadUrls.androidApk,
         style: "primary",
-        detail: "v1.0.5 · 直接安装",
+        detail: "v1.0.6 · 直接安装",
       },
     ],
     iconType: "svg",
@@ -586,7 +586,7 @@ const downloadPlatforms: DownloadPlatform[] = [
         <div class="github-links" aria-label="GitHub links">
           <a href={releasePage} class="github-link-card" target="_blank" rel="noreferrer">
             <span>Release</span>
-            <strong>v1.0.5 下载与校验</strong>
+            <strong>v1.0.6 下载与校验</strong>
           </a>
           <a href={githubIssues} class="github-link-card" target="_blank" rel="noreferrer">
             <span>Issues</span>
