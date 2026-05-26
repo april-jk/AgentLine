@@ -5,7 +5,7 @@
 <h1 align="center">AgentLine</h1>
 
 <p align="center">
-  <strong>你的移动办公中枢，随时随地接上 Agent 对话。</strong>
+  <strong>本机托管、多设备监督的 AI Agent 控制台。</strong>
 </p>
 
 <p align="center">
@@ -22,9 +22,16 @@
   <a href="#license"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-7c3aed?style=for-the-badge"></a>
 </p>
 
-AgentLine 让 Claude Code、Codex、Gemini、OpenCode 这类 Agent 会话继续运行在你自己的机器上，同时把监督界面带到桌面和手机上。它适合这样的场景：任务还在跑，你已经离开工位，但 Agent 需要你审批、补充上下文、查看进度或做一个快速决定。
+AgentLine 是一个本机优先的 Agent 监督控制台。它让 Claude Code、Codex、Gemini、OpenCode 这类 AI coding agent 会话继续运行在你自己的开发机上，同时把监督、审批、进度查看和远程接手能力带到桌面、手机和平板。
 
-核心原则很简单：Agent 进程留在本机，控制界面可以移动。
+一句话：Agent 进程留在本机，控制界面可以移动。
+
+适合这些场景：
+
+- 长任务还在跑，你已经离开工位，但仍想看进度或补一句上下文。
+- Agent 需要你确认命令、审批文件改动、检查 diff 或处理阻塞。
+- 你同时跑着多个项目、多个 provider，不想在终端窗口和设备之间来回切。
+- 你希望远程监督自己的本机开发环境，而不是把代码和凭证交给托管式云端执行器。
 
 ## 当前状态
 
@@ -43,6 +50,15 @@ AgentLine 让 Claude Code、Codex、Gemini、OpenCode 这类 Agent 会话继续�
 - **远程设备控制**：把 Android 设备、Android 模拟器、iOS Simulator 串流到手机上，用于移动开发检查。
 - **文件和媒体工作流**：从桌面或手机上传截图、照片、PDF 和代码文件到会话。
 - **按注意力排序的处理流**：优先显示真正需要你处理的会话，而不只是最近打开的会话。
+
+## 项目定位
+
+AgentLine 不是云端 Agent 托管平台，也不替你保管模型账号。它更像是给本机 Agent 工作流加上一层可移动的控制面：
+
+- **本机优先**：代码、CLI、凭证和长运行任务默认留在你的机器上。
+- **多端接力**：桌面端负责常驻和系统集成，手机端负责审批、查看和快速响应。
+- **多 Provider 汇总**：把不同 Agent CLI 的会话组织到一个统一视图里。
+- **开源可贡献**：功能、下载、路线图和问题反馈都在 GitHub 上透明推进。
 
 ## 支持的 Provider
 

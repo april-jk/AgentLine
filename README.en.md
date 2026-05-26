@@ -5,7 +5,7 @@
 <h1 align="center">AgentLine</h1>
 
 <p align="center">
-  <strong>Your mobile work hub for reaching agent conversations anywhere.</strong>
+  <strong>A local-first, multi-device control surface for AI agents.</strong>
 </p>
 
 <p align="center">
@@ -22,9 +22,16 @@
   <a href="#license"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-7c3aed?style=for-the-badge"></a>
 </p>
 
-AgentLine keeps Claude Code, Codex, Gemini, and OpenCode-style agent sessions running on your own machine while you supervise them from desktop or phone. It is built for the moment when a task is still running, you have left the desk, and the agent needs approval, context, or a quick decision.
+AgentLine is a local-first supervision console for AI coding agents. It keeps Claude Code, Codex, Gemini, and OpenCode-style sessions running on your own development machine while bringing supervision, approvals, progress review, and remote handoff to desktop, phone, and tablet.
 
 The core idea is simple: the agent process stays local; the control surface can move.
+
+It is built for moments like these:
+
+- A long-running task is still active after you leave the desk, and you need to check progress or add context.
+- The agent needs command approval, a diff review, a file decision, or a quick unblock.
+- You are running multiple projects or providers and do not want to bounce between terminal windows.
+- You want remote supervision of your own development machine without moving code and credentials into a hosted cloud runner.
 
 ## Current Status
 
@@ -43,6 +50,15 @@ The npm package tarball exists for release bookkeeping, but the recommended inst
 - **Remote device control**: stream Android devices, Android emulators, and iOS Simulators for mobile development checks.
 - **File and media workflow**: upload screenshots, photos, PDFs, and code files into sessions from mobile or desktop.
 - **Push-oriented triage**: surface the sessions that need attention before the ones that are merely recent.
+
+## Positioning
+
+AgentLine is not a hosted cloud agent platform, and it does not custody your model accounts. It is a movable control plane for local agent workflows:
+
+- **Local-first**: code, CLIs, credentials, and long-running tasks stay on your machine by default.
+- **Multi-device handoff**: the desktop app stays resident; the phone handles approvals, review, and quick responses.
+- **Multi-provider overview**: sessions from different agent CLIs appear in one organized workspace.
+- **Open source contribution path**: features, downloads, roadmap work, and issue tracking live in GitHub.
 
 ## Supported Providers
 

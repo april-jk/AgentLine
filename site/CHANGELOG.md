@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.43] - 2026-05-26
+
+### Changed
+- Refine the homepage title, description, and hero copy to describe AgentLine as a local-first multi-device control surface for AI coding agents.
+
 ## [site-v1.5.42] - 2026-05-25
 
 ### Changed

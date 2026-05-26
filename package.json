@@ -1,5 +1,6 @@
 {
   "name": "agentline",
+  "description": "Local-first, multi-device control surface for supervising AI coding agents.",
   "private": true,
   "type": "module",
   "scripts": {
