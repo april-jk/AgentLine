@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://agentline.oneceo.ai/"><img alt="官网" src="https://img.shields.io/badge/Website-agentline.oneceo.ai-111827?style=for-the-badge"></a>
+  <a href="https://agentline.oneceo.ai/"><img alt="官网" src="https://img.shields.io/badge/Website-AgentLine-111827?style=for-the-badge"></a>
   <a href="https://github.com/april-jk/AgentLine/releases/tag/v1.0.6"><img alt="最新版本" src="https://img.shields.io/github/v/release/april-jk/AgentLine?style=for-the-badge&label=Release&color=2563eb"></a>
   <a href="#license"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-7c3aed?style=for-the-badge"></a>
 </p>
