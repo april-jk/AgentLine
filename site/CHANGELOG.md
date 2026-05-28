@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.45] - 2026-05-28
+
+### Added
+- Add Google Search Console verification metadata to every website page.
+- Add site-level Organization, WebSite, and SoftwareApplication structured data for search engines.
+
 ## [site-v1.5.44] - 2026-05-26
 
 ### Changed
